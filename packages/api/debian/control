@@ -1,0 +1,20 @@
+Source: shomer-api
+Maintainer: Chris <goabonga@pm.me>
+Section: net
+Priority: optional
+Standards-Version: 4.6.2
+Build-Depends:
+ debhelper-compat (= 13),
+ dh-python,
+ python3-all,
+ python3-hatchling,
+ pybuild-plugin-pyproject,
+Homepage: https://github.com/goabonga/shomer
+
+Package: shomer-api
+Architecture: all
+Depends: ${python3:Depends}, ${misc:Depends}
+Description: Shomer authorization HTTP API.
+ Minimal FastAPI service exposing /healthz and an OIDC
+ discovery stub. Ships a systemd unit (shomer-api.service)
+ listening on port 8000.
