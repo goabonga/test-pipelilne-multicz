@@ -1,0 +1,19 @@
+[project]
+name = "shomer-api"
+version = "0.0.0"
+description = "Shomer authorization HTTP API."
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+]
+
+[project.scripts]
+shomer-api = "shomer_api.app:run"
+
+[build-system]
+requires = ["hatchling>=1.21"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/shomer_api"]
