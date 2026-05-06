@@ -18,5 +18,10 @@ dev = [
     "ruff>=0.6",
 ]
 doc = [
-    "zensical>=0.1",
+    "zensical>=0.0.37",
+]
+favicon = [
+    # scripts/generate_favicon.py — one-off branding asset tooling.
+    "cairosvg>=2.7",
+    "pillow>=10.0",
 ]
