@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
 """Minimal Shomer API surface.
 
 Two endpoints to keep the demo runnable end-to-end:

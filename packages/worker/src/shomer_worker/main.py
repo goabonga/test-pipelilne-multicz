@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
 """Minimal polling loop.
 
 Real implementations would purge expired refresh tokens, replicate
