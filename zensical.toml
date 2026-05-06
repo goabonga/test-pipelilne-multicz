@@ -24,7 +24,4 @@ primary = "deep purple"
 accent  = "amber"
 
 [nav]
-"Home"             = "index.md"
-"Contributing"     = "contributing.md"
-"Security"         = "security.md"
-"Code of Conduct"  = "code_of_conduct.md"
+"Home" = "index.md"
