@@ -1,0 +1,22 @@
+[project]
+name = "shomer-workspace"
+version = "0.0.0"
+description = "Shomer monorepo (api, worker, cli) — uv workspace root."
+requires-python = ">=3.11"
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[tool.uv.sources]
+shomer-api = { workspace = true }
+shomer-worker = { workspace = true }
+shomer-cli = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+]
+doc = [
+    "zensical>=0.1",
+]
