@@ -16,7 +16,7 @@ Shomer &middot; Copyright &copy; 2026 Chris &middot;
 [theme]
 name    = "material"
 logo    = "shomer.svg"
-favicon = "shomer.svg"
+favicon = "favicon.ico"
 
 [theme.palette]
 scheme  = "default"
