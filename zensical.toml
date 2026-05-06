@@ -1,0 +1,30 @@
+[project]
+site_name        = "Shomer"
+site_description = "OAuth2/OIDC authorization server with multi-tenant support, MFA and federation."
+site_author      = "Chris <goabonga@pm.me>"
+site_url         = "https://goabonga.github.io/shomer/"
+
+repo_url   = "https://github.com/goabonga/shomer"
+repo_name  = "goabonga/shomer"
+edit_uri   = "edit/main/docs/"
+
+copyright = """
+Shomer &middot; Copyright &copy; 2026 Chris &middot;
+<a href="https://github.com/goabonga/shomer/blob/main/LICENSE">MIT License</a>
+"""
+
+[theme]
+name    = "material"
+logo    = "shomer.svg"
+favicon = "shomer.svg"
+
+[theme.palette]
+scheme  = "default"
+primary = "deep purple"
+accent  = "amber"
+
+[nav]
+"Home"             = "index.md"
+"Contributing"     = "contributing.md"
+"Security"         = "security.md"
+"Code of Conduct"  = "code_of_conduct.md"
