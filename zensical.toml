@@ -15,6 +15,7 @@ Shomer &middot; Copyright &copy; 2026 Chris &middot;
 
 nav = [
   { "Home" = "index.md" },
+  { "Changelog" = "changelog.md" },
 ]
 
 [project.theme]
