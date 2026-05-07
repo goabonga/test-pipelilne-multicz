@@ -13,15 +13,17 @@ Shomer &middot; Copyright &copy; 2026 Chris &middot;
 <a href="https://github.com/goabonga/shomer/blob/main/LICENSE">MIT License</a>
 """
 
-[theme]
-name    = "material"
-logo    = "shomer.svg"
-favicon = "favicon.ico"
+nav = [
+  { "Home" = "index.md" },
+]
 
-[theme.palette]
+[project.theme]
+variant  = "classic"
+logo     = "shomer.svg"
+favicon  = "favicon.ico"
+language = "en"
+
+[[project.theme.palette]]
 scheme  = "default"
 primary = "deep purple"
 accent  = "amber"
-
-[nav]
-"Home" = "index.md"
