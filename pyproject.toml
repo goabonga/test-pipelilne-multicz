@@ -25,3 +25,11 @@ favicon = [
     "cairosvg>=2.7",
     "pillow>=10.0",
 ]
+
+[tool.pytest.ini_options]
+testpaths = [
+    "packages/api/tests",
+    "packages/worker/tests",
+    "packages/cli/tests",
+]
+addopts = "-q"
