@@ -135,6 +135,19 @@ jobs:
         run: |
           echo "value=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
 
+      # Derive artifact names from the repository name so a fork (or a
+      # `shomer-test` sibling) builds + pushes under its own namespace
+      # rather than overwriting the upstream `shomer-*` images and
+      # charts. On the canonical repo this is a no-op: repository.name
+      # is "shomer" -> name = "shomer-api", same as before.
+      - name: Compute artifact names
+        if: steps.plan.outputs.release == 'true'
+        id: names
+        run: |
+          REPO='${{ github.event.repository.name }}'
+          echo "api=${REPO}-api"       >> "$GITHUB_OUTPUT"
+          echo "worker=${REPO}-worker" >> "$GITHUB_OUTPUT"
+
       - name: Login to ghcr.io (docker)
         if: steps.bump.outputs.api_version != '' || steps.bump.outputs.worker_version != ''
         uses: docker/login-action@v4
@@ -154,10 +167,10 @@ jobs:
           context: packages/api
           push: true
           tags: |
-            ghcr.io/${{ steps.owner.outputs.value }}/shomer-api:${{ steps.bump.outputs.api_version }}
-            ghcr.io/${{ steps.owner.outputs.value }}/shomer-api:latest
-          cache-from: type=gha,scope=shomer-api
-          cache-to: type=gha,mode=max,scope=shomer-api
+            ghcr.io/${{ steps.owner.outputs.value }}/${{ steps.names.outputs.api }}:${{ steps.bump.outputs.api_version }}
+            ghcr.io/${{ steps.owner.outputs.value }}/${{ steps.names.outputs.api }}:latest
+          cache-from: type=gha,scope=${{ steps.names.outputs.api }}
+          cache-to: type=gha,mode=max,scope=${{ steps.names.outputs.api }}
 
       - name: Build and push worker image
         id: push_worker
@@ -167,10 +180,10 @@ jobs:
           context: packages/worker
           push: true
           tags: |
-            ghcr.io/${{ steps.owner.outputs.value }}/shomer-worker:${{ steps.bump.outputs.worker_version }}
-            ghcr.io/${{ steps.owner.outputs.value }}/shomer-worker:latest
-          cache-from: type=gha,scope=shomer-worker
-          cache-to: type=gha,mode=max,scope=shomer-worker
+            ghcr.io/${{ steps.owner.outputs.value }}/${{ steps.names.outputs.worker }}:${{ steps.bump.outputs.worker_version }}
+            ghcr.io/${{ steps.owner.outputs.value }}/${{ steps.names.outputs.worker }}:latest
+          cache-from: type=gha,scope=${{ steps.names.outputs.worker }}
+          cache-to: type=gha,mode=max,scope=${{ steps.names.outputs.worker }}
 
       - name: Summarise pushed images
         if: steps.push_api.outcome == 'success' || steps.push_worker.outcome == 'success'
@@ -183,10 +196,10 @@ jobs:
             echo "| image | tag | digest |"
             echo "|---|---|---|"
             if [ -n "${{ steps.push_api.outputs.digest }}" ]; then
-              echo "| ghcr.io/${{ steps.owner.outputs.value }}/shomer-api | \`${{ steps.bump.outputs.api_version }}\` + \`latest\` | \`${{ steps.push_api.outputs.digest }}\` |"
+              echo "| ghcr.io/${{ steps.owner.outputs.value }}/${{ steps.names.outputs.api }} | \`${{ steps.bump.outputs.api_version }}\` + \`latest\` | \`${{ steps.push_api.outputs.digest }}\` |"
             fi
             if [ -n "${{ steps.push_worker.outputs.digest }}" ]; then
-              echo "| ghcr.io/${{ steps.owner.outputs.value }}/shomer-worker | \`${{ steps.bump.outputs.worker_version }}\` + \`latest\` | \`${{ steps.push_worker.outputs.digest }}\` |"
+              echo "| ghcr.io/${{ steps.owner.outputs.value }}/${{ steps.names.outputs.worker }} | \`${{ steps.bump.outputs.worker_version }}\` + \`latest\` | \`${{ steps.push_worker.outputs.digest }}\` |"
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -199,22 +212,37 @@ jobs:
           echo '${{ secrets.GITHUB_TOKEN }}' | helm registry login ghcr.io \
             -u '${{ github.actor }}' --password-stdin
 
-      - name: Package and push shomer-api subchart
+      # Rewrite each Chart.yaml's `name:` to use the dynamic
+      # ${reponame}-{api,worker} value before packaging. The committed
+      # value (`shomer-api` / `shomer-worker`) stays canonical for
+      # local `helm install`; this rewrite only affects the working
+      # tree during the workflow run, and the templates already pull
+      # the name via `.Chart.Name` so the rendered manifests follow.
+      - name: Rewrite chart names
+        if: steps.bump.outputs.chart_api_version != '' || steps.bump.outputs.chart_worker_version != ''
+        run: |
+          set -euo pipefail
+          sed -i "s/^name: shomer-api$/name: ${{ steps.names.outputs.api }}/" \
+            packages/api/chart/Chart.yaml
+          sed -i "s/^name: shomer-worker$/name: ${{ steps.names.outputs.worker }}/" \
+            packages/worker/chart/Chart.yaml
+
+      - name: Package and push api chart
         if: steps.bump.outputs.chart_api_version != ''
         run: |
           set -euo pipefail
           helm package packages/api/chart --destination /tmp
-          helm push "/tmp/shomer-api-${{ steps.bump.outputs.chart_api_version }}.tgz" \
+          helm push "/tmp/${{ steps.names.outputs.api }}-${{ steps.bump.outputs.chart_api_version }}.tgz" \
             "oci://ghcr.io/${{ steps.owner.outputs.value }}/charts" 2>&1 | tee /tmp/push-chart-api.out
           DIGEST=$(awk '/^Digest:/{print $2}' /tmp/push-chart-api.out)
           echo "PUSH_CHART_API_DIGEST=$DIGEST" >> "$GITHUB_ENV"
 
-      - name: Package and push shomer-worker subchart
+      - name: Package and push worker chart
         if: steps.bump.outputs.chart_worker_version != ''
         run: |
           set -euo pipefail
           helm package packages/worker/chart --destination /tmp
-          helm push "/tmp/shomer-worker-${{ steps.bump.outputs.chart_worker_version }}.tgz" \
+          helm push "/tmp/${{ steps.names.outputs.worker }}-${{ steps.bump.outputs.chart_worker_version }}.tgz" \
             "oci://ghcr.io/${{ steps.owner.outputs.value }}/charts" 2>&1 | tee /tmp/push-chart-worker.out
           DIGEST=$(awk '/^Digest:/{print $2}' /tmp/push-chart-worker.out)
           echo "PUSH_CHART_WORKER_DIGEST=$DIGEST" >> "$GITHUB_ENV"
@@ -229,10 +257,10 @@ jobs:
             echo "| chart | version | digest |"
             echo "|---|---|---|"
             if [ -n "${PUSH_CHART_API_DIGEST:-}" ]; then
-              echo "| shomer-api | \`${{ steps.bump.outputs.chart_api_version }}\` | \`${PUSH_CHART_API_DIGEST}\` |"
+              echo "| ${{ steps.names.outputs.api }} | \`${{ steps.bump.outputs.chart_api_version }}\` | \`${PUSH_CHART_API_DIGEST}\` |"
             fi
             if [ -n "${PUSH_CHART_WORKER_DIGEST:-}" ]; then
-              echo "| shomer-worker | \`${{ steps.bump.outputs.chart_worker_version }}\` | \`${PUSH_CHART_WORKER_DIGEST}\` |"
+              echo "| ${{ steps.names.outputs.worker }} | \`${{ steps.bump.outputs.chart_worker_version }}\` | \`${PUSH_CHART_WORKER_DIGEST}\` |"
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
