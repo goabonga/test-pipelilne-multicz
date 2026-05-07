@@ -31,6 +31,7 @@ paths      = [
 bump_files = [
     { file = "packages/api/pyproject.toml", key = "project.version" },
     { file = "packages/api/src/shomer_api/__init__.py", key = 'regex:^__version__\s*=\s*"([^"]+)"' },
+    { file = "VERSION", key = 'regex:^api=(.+)$' },
 ]
 mirrors    = [
     { file = "packages/api/chart/Chart.yaml", key = "appVersion" },
@@ -63,6 +64,7 @@ paths      = [
 bump_files = [
     { file = "packages/worker/pyproject.toml", key = "project.version" },
     { file = "packages/worker/src/shomer_worker/__init__.py", key = 'regex:^__version__\s*=\s*"([^"]+)"' },
+    { file = "VERSION", key = 'regex:^worker=(.+)$' },
 ]
 mirrors    = [
     { file = "packages/worker/chart/Chart.yaml", key = "appVersion" },
@@ -90,6 +92,7 @@ paths      = ["packages/cli/**"]
 bump_files = [
     { file = "packages/cli/pyproject.toml", key = "project.version" },
     { file = "packages/cli/src/shomer_cli/__init__.py", key = 'regex:^__version__\s*=\s*"([^"]+)"' },
+    { file = "VERSION", key = 'regex:^cli=(.+)$' },
 ]
 changelog  = "packages/cli/CHANGELOG.md"
 post_bump  = ["uv lock"]
@@ -100,7 +103,10 @@ ref  = "shomer-cli=={version}"
 
 [components.chart-api]
 paths      = ["packages/api/chart/**"]
-bump_files = [{ file = "packages/api/chart/Chart.yaml", key = "version" }]
+bump_files = [
+    { file = "packages/api/chart/Chart.yaml", key = "version" },
+    { file = "VERSION", key = 'regex:^chart-api=(.+)$' },
+]
 changelog  = "packages/api/chart/CHANGELOG.md"
 
 [[components.chart-api.artifacts]]
@@ -109,7 +115,10 @@ ref  = "shomer-api-{version}.tgz"
 
 [components.chart-worker]
 paths      = ["packages/worker/chart/**"]
-bump_files = [{ file = "packages/worker/chart/Chart.yaml", key = "version" }]
+bump_files = [
+    { file = "packages/worker/chart/Chart.yaml", key = "version" },
+    { file = "VERSION", key = 'regex:^chart-worker=(.+)$' },
+]
 changelog  = "packages/worker/chart/CHANGELOG.md"
 
 [[components.chart-worker.artifacts]]
