@@ -97,9 +97,20 @@ bump_files = [
 changelog  = "packages/cli/CHANGELOG.md"
 post_bump  = ["uv lock"]
 
+[[components.cli.writers]]
+type            = "debian-changelog"
+file            = "packages/cli/debian/changelog"
+distribution    = "unstable"
+maintainer      = "Chris <goabonga@pm.me>"
+debian_revision = 1
+
 [[components.cli.artifacts]]
 type = "pypi"
 ref  = "shomer-cli=={version}"
+
+[[components.cli.artifacts]]
+type = "debian"
+ref  = "shomer-cli_{version}-1_all.deb"
 
 [components.chart-api]
 paths      = ["packages/api/chart/**"]

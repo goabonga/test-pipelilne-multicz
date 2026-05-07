@@ -1,0 +1,21 @@
+Source: shomer-cli
+Maintainer: Chris <goabonga@pm.me>
+Section: utils
+Priority: optional
+Standards-Version: 4.6.2
+Build-Depends:
+ debhelper-compat (= 13),
+ dh-python,
+ python3-all,
+ python3-hatchling,
+ pybuild-plugin-pyproject,
+Homepage: https://github.com/goabonga/shomer
+
+Package: shomer-cli
+Architecture: all
+Depends: ${python3:Depends}, ${misc:Depends}
+Description: Shomer admin CLI.
+ Operator command-line tool for Shomer authorization servers.
+ Ships the `shomer` executable: probe a running instance with
+ `shomer health <url>`, print the CLI version, and (later) manage
+ OAuth2 clients, users and tenants.
