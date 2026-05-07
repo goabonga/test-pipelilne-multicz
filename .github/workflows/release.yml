@@ -236,6 +236,48 @@ jobs:
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Install debian build tooling
+        if: steps.bump.outputs.api_version != '' || steps.bump.outputs.worker_version != ''
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            debhelper dh-python python3-all python3-hatchling \
+            pybuild-plugin-pyproject dpkg-dev
+
+      - name: Build api debian package
+        if: steps.bump.outputs.api_version != ''
+        run: |
+          set -euo pipefail
+          cd packages/api
+          dpkg-buildpackage -us -uc -b
+          # dpkg-buildpackage drops artefacts ONE level above the source
+          # dir, so the .deb lands in packages/. Move it to /tmp for the
+          # gh release upload step downstream.
+          mv ../shomer-api_*.deb ../shomer-api_*.buildinfo ../shomer-api_*.changes /tmp/
+
+      - name: Build worker debian package
+        if: steps.bump.outputs.worker_version != ''
+        run: |
+          set -euo pipefail
+          cd packages/worker
+          dpkg-buildpackage -us -uc -b
+          mv ../shomer-worker_*.deb ../shomer-worker_*.buildinfo ../shomer-worker_*.changes /tmp/
+
+      - name: Summarise built debian packages
+        if: steps.bump.outputs.api_version != '' || steps.bump.outputs.worker_version != ''
+        run: |
+          {
+            echo
+            echo "### Built debian packages"
+            echo
+            echo "| package | filename |"
+            echo "|---|---|"
+            for f in /tmp/shomer-*.deb; do
+              [ -f "$f" ] || continue
+              echo "| $(dpkg-deb --field "$f" Package) | \`$(basename "$f")\` |"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Cut a GitHub Release per bumped component
         if: steps.plan.outputs.release == 'true'
         env:
@@ -247,6 +289,13 @@ jobs:
               *-v*.*.*) ;;
               *) continue ;;
             esac
+            # Tag prefix tells us which component this tag belongs to;
+            # attach the matching .deb (if any) as a release asset.
+            ASSETS=()
+            case "$tag" in
+              api-v*)    [ -f /tmp/shomer-api_*.deb    ] && ASSETS=(/tmp/shomer-api_*.deb) ;;
+              worker-v*) [ -f /tmp/shomer-worker_*.deb ] && ASSETS=(/tmp/shomer-worker_*.deb) ;;
+            esac
             multicz release-notes --tag "$tag" \
-              | gh release create "$tag" --title "$tag" --notes-file -
+              | gh release create "$tag" --title "$tag" --notes-file - "${ASSETS[@]}"
           done
