@@ -275,32 +275,44 @@ jobs:
             debhelper dh-python python3-all python3-hatchling \
             pybuild-plugin-pyproject dpkg-dev
 
+      # dpkg-source enforces that the source dir name match the
+      # package name from debian/control. Our workspace layout is
+      # packages/{api,worker,cli}/ but the packages are
+      # shomer-{api,worker,cli} — so copy each one to a tmp dir at the
+      # correct name and build from there. The .deb (+ .buildinfo /
+      # .changes) ends up in /tmp/build-<n>/ one level up from the copy.
       - name: Build api debian package
         if: steps.bump.outputs.api_version != ''
         run: |
           set -euo pipefail
-          cd packages/api
+          WORK=/tmp/build-api
+          rm -rf "$WORK" && mkdir -p "$WORK"
+          cp -r packages/api "$WORK/shomer-api"
+          cd "$WORK/shomer-api"
           dpkg-buildpackage -us -uc -b
-          # dpkg-buildpackage drops artefacts ONE level above the source
-          # dir, so the .deb lands in packages/. Move it to /tmp for the
-          # gh release upload step downstream.
-          mv ../shomer-api_*.deb ../shomer-api_*.buildinfo ../shomer-api_*.changes /tmp/
+          mv "$WORK"/shomer-api_*.deb "$WORK"/shomer-api_*.buildinfo "$WORK"/shomer-api_*.changes /tmp/
 
       - name: Build worker debian package
         if: steps.bump.outputs.worker_version != ''
         run: |
           set -euo pipefail
-          cd packages/worker
+          WORK=/tmp/build-worker
+          rm -rf "$WORK" && mkdir -p "$WORK"
+          cp -r packages/worker "$WORK/shomer-worker"
+          cd "$WORK/shomer-worker"
           dpkg-buildpackage -us -uc -b
-          mv ../shomer-worker_*.deb ../shomer-worker_*.buildinfo ../shomer-worker_*.changes /tmp/
+          mv "$WORK"/shomer-worker_*.deb "$WORK"/shomer-worker_*.buildinfo "$WORK"/shomer-worker_*.changes /tmp/
 
       - name: Build cli debian package
         if: steps.bump.outputs.cli_version != ''
         run: |
           set -euo pipefail
-          cd packages/cli
+          WORK=/tmp/build-cli
+          rm -rf "$WORK" && mkdir -p "$WORK"
+          cp -r packages/cli "$WORK/shomer-cli"
+          cd "$WORK/shomer-cli"
           dpkg-buildpackage -us -uc -b
-          mv ../shomer-cli_*.deb ../shomer-cli_*.buildinfo ../shomer-cli_*.changes /tmp/
+          mv "$WORK"/shomer-cli_*.deb "$WORK"/shomer-cli_*.buildinfo "$WORK"/shomer-cli_*.changes /tmp/
 
       - name: Summarise built debian packages
         if: >-
