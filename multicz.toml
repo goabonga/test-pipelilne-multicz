@@ -42,6 +42,7 @@ post_bump  = ["uv lock"]
 [[components.api.writers]]
 type            = "debian-changelog"
 file            = "packages/api/debian/changelog"
+package         = "shomer-api"
 distribution    = "unstable"
 maintainer      = "Chris <goabonga@pm.me>"
 debian_revision = 1
@@ -75,6 +76,7 @@ post_bump  = ["uv lock"]
 [[components.worker.writers]]
 type            = "debian-changelog"
 file            = "packages/worker/debian/changelog"
+package         = "shomer-worker"
 distribution    = "unstable"
 maintainer      = "Chris <goabonga@pm.me>"
 debian_revision = 1
@@ -100,6 +102,7 @@ post_bump  = ["uv lock"]
 [[components.cli.writers]]
 type            = "debian-changelog"
 file            = "packages/cli/debian/changelog"
+package         = "shomer-cli"
 distribution    = "unstable"
 maintainer      = "Chris <goabonga@pm.me>"
 debian_revision = 1
