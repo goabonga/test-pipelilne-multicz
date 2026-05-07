@@ -190,6 +190,52 @@ jobs:
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - uses: azure/setup-helm@v5
+        if: steps.bump.outputs.chart_api_version != '' || steps.bump.outputs.chart_worker_version != ''
+
+      - name: Helm registry login
+        if: steps.bump.outputs.chart_api_version != '' || steps.bump.outputs.chart_worker_version != ''
+        run: |
+          echo '${{ secrets.GITHUB_TOKEN }}' | helm registry login ghcr.io \
+            -u '${{ github.actor }}' --password-stdin
+
+      - name: Package and push shomer-api subchart
+        if: steps.bump.outputs.chart_api_version != ''
+        run: |
+          set -euo pipefail
+          helm package packages/api/chart --destination /tmp
+          helm push "/tmp/shomer-api-${{ steps.bump.outputs.chart_api_version }}.tgz" \
+            "oci://ghcr.io/${{ steps.owner.outputs.value }}/charts" 2>&1 | tee /tmp/push-chart-api.out
+          DIGEST=$(awk '/^Digest:/{print $2}' /tmp/push-chart-api.out)
+          echo "PUSH_CHART_API_DIGEST=$DIGEST" >> "$GITHUB_ENV"
+
+      - name: Package and push shomer-worker subchart
+        if: steps.bump.outputs.chart_worker_version != ''
+        run: |
+          set -euo pipefail
+          helm package packages/worker/chart --destination /tmp
+          helm push "/tmp/shomer-worker-${{ steps.bump.outputs.chart_worker_version }}.tgz" \
+            "oci://ghcr.io/${{ steps.owner.outputs.value }}/charts" 2>&1 | tee /tmp/push-chart-worker.out
+          DIGEST=$(awk '/^Digest:/{print $2}' /tmp/push-chart-worker.out)
+          echo "PUSH_CHART_WORKER_DIGEST=$DIGEST" >> "$GITHUB_ENV"
+
+      - name: Summarise pushed charts
+        if: steps.bump.outputs.chart_api_version != '' || steps.bump.outputs.chart_worker_version != ''
+        run: |
+          {
+            echo
+            echo "### Pushed helm charts"
+            echo
+            echo "| chart | version | digest |"
+            echo "|---|---|---|"
+            if [ -n "${PUSH_CHART_API_DIGEST:-}" ]; then
+              echo "| shomer-api | \`${{ steps.bump.outputs.chart_api_version }}\` | \`${PUSH_CHART_API_DIGEST}\` |"
+            fi
+            if [ -n "${PUSH_CHART_WORKER_DIGEST:-}" ]; then
+              echo "| shomer-worker | \`${{ steps.bump.outputs.chart_worker_version }}\` | \`${PUSH_CHART_WORKER_DIGEST}\` |"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Cut a GitHub Release per bumped component
         if: steps.plan.outputs.release == 'true'
         env:
