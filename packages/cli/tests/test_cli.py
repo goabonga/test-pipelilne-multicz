@@ -20,7 +20,9 @@ def test_version_command_prints_version() -> None:
     assert result.output.strip() == __version__
 
 
-def test_health_command_targets_healthz_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_health_command_targets_healthz_endpoint(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """``shomer health <base>`` must hit ``<base>/healthz`` and echo the
     raw response body."""
     captured: dict[str, object] = {}
@@ -38,7 +40,9 @@ def test_health_command_targets_healthz_endpoint(monkeypatch: pytest.MonkeyPatch
     assert "ok" in result.output
 
 
-def test_health_command_strips_trailing_slashes(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_health_command_strips_trailing_slashes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """The base URL is rstripped before joining ``/healthz`` so we don't
     end up requesting ``//healthz``."""
     captured: dict[str, str] = {}

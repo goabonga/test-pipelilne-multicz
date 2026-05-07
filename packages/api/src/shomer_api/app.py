@@ -43,4 +43,5 @@ def openid_configuration() -> dict[str, object]:
 def run() -> None:
     """Console-script entrypoint (``shomer-api``)."""
     import uvicorn
+
     uvicorn.run("shomer_api.app:app", host="0.0.0.0", port=8000)

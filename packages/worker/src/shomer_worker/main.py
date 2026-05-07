@@ -38,7 +38,9 @@ def run(
     the loop deterministically without sleeping.
     """
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
-    log.info("shomer.worker starting (v%s, interval=%ss)", __version__, interval_seconds)
+    log.info(
+        "shomer.worker starting (v%s, interval=%ss)", __version__, interval_seconds
+    )
 
     stop = False
 
