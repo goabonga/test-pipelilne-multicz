@@ -237,7 +237,10 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Install debian build tooling
-        if: steps.bump.outputs.api_version != '' || steps.bump.outputs.worker_version != ''
+        if: >-
+          steps.bump.outputs.api_version != '' ||
+          steps.bump.outputs.worker_version != '' ||
+          steps.bump.outputs.cli_version != ''
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
@@ -263,8 +266,19 @@ jobs:
           dpkg-buildpackage -us -uc -b
           mv ../shomer-worker_*.deb ../shomer-worker_*.buildinfo ../shomer-worker_*.changes /tmp/
 
+      - name: Build cli debian package
+        if: steps.bump.outputs.cli_version != ''
+        run: |
+          set -euo pipefail
+          cd packages/cli
+          dpkg-buildpackage -us -uc -b
+          mv ../shomer-cli_*.deb ../shomer-cli_*.buildinfo ../shomer-cli_*.changes /tmp/
+
       - name: Summarise built debian packages
-        if: steps.bump.outputs.api_version != '' || steps.bump.outputs.worker_version != ''
+        if: >-
+          steps.bump.outputs.api_version != '' ||
+          steps.bump.outputs.worker_version != '' ||
+          steps.bump.outputs.cli_version != ''
         run: |
           {
             echo
@@ -295,6 +309,7 @@ jobs:
             case "$tag" in
               api-v*)    [ -f /tmp/shomer-api_*.deb    ] && ASSETS=(/tmp/shomer-api_*.deb) ;;
               worker-v*) [ -f /tmp/shomer-worker_*.deb ] && ASSETS=(/tmp/shomer-worker_*.deb) ;;
+              cli-v*)    [ -f /tmp/shomer-cli_*.deb    ] && ASSETS=(/tmp/shomer-cli_*.deb) ;;
             esac
             multicz release-notes --tag "$tag" \
               | gh release create "$tag" --title "$tag" --notes-file - "${ASSETS[@]}"
