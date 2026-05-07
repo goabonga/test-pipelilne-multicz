@@ -23,6 +23,7 @@ on:
 
 permissions:
   contents: write   # push the release commit and tags
+  packages: write   # push docker image + helm chart to ghcr.io
 
 jobs:
   release:
@@ -104,13 +105,90 @@ jobs:
         if: steps.plan.outputs.release == 'true' && steps.gpg.outputs.available == 'true'
         run: |
           multicz bump --commit --tag --push --sign \
-            --summary "$GITHUB_STEP_SUMMARY"
+            --summary "$GITHUB_STEP_SUMMARY" --output json | tee /tmp/release.json
 
       - name: Bump, commit, tag, push
         if: steps.plan.outputs.release == 'true' && steps.gpg.outputs.available != 'true'
         run: |
           multicz bump --commit --tag --push \
-            --summary "$GITHUB_STEP_SUMMARY"
+            --summary "$GITHUB_STEP_SUMMARY" --output json | tee /tmp/release.json
+
+      - name: Extract bumped versions
+        id: bump
+        if: steps.plan.outputs.release == 'true'
+        run: |
+          set -euo pipefail
+          API=$(jq -r          '.bumps.api.next_version           // empty' /tmp/release.json)
+          WORKER=$(jq -r       '.bumps.worker.next_version        // empty' /tmp/release.json)
+          CLI=$(jq -r          '.bumps.cli.next_version           // empty' /tmp/release.json)
+          CHART_API=$(jq -r    '.bumps["chart-api"].next_version    // empty' /tmp/release.json)
+          CHART_WORKER=$(jq -r '.bumps["chart-worker"].next_version // empty' /tmp/release.json)
+          echo "api_version=$API"                   >> "$GITHUB_OUTPUT"
+          echo "worker_version=$WORKER"             >> "$GITHUB_OUTPUT"
+          echo "cli_version=$CLI"                   >> "$GITHUB_OUTPUT"
+          echo "chart_api_version=$CHART_API"       >> "$GITHUB_OUTPUT"
+          echo "chart_worker_version=$CHART_WORKER" >> "$GITHUB_OUTPUT"
+
+      - name: Compute lowercase owner
+        if: steps.plan.outputs.release == 'true'
+        id: owner
+        run: |
+          echo "value=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
+      - name: Login to ghcr.io (docker)
+        if: steps.bump.outputs.api_version != '' || steps.bump.outputs.worker_version != ''
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/setup-buildx-action@v4
+        if: steps.bump.outputs.api_version != '' || steps.bump.outputs.worker_version != ''
+
+      - name: Build and push api image
+        id: push_api
+        if: steps.bump.outputs.api_version != ''
+        uses: docker/build-push-action@v7
+        with:
+          context: packages/api
+          push: true
+          tags: |
+            ghcr.io/${{ steps.owner.outputs.value }}/shomer-api:${{ steps.bump.outputs.api_version }}
+            ghcr.io/${{ steps.owner.outputs.value }}/shomer-api:latest
+          cache-from: type=gha,scope=shomer-api
+          cache-to: type=gha,mode=max,scope=shomer-api
+
+      - name: Build and push worker image
+        id: push_worker
+        if: steps.bump.outputs.worker_version != ''
+        uses: docker/build-push-action@v7
+        with:
+          context: packages/worker
+          push: true
+          tags: |
+            ghcr.io/${{ steps.owner.outputs.value }}/shomer-worker:${{ steps.bump.outputs.worker_version }}
+            ghcr.io/${{ steps.owner.outputs.value }}/shomer-worker:latest
+          cache-from: type=gha,scope=shomer-worker
+          cache-to: type=gha,mode=max,scope=shomer-worker
+
+      - name: Summarise pushed images
+        if: steps.push_api.outcome == 'success' || steps.push_worker.outcome == 'success'
+        run: |
+          {
+            echo "## release"
+            echo
+            echo "### Pushed docker images"
+            echo
+            echo "| image | tag | digest |"
+            echo "|---|---|---|"
+            if [ -n "${{ steps.push_api.outputs.digest }}" ]; then
+              echo "| ghcr.io/${{ steps.owner.outputs.value }}/shomer-api | \`${{ steps.bump.outputs.api_version }}\` + \`latest\` | \`${{ steps.push_api.outputs.digest }}\` |"
+            fi
+            if [ -n "${{ steps.push_worker.outputs.digest }}" ]; then
+              echo "| ghcr.io/${{ steps.owner.outputs.value }}/shomer-worker | \`${{ steps.bump.outputs.worker_version }}\` + \`latest\` | \`${{ steps.push_worker.outputs.digest }}\` |"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Cut a GitHub Release per bumped component
         if: steps.plan.outputs.release == 'true'
