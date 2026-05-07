@@ -1,4 +1,6 @@
-.PHONY: help install lint format test header headers-check docs docs-dev clean
+.PHONY: help install lint format test header headers-check docs docs-dev \
+        release-status release-plan release-validate release-config release-graph \
+        release-dry-run release clean
 
 VENV     := .venv
 UV       := uv
@@ -6,6 +8,9 @@ RUFF     := $(VENV)/bin/ruff
 PYTEST   := $(VENV)/bin/pytest
 ZENSICAL := $(VENV)/bin/zensical
 PYTHON   := $(VENV)/bin/python
+# Run multicz via uvx — pulls the latest from PyPI on first call, cached
+# afterwards. Avoids adding multicz to the workspace dev group.
+MULTICZ  := uvx multicz
 
 # Default target prints the help block so `make` alone is always safe.
 help:
@@ -24,6 +29,15 @@ help:
 	@echo "Docs:"
 	@echo "  make docs            Build the static site into ./site"
 	@echo "  make docs-dev        Serve docs with live reload (http://127.0.0.1:8800)"
+	@echo ""
+	@echo "Release (multicz):"
+	@echo "  make release-status   Show pending bumps (one-line per component)"
+	@echo "  make release-plan     Full bump plan with reasons"
+	@echo "  make release-validate Sanity-check multicz.toml against the repo"
+	@echo "  make release-config   Print the effective multicz config"
+	@echo "  make release-graph    Render the cascade DAG (api/worker -> charts)"
+	@echo "  make release-dry-run  Compute the bump but write nothing"
+	@echo "  make release          Apply versions, commit and tag (no push)"
 	@echo ""
 	@echo "Misc:"
 	@echo "  make clean           Remove caches, build artefacts and ./site"
@@ -58,6 +72,33 @@ docs:
 
 docs-dev:
 	$(UV) run zensical serve --dev-addr 127.0.0.1:8800
+
+# multicz wrappers. The binary is invoked through `uvx multicz`, so the
+# first call downloads it from PyPI (~1s) and subsequent calls hit the
+# uv cache. To pin a version: MULTICZ="uvx multicz==1.0.0" make ...
+release-status:
+	$(MULTICZ) status
+
+release-plan:
+	$(MULTICZ) plan
+
+release-validate:
+	$(MULTICZ) validate --strict
+
+release-config:
+	$(MULTICZ) config
+
+release-graph:
+	$(MULTICZ) graph
+
+release-dry-run:
+	$(MULTICZ) bump --dry-run
+
+# `make release` applies the bump locally — commits and tags but does
+# NOT push. Push manually (`git push --follow-tags`) or via CI once the
+# release commit looks right.
+release:
+	$(MULTICZ) bump --commit --tag
 
 clean:
 	rm -rf site/ build/ dist/
