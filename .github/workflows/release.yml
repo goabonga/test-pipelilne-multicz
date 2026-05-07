@@ -1,0 +1,128 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Release pipeline: each multicz component (api / worker / cli + the
+# matching helm subcharts) has its own tag stream and CHANGELOG.md.
+# multicz writes pyproject.toml + CHANGELOG, regenerates uv.lock via
+# the per-component `post_bump`, prepends a fresh stanza to each
+# debian/changelog (via the `debian-changelog` writer), commits, tags,
+# pushes. Then we cut one GitHub Release per new tag.
+#
+# Optional GPG signing: define repository secrets `GPG_PRIVATE_KEY`
+# (ASCII-armored, e.g. `gpg --armor --export-secret-keys`) and
+# `GPG_PASSPHRASE` to sign the release commit and every tag. When
+# either secret is missing the workflow still runs, just unsigned.
+
+name: release
+
+on:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: write   # push the release commit and tags
+
+jobs:
+  release:
+    if: >-
+      ${{
+        github.event.workflow_run.conclusion == 'success' &&
+        !startsWith(github.event.workflow_run.head_commit.message, 'chore(release)')
+      }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+
+      - uses: astral-sh/setup-uv@v8.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Install workspace (post_bump hooks need uv lock)
+        run: uv sync --frozen --all-packages
+
+      - uses: goabonga/multicz-action@v1
+
+      - name: Configure git
+        run: |
+          NAME="${{ github.event.workflow_run.head_commit.author.name }}"
+          EMAIL="${{ github.event.workflow_run.head_commit.author.email }}"
+          git config user.name  "${NAME:-github-actions[bot]}"
+          git config user.email "${EMAIL:-41898282+github-actions[bot]@users.noreply.github.com}"
+
+      - name: Detect GPG availability
+        # Secrets can't be referenced from `if:` directly, so promote
+        # their presence to a step output.
+        id: gpg
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          if [ -n "$GPG_PRIVATE_KEY" ] && [ -n "$GPG_PASSPHRASE" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Import and unlock GPG key
+        if: steps.gpg.outputs.available == 'true'
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+          # Pre-cache the passphrase so subsequent `git commit -S` /
+          # `git tag -s` don't prompt.
+          echo test | gpg --batch --yes --passphrase "$GPG_PASSPHRASE" \
+            --pinentry-mode loopback --sign > /dev/null
+          KEY_ID=$(gpg --list-secret-keys --with-colons \
+            | awk -F: '/^sec/{print $5; exit}')
+          git config user.signingkey "$KEY_ID"
+
+      - name: Validate
+        run: multicz validate --strict
+
+      - name: Plan
+        id: plan
+        run: |
+          set -euo pipefail
+          multicz plan --summary "$GITHUB_STEP_SUMMARY" \
+            --output json | tee /tmp/plan.json
+          if [ "$(jq '.bumps | length' /tmp/plan.json)" = "0" ]; then
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            echo "no release pending"
+          else
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Bump, commit, tag, push (signed)
+        if: steps.plan.outputs.release == 'true' && steps.gpg.outputs.available == 'true'
+        run: |
+          multicz bump --commit --tag --push --sign \
+            --summary "$GITHUB_STEP_SUMMARY"
+
+      - name: Bump, commit, tag, push
+        if: steps.plan.outputs.release == 'true' && steps.gpg.outputs.available != 'true'
+        run: |
+          multicz bump --commit --tag --push \
+            --summary "$GITHUB_STEP_SUMMARY"
+
+      - name: Cut a GitHub Release per bumped component
+        if: steps.plan.outputs.release == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          for tag in $(git tag --points-at HEAD); do
+            case "$tag" in
+              *-v*.*.*) ;;
+              *) continue ;;
+            esac
+            multicz release-notes --tag "$tag" \
+              | gh release create "$tag" --title "$tag" --notes-file -
+          done
