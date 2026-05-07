@@ -1,0 +1,122 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# CI gate. Five independent jobs:
+#
+#   detect    → resolves the matrix (one entry per package whose files
+#               actually moved on this push / PR, via `multicz changed`).
+#   quality   → ruff lint + ruff format check + SPDX header check.
+#   validate  → `multicz validate --strict` against the repo state.
+#   test      → matrix job, only fires for changed packages.
+#   docs      → `zensical build` smoke (catches broken markdown / config).
+#
+# `release.yml` keys off this workflow's `ci` name via workflow_run; if
+# any job here fails or is cancelled, no release fires.
+
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      list: ${{ steps.list.outputs.list }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - id: changed
+        uses: goabonga/multicz-action/changed@v1
+        with:
+          output: json
+
+      - id: list
+        env:
+          CHANGED_JSON: ${{ steps.changed.outputs.json }}
+        run: |
+          set -euo pipefail
+          echo "list=$(echo "$CHANGED_JSON" | jq -c '.changed')" >> "$GITHUB_OUTPUT"
+
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: astral-sh/setup-uv@v8.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Install workspace
+        run: uv sync --frozen --all-packages
+
+      - name: Ruff lint
+        run: uv run ruff check packages scripts
+
+      - name: Ruff format check
+        run: uv run ruff format --check packages scripts
+
+      - name: SPDX license headers
+        run: |
+          uv run python scripts/add_license_header.py --path packages --check
+          uv run python scripts/add_license_header.py --path scripts --check
+
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: goabonga/multicz-action@v1
+
+      - name: multicz validate
+        run: multicz validate --strict
+
+  test:
+    needs: detect
+    if: needs.detect.outputs.list != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{ fromJson(needs.detect.outputs.list) }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: astral-sh/setup-uv@v8.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Install workspace
+        run: uv sync --frozen --all-packages
+
+      - name: Pytest for ${{ matrix.package }}
+        run: |
+          set -euo pipefail
+          # `chart-api` / `chart-worker` are Helm-only components — they
+          # have no tests/ directory to point pytest at.
+          if [ -d "packages/${{ matrix.package }}/tests" ]; then
+            uv run pytest packages/${{ matrix.package }}/tests -q
+          else
+            echo "no tests/ for ${{ matrix.package }} — skipping"
+          fi
+
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: astral-sh/setup-uv@v8.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Install workspace + doc group
+        run: uv sync --frozen --all-packages --group doc
+
+      - name: Zensical build
+        run: uv run zensical build
