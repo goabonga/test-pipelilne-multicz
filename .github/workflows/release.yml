@@ -271,9 +271,12 @@ jobs:
           steps.bump.outputs.cli_version != ''
         run: |
           sudo apt-get update -qq
+          # build-essential pulls gcc / libc / make / dpkg-dev which
+          # the debian/control's Build-Depends implicitly require even
+          # on pure-python packages (debhelper itself depends on it).
           sudo apt-get install -y --no-install-recommends \
-            debhelper dh-python python3-all python3-hatchling \
-            pybuild-plugin-pyproject dpkg-dev
+            build-essential debhelper dh-python python3-all \
+            python3-hatchling pybuild-plugin-pyproject dpkg-dev
 
       # dpkg-source enforces that the source dir name match the
       # package name from debian/control. Our workspace layout is
