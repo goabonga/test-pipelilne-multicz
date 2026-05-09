@@ -1,33 +1,20 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Chris <goabonga@pm.me>
 
-# CI gate. Tree-shaped pipeline:
+# CI gate. Per-component named jobs — no matrix, every job is its own
+# graph node. Shape per component (python/buildable/chart/js):
 #
-#   detect ─┬─ headers ──┬─ lint        ─┐
-#           │            ├─ format      ─┼─ test ─┬─ audit  ─┐
-#           │            ├─ typecheck   ─┘        └─ bandit ─┴─ container ─ sbom ─ grype
-#           │            ├─ js-lint     ─┐
-#           │            ├─ js-format   ─┼─ js-test
-#           │            └─ js-typecheck─┘
-#           │
-#           ├─ validate          (always, multicz schema check)
-#           ├─ docs              (always, zensical build smoke)
-#           └─ chart-lint        (matrix on changed helm charts)
+#                   ┌─ X-lint       ─┐
+#   detect ─ headers ─ X-format     ─┼─ X-test ─┬─ X-bandit ─┐
+#                   ├─ X-typecheck  ─┘          └─ audit ────┴─ X-container ─ X-sbom ─ X-grype
+#                   └─ ...
 #
-# Three independent always-on jobs (headers / validate / docs) gate the
-# rest of the pipeline before any python check runs — a missing SPDX
-# header or a malformed multicz.toml fails fast without burning runner
-# minutes on lint / format / typecheck / test.
+# Always-on (no needs.detect): headers, validate, docs.
 #
-# Static checks (lint / format / typecheck) and `bandit` are matrix
-# jobs gated by `detect.outputs.python` (changed ∩ [api, worker, cli]).
-# `test` needs the three static jobs to pass first. `audit` (workspace
-# scope) and `bandit` (per-package) gate the container build, which in
-# turn feeds `sbom` then `grype`. Failing upstream skips the whole tail
-# via `needs:`.
-#
-# `release.yml` keys off this workflow's `ci` name via workflow_run; if
-# any job here fails or is cancelled, no release fires.
+# Per-component conditional `if:` uses
+# `contains(fromJson(needs.detect.outputs.changed), '<name>')` —
+# detect must be in `needs:` directly because GitHub Actions only
+# exposes outputs for direct needs, not transitive.
 
 name: ci
 
@@ -37,497 +24,548 @@ on:
     branches: [main]
 
 jobs:
+  # ─────────────────────── always-on ───────────────────────
+
   detect:
     runs-on: ubuntu-latest
     outputs:
-      python: ${{ steps.list.outputs.python }}
-      buildable: ${{ steps.list.outputs.buildable }}
-      chart: ${{ steps.list.outputs.chart }}
-      js: ${{ steps.list.outputs.js }}
+      changed: ${{ steps.changed.outputs.json }}
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-
       - id: changed
         uses: goabonga/multicz-action/changed@v1
         with:
           output: json
 
-      - id: list
-        env:
-          CHANGED_JSON: ${{ steps.changed.outputs.json }}
-        run: |
-          set -euo pipefail
-          CHANGED=$(echo "$CHANGED_JSON" | jq -c '.changed')
-
-          # Python source packages — drive lint / format / typecheck /
-          # test / bandit matrices.
-          PYTHON=$(echo "$CHANGED" | jq -c '
-            [.[] | select(. == "api" or . == "worker" or . == "cli")]
-          ')
-
-          # Buildable images — `cli` has no Dockerfile so it is
-          # excluded from container / sbom / grype.
-          BUILDABLE=$(echo "$CHANGED" | jq -c '
-            [.[] | select(. == "api" or . == "worker")]
-          ')
-
-          # Helm charts.
-          CHART=$(echo "$CHANGED" | jq -c '
-            [.[] | select(. == "chart-api" or . == "chart-worker" or . == "chart-web")]
-          ')
-
-          # Node frontend project — drives js-* matrix. Currently a
-          # singleton list, but kept as a list so a future second
-          # frontend slots in without restructuring.
-          JS=$(echo "$CHANGED" | jq -c '
-            [.[] | select(. == "web-frontend")]
-          ')
-
-          echo "python=$PYTHON"       >> "$GITHUB_OUTPUT"
-          echo "buildable=$BUILDABLE" >> "$GITHUB_OUTPUT"
-          echo "chart=$CHART"         >> "$GITHUB_OUTPUT"
-          echo "js=$JS"               >> "$GITHUB_OUTPUT"
-
   headers:
-    # Cheap, always-on gate: catches missing SPDX banners across the
-    # whole tree, *before* any python check runs.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-
       - uses: astral-sh/setup-uv@v8.1.0
         with:
           python-version: "3.12"
-
       - name: SPDX license headers
         run: |
           uv run python scripts/add_license_header.py --path packages --check
           uv run python scripts/add_license_header.py --path scripts --check
 
   validate:
-    # Always run: a malformed multicz.toml must fail loudly even when
-    # no python source moved on this push.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-
       - uses: goabonga/multicz-action@v1
-
       - name: multicz validate
         run: multicz validate --strict
 
   docs:
-    # Always-on smoke: catches broken zensical config / dead links.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-
       - uses: astral-sh/setup-uv@v8.1.0
         with:
           python-version: "3.12"
-
       - name: Install workspace + doc group
         run: uv sync --frozen --all-packages --group doc
-
       - name: Zensical build
         run: uv run zensical build
 
-  lint:
+  # ─────────────────────── api ───────────────────────
+
+  api-lint:
     needs: [detect, headers]
-    if: needs.detect.outputs.python != '[]'
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'api')
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        package: ${{ fromJson(needs.detect.outputs.python) }}
     steps:
       - uses: actions/checkout@v6
-
       - uses: astral-sh/setup-uv@v8.1.0
-        with:
-          python-version: "3.12"
+        with: { python-version: "3.12" }
+      - run: uv sync --frozen --all-packages
+      - name: Ruff lint — api
+        run: uv run ruff check packages/api
 
-      - name: Install workspace
-        run: uv sync --frozen --all-packages
-
-      - name: Ruff lint — ${{ matrix.package }}
-        run: uv run ruff check packages/${{ matrix.package }}
-
-  format:
+  api-format:
     needs: [detect, headers]
-    if: needs.detect.outputs.python != '[]'
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'api')
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        package: ${{ fromJson(needs.detect.outputs.python) }}
     steps:
       - uses: actions/checkout@v6
-
       - uses: astral-sh/setup-uv@v8.1.0
-        with:
-          python-version: "3.12"
+        with: { python-version: "3.12" }
+      - run: uv sync --frozen --all-packages
+      - name: Ruff format check — api
+        run: uv run ruff format --check packages/api
 
-      - name: Install workspace
-        run: uv sync --frozen --all-packages
-
-      - name: Ruff format check — ${{ matrix.package }}
-        run: uv run ruff format --check packages/${{ matrix.package }}
-
-  typecheck:
+  api-typecheck:
     needs: [detect, headers]
-    if: needs.detect.outputs.python != '[]'
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'api')
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        package: ${{ fromJson(needs.detect.outputs.python) }}
     steps:
       - uses: actions/checkout@v6
-
       - uses: astral-sh/setup-uv@v8.1.0
-        with:
-          python-version: "3.12"
+        with: { python-version: "3.12" }
+      - run: uv sync --frozen --all-packages
+      - name: Mypy --strict — api
+        run: uv run --with mypy mypy --strict packages/api/src
 
-      - name: Install workspace
-        run: uv sync --frozen --all-packages
-
-      - name: Mypy (strict) — ${{ matrix.package }}
-        run: |
-          set -euo pipefail
-          uv run --with mypy mypy --strict \
-            packages/${{ matrix.package }}/src | tee /tmp/mypy.out
-          {
-            echo "## typecheck — ${{ matrix.package }}"
-            echo
-            echo "**mypy --strict**"
-            echo
-            echo '```'
-            cat /tmp/mypy.out
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-
-  chart-lint:
-    needs: [detect, headers]
-    if: needs.detect.outputs.chart != '[]'
+  api-test:
+    needs: [api-lint, api-format, api-typecheck]
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        chart: ${{ fromJson(needs.detect.outputs.chart) }}
     steps:
       - uses: actions/checkout@v6
-
-      - uses: azure/setup-helm@v5
-
-      - name: Resolve chart directory
-        id: dir
-        run: |
-          # `chart-api` -> packages/api/chart, `chart-worker` -> packages/worker/chart
-          NAME='${{ matrix.chart }}'
-          echo "value=packages/${NAME#chart-}/chart" >> "$GITHUB_OUTPUT"
-
-      - name: helm lint — ${{ matrix.chart }}
-        run: helm lint ${{ steps.dir.outputs.value }}
-
-      - name: helm template smoke — ${{ matrix.chart }}
-        run: helm template ci ${{ steps.dir.outputs.value }} > /tmp/${{ matrix.chart }}.yaml
-
-  js-lint:
-    needs: [detect, headers]
-    if: needs.detect.outputs.js != '[]'
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        project: ${{ fromJson(needs.detect.outputs.js) }}
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: packages/${{ matrix.project }}/package-lock.json
-      - run: npm ci
-        working-directory: packages/${{ matrix.project }}
-      - name: Biome lint — ${{ matrix.project }}
-        run: npm run lint
-        working-directory: packages/${{ matrix.project }}
-
-  js-format:
-    needs: [detect, headers]
-    if: needs.detect.outputs.js != '[]'
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        project: ${{ fromJson(needs.detect.outputs.js) }}
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: packages/${{ matrix.project }}/package-lock.json
-      - run: npm ci
-        working-directory: packages/${{ matrix.project }}
-      - name: Biome format check — ${{ matrix.project }}
-        run: npm run format:check
-        working-directory: packages/${{ matrix.project }}
-
-  js-typecheck:
-    needs: [detect, headers]
-    if: needs.detect.outputs.js != '[]'
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        project: ${{ fromJson(needs.detect.outputs.js) }}
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: packages/${{ matrix.project }}/package-lock.json
-      - run: npm ci
-        working-directory: packages/${{ matrix.project }}
-      - name: tsc --noEmit — ${{ matrix.project }}
-        run: npm run typecheck
-        working-directory: packages/${{ matrix.project }}
-
-  js-test:
-    # `detect` must be in `needs:` directly — `needs.X.outputs` only
-    # resolves for jobs directly listed here, even if X is transitive
-    # via the other entries (lint/format/typecheck all need detect).
-    # Without it the if expression evaluates to null and the job
-    # silently never queues.
-    needs: [detect, js-lint, js-format, js-typecheck]
-    if: needs.detect.outputs.js != '[]'
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        project: ${{ fromJson(needs.detect.outputs.js) }}
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: packages/${{ matrix.project }}/package-lock.json
-      - run: npm ci
-        working-directory: packages/${{ matrix.project }}
-      - name: Vitest — ${{ matrix.project }}
-        run: npm test
-        working-directory: packages/${{ matrix.project }}
-
-  test:
-    needs: [detect, lint, format, typecheck]
-    if: needs.detect.outputs.python != '[]'
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        package: ${{ fromJson(needs.detect.outputs.python) }}
-    steps:
-      - uses: actions/checkout@v6
-
       - uses: astral-sh/setup-uv@v8.1.0
-        with:
-          python-version: "3.12"
+        with: { python-version: "3.12" }
+      - run: uv sync --frozen --all-packages
+      - name: Pytest — api
+        run: uv run pytest packages/api/tests -q
 
-      - name: Install workspace
-        run: uv sync --frozen --all-packages
-
-      - name: Pytest — ${{ matrix.package }}
-        run: |
-          set -euo pipefail
-          if [ -d "packages/${{ matrix.package }}/tests" ]; then
-            uv run pytest packages/${{ matrix.package }}/tests -q
-          else
-            echo "no tests/ for ${{ matrix.package }} — skipping"
-          fi
-
-  audit:
-    needs: [test]
+  api-bandit:
+    needs: [api-test]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-
       - uses: astral-sh/setup-uv@v8.1.0
-        with:
-          python-version: "3.12"
+        with: { python-version: "3.12" }
+      - run: uv tool install bandit
+      - name: Bandit — api
+        run: bandit -r packages/api/src
 
-      - name: Install pip-audit
-        run: uv tool install pip-audit
-
-      - name: Audit resolved dependencies
-        shell: bash --noprofile --norc -eo pipefail {0}
-        run: |
-          set +e
-          uv export --no-dev --no-emit-project \
-            --format requirements-txt -o /tmp/requirements.txt
-          pip-audit -r /tmp/requirements.txt --no-deps | tee /tmp/audit.out
-          RC=${PIPESTATUS[0]}
-          {
-            echo "## audit"
-            echo
-            echo "**pip-audit** \`requirements (no-dev)\` — exit $RC"
-            echo
-            echo '```'
-            cat /tmp/audit.out
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-          exit "$RC"
-
-  bandit:
-    needs: [detect, test]
-    if: needs.detect.outputs.python != '[]'
+  api-container:
+    needs: [api-bandit, audit]
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        package: ${{ fromJson(needs.detect.outputs.python) }}
     steps:
       - uses: actions/checkout@v6
-
-      - uses: astral-sh/setup-uv@v8.1.0
-        with:
-          python-version: "3.12"
-
-      - name: Install bandit
-        run: uv tool install bandit
-
-      - name: Bandit — ${{ matrix.package }}
-        shell: bash --noprofile --norc -eo pipefail {0}
-        run: |
-          set +e
-          bandit -r packages/${{ matrix.package }}/src | tee /tmp/bandit.out
-          RC=${PIPESTATUS[0]}
-          {
-            echo "## bandit — ${{ matrix.package }}"
-            echo
-            echo '```'
-            cat /tmp/bandit.out
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-          exit "$RC"
-
-  container:
-    needs: [detect, audit, bandit]
-    if: needs.detect.outputs.buildable != '[]'
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        package: ${{ fromJson(needs.detect.outputs.buildable) }}
-    steps:
-      - uses: actions/checkout@v6
-
       - uses: docker/setup-buildx-action@v4
-
-      - name: Build ${{ matrix.package }} image (load locally, no push)
+      - name: Build api image
         id: build
         uses: docker/build-push-action@v7
         with:
-          context: packages/${{ matrix.package }}
+          context: packages/api
           load: true
-          tags: ${{ matrix.package }}:ci
-          cache-from: type=gha,scope=${{ matrix.package }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.package }}
-
+          tags: api:ci
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
       - name: Save image tarball
-        run: docker save ${{ matrix.package }}:ci -o /tmp/${{ matrix.package }}.tar
-
+        run: docker save api:ci -o /tmp/api.tar
       - uses: actions/upload-artifact@v7
-        with:
-          name: ${{ matrix.package }}-image
-          path: /tmp/${{ matrix.package }}.tar
-          retention-days: 1
+        with: { name: api-image, path: /tmp/api.tar, retention-days: 1 }
 
-      - name: Summarise ${{ matrix.package }} image
-        run: |
-          {
-            echo "## container — ${{ matrix.package }}"
-            echo
-            echo "- digest: \`${{ steps.build.outputs.digest }}\`"
-            echo "- imageid: \`${{ steps.build.outputs.imageid }}\`"
-          } >> "$GITHUB_STEP_SUMMARY"
-
-  sbom:
-    needs: [detect, container]
-    if: needs.detect.outputs.buildable != '[]'
+  api-sbom:
+    needs: [api-container]
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        package: ${{ fromJson(needs.detect.outputs.buildable) }}
     steps:
       - uses: actions/download-artifact@v8
-        with:
-          name: ${{ matrix.package }}-image
-          path: /tmp
-
+        with: { name: api-image, path: /tmp }
       - name: Install syft
-        run: |
-          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh \
-            | sh -s -- -b /usr/local/bin
-
+        run: curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
       - name: Generate SBOM (SPDX JSON)
-        run: |
-          syft docker-archive:/tmp/${{ matrix.package }}.tar \
-            -o spdx-json=/tmp/${{ matrix.package }}.sbom.spdx.json \
-            -o table > /tmp/sbom.txt
-          {
-            echo "## sbom — ${{ matrix.package }}"
-            echo
-            echo '```'
-            head -n 30 /tmp/sbom.txt
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-
+        run: syft docker-archive:/tmp/api.tar -o spdx-json=/tmp/api.sbom.spdx.json
       - uses: actions/upload-artifact@v7
-        with:
-          name: ${{ matrix.package }}-sbom
-          path: /tmp/${{ matrix.package }}.sbom.spdx.json
-          retention-days: 1
+        with: { name: api-sbom, path: /tmp/api.sbom.spdx.json, retention-days: 1 }
 
-  grype:
-    needs: [detect, sbom]
-    if: needs.detect.outputs.buildable != '[]'
+  api-grype:
+    needs: [api-sbom]
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        package: ${{ fromJson(needs.detect.outputs.buildable) }}
     steps:
       - uses: actions/download-artifact@v8
-        with:
-          name: ${{ matrix.package }}-sbom
-          path: /tmp
-
+        with: { name: api-sbom, path: /tmp }
       - name: Install grype
-        run: |
-          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh \
-            | sh -s -- -b /usr/local/bin
-
+        run: curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
       - name: Scan SBOM (--fail-on high)
-        shell: bash --noprofile --norc -eo pipefail {0}
+        run: grype sbom:/tmp/api.sbom.spdx.json --fail-on high
+
+  # ─────────────────────── worker ───────────────────────
+
+  worker-lint:
+    needs: [detect, headers]
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'worker')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v8.1.0
+        with: { python-version: "3.12" }
+      - run: uv sync --frozen --all-packages
+      - name: Ruff lint — worker
+        run: uv run ruff check packages/worker
+
+  worker-format:
+    needs: [detect, headers]
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'worker')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v8.1.0
+        with: { python-version: "3.12" }
+      - run: uv sync --frozen --all-packages
+      - name: Ruff format check — worker
+        run: uv run ruff format --check packages/worker
+
+  worker-typecheck:
+    needs: [detect, headers]
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'worker')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v8.1.0
+        with: { python-version: "3.12" }
+      - run: uv sync --frozen --all-packages
+      - name: Mypy --strict — worker
+        run: uv run --with mypy mypy --strict packages/worker/src
+
+  worker-test:
+    needs: [worker-lint, worker-format, worker-typecheck]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v8.1.0
+        with: { python-version: "3.12" }
+      - run: uv sync --frozen --all-packages
+      - name: Pytest — worker
+        run: uv run pytest packages/worker/tests -q
+
+  worker-bandit:
+    needs: [worker-test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v8.1.0
+        with: { python-version: "3.12" }
+      - run: uv tool install bandit
+      - name: Bandit — worker
+        run: bandit -r packages/worker/src
+
+  worker-container:
+    needs: [worker-bandit, audit]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: docker/setup-buildx-action@v4
+      - name: Build worker image
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: packages/worker
+          load: true
+          tags: worker:ci
+          cache-from: type=gha,scope=worker
+          cache-to: type=gha,mode=max,scope=worker
+      - name: Save image tarball
+        run: docker save worker:ci -o /tmp/worker.tar
+      - uses: actions/upload-artifact@v7
+        with: { name: worker-image, path: /tmp/worker.tar, retention-days: 1 }
+
+  worker-sbom:
+    needs: [worker-container]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with: { name: worker-image, path: /tmp }
+      - name: Install syft
+        run: curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+      - name: Generate SBOM (SPDX JSON)
+        run: syft docker-archive:/tmp/worker.tar -o spdx-json=/tmp/worker.sbom.spdx.json
+      - uses: actions/upload-artifact@v7
+        with: { name: worker-sbom, path: /tmp/worker.sbom.spdx.json, retention-days: 1 }
+
+  worker-grype:
+    needs: [worker-sbom]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with: { name: worker-sbom, path: /tmp }
+      - name: Install grype
+        run: curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+      - name: Scan SBOM (--fail-on high)
+        run: grype sbom:/tmp/worker.sbom.spdx.json --fail-on high
+
+  # ─────────────────────── web ───────────────────────
+
+  web-lint:
+    needs: [detect, headers]
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'web')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v8.1.0
+        with: { python-version: "3.12" }
+      - run: uv sync --frozen --all-packages
+      - name: Ruff lint — web
+        run: uv run ruff check packages/web
+
+  web-format:
+    needs: [detect, headers]
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'web')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v8.1.0
+        with: { python-version: "3.12" }
+      - run: uv sync --frozen --all-packages
+      - name: Ruff format check — web
+        run: uv run ruff format --check packages/web
+
+  web-typecheck:
+    needs: [detect, headers]
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'web')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v8.1.0
+        with: { python-version: "3.12" }
+      - run: uv sync --frozen --all-packages
+      - name: Mypy --strict — web
+        run: uv run --with mypy mypy --strict packages/web/src
+
+  web-test:
+    needs: [web-lint, web-format, web-typecheck]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v8.1.0
+        with: { python-version: "3.12" }
+      - run: uv sync --frozen --all-packages
+      - name: Pytest — web
+        run: uv run pytest packages/web/tests -q
+
+  web-bandit:
+    needs: [web-test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v8.1.0
+        with: { python-version: "3.12" }
+      - run: uv tool install bandit
+      - name: Bandit — web
+        run: bandit -r packages/web/src
+
+  web-container:
+    needs: [web-bandit, audit]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: docker/setup-buildx-action@v4
+      - name: Build web image
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: packages/web
+          load: true
+          tags: web:ci
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+      - name: Save image tarball
+        run: docker save web:ci -o /tmp/web.tar
+      - uses: actions/upload-artifact@v7
+        with: { name: web-image, path: /tmp/web.tar, retention-days: 1 }
+
+  web-sbom:
+    needs: [web-container]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with: { name: web-image, path: /tmp }
+      - name: Install syft
+        run: curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+      - name: Generate SBOM (SPDX JSON)
+        run: syft docker-archive:/tmp/web.tar -o spdx-json=/tmp/web.sbom.spdx.json
+      - uses: actions/upload-artifact@v7
+        with: { name: web-sbom, path: /tmp/web.sbom.spdx.json, retention-days: 1 }
+
+  web-grype:
+    needs: [web-sbom]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with: { name: web-sbom, path: /tmp }
+      - name: Install grype
+        run: curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+      - name: Scan SBOM (--fail-on high)
+        run: grype sbom:/tmp/web.sbom.spdx.json --fail-on high
+
+  # ─────────────────────── cli (no container) ───────────────────────
+
+  cli-lint:
+    needs: [detect, headers]
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'cli')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v8.1.0
+        with: { python-version: "3.12" }
+      - run: uv sync --frozen --all-packages
+      - name: Ruff lint — cli
+        run: uv run ruff check packages/cli
+
+  cli-format:
+    needs: [detect, headers]
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'cli')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v8.1.0
+        with: { python-version: "3.12" }
+      - run: uv sync --frozen --all-packages
+      - name: Ruff format check — cli
+        run: uv run ruff format --check packages/cli
+
+  cli-typecheck:
+    needs: [detect, headers]
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'cli')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v8.1.0
+        with: { python-version: "3.12" }
+      - run: uv sync --frozen --all-packages
+      - name: Mypy --strict — cli
+        run: uv run --with mypy mypy --strict packages/cli/src
+
+  cli-test:
+    needs: [cli-lint, cli-format, cli-typecheck]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v8.1.0
+        with: { python-version: "3.12" }
+      - run: uv sync --frozen --all-packages
+      - name: Pytest — cli
+        run: uv run pytest packages/cli/tests -q
+
+  cli-bandit:
+    needs: [cli-test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v8.1.0
+        with: { python-version: "3.12" }
+      - run: uv tool install bandit
+      - name: Bandit — cli
+        run: bandit -r packages/cli/src
+
+  # ─────────────────────── audit (workspace-wide) ───────────────────────
+
+  audit:
+    # Single workspace-level audit on the locked, non-dev dependency
+    # closure. Fans into every container job.
+    needs: [api-test, worker-test, web-test, cli-test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v8.1.0
+        with: { python-version: "3.12" }
+      - run: uv tool install pip-audit
+      - name: Audit resolved dependencies
         run: |
-          set +e
-          grype sbom:/tmp/${{ matrix.package }}.sbom.spdx.json \
-            --fail-on high | tee /tmp/grype.out
-          RC=${PIPESTATUS[0]}
-          {
-            echo "## grype — ${{ matrix.package }}"
-            echo
-            echo '```'
-            cat /tmp/grype.out
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-          exit "$RC"
+          uv export --no-dev --no-emit-project \
+            --format requirements-txt -o /tmp/requirements.txt
+          pip-audit -r /tmp/requirements.txt --no-deps
+
+  # ─────────────────────── helm charts ───────────────────────
+
+  chart-api-lint:
+    needs: [detect, headers]
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'chart-api')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: azure/setup-helm@v5
+      - name: helm lint — chart-api
+        run: helm lint packages/api/chart
+      - name: helm template smoke — chart-api
+        run: helm template ci packages/api/chart > /tmp/chart-api.yaml
+
+  chart-worker-lint:
+    needs: [detect, headers]
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'chart-worker')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: azure/setup-helm@v5
+      - name: helm lint — chart-worker
+        run: helm lint packages/worker/chart
+      - name: helm template smoke — chart-worker
+        run: helm template ci packages/worker/chart > /tmp/chart-worker.yaml
+
+  chart-web-lint:
+    needs: [detect, headers]
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'chart-web')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: azure/setup-helm@v5
+      - name: helm lint — chart-web
+        run: helm lint packages/web/chart
+      - name: helm template smoke — chart-web
+        run: helm template ci packages/web/chart > /tmp/chart-web.yaml
+
+  # ─────────────────────── web-frontend (Node) ───────────────────────
+
+  web-frontend-lint:
+    needs: [detect, headers]
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'web-frontend')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: packages/web-frontend/package-lock.json
+      - run: npm ci
+        working-directory: packages/web-frontend
+      - name: Biome lint — web-frontend
+        run: npm run lint
+        working-directory: packages/web-frontend
+
+  web-frontend-format:
+    needs: [detect, headers]
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'web-frontend')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: packages/web-frontend/package-lock.json
+      - run: npm ci
+        working-directory: packages/web-frontend
+      - name: Biome format check — web-frontend
+        run: npm run format:check
+        working-directory: packages/web-frontend
+
+  web-frontend-typecheck:
+    needs: [detect, headers]
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'web-frontend')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: packages/web-frontend/package-lock.json
+      - run: npm ci
+        working-directory: packages/web-frontend
+      - name: tsc --noEmit — web-frontend
+        run: npm run typecheck
+        working-directory: packages/web-frontend
+
+  web-frontend-test:
+    needs: [web-frontend-lint, web-frontend-format, web-frontend-typecheck]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: packages/web-frontend/package-lock.json
+      - run: npm ci
+        working-directory: packages/web-frontend
+      - name: Vitest — web-frontend
+        run: npm test
+        working-directory: packages/web-frontend
