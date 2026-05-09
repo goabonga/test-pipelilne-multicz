@@ -1,15 +1,16 @@
+<!-- AUTO-GENERATED from packages/web-frontend/src/templates/login.html - DO NOT EDIT -->
 {% extends "base.html" %}
 {% block title %}Sign in — Shomer{% endblock %}
 {% block content %}
 <h1>Sign in</h1>
-<form method="post" action="/login">
+<form id="login" method="post" action="/login">
   <label for="username">Username</label>
   <input id="username" name="username" type="text" autocomplete="username" required />
 
   <label for="password">Password</label>
   <input id="password" name="password" type="password" autocomplete="current-password" required />
 
-  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  <p class="error">{% if error %}{{ error }}{% endif %}</p>
   <button type="submit">Sign in</button>
 </form>
 {% endblock %}

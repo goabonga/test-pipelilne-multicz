@@ -1,20 +1,14 @@
+<!-- AUTO-GENERATED from packages/web-frontend/src/templates/base.html - DO NOT EDIT -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <title>{% block title %}Shomer{% endblock %}</title>
-  <style>
-    body { font-family: system-ui, sans-serif; max-width: 36rem; margin: 4rem auto; padding: 0 1rem; }
-    h1 { color: #5e35b1; }
-    label { display: block; margin: 1rem 0 0.25rem; }
-    input { display: block; width: 100%; padding: 0.5rem; box-sizing: border-box; }
-    button { margin-top: 1rem; padding: 0.5rem 1rem; background: #5e35b1; color: white; border: 0; cursor: pointer; }
-    .error { color: #c62828; }
-    footer { margin-top: 4rem; font-size: 0.85rem; color: #777; }
-  </style>
+  <link rel="stylesheet" href="/static/main.css" />
 </head>
 <body>
   {% block content %}{% endblock %}
   <footer>shomer-web {{ version }}</footer>
+  <script src="/static/main.js" defer></script>
 </body>
 </html>

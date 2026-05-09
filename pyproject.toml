@@ -6,6 +6,10 @@ requires-python = ">=3.11"
 
 [tool.uv.workspace]
 members = ["packages/*"]
+# `web-frontend` is a Node project (TS / CSS / Jinja templates that
+# build into packages/web/src/shomer_web/{static,templates}/). uv
+# should ignore it — it has no pyproject.toml.
+exclude = ["packages/web-frontend"]
 
 [tool.uv.sources]
 shomer-api = { workspace = true }
