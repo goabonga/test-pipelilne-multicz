@@ -1,0 +1,23 @@
+{
+  "name": "shomer-web-frontend",
+  "version": "0.0.0",
+  "description": "Source for shomer-web's TS / CSS / Jinja templates. Built outputs land in packages/web/src/shomer_web/{static,templates}/.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "biome lint src tests",
+    "format": "biome format --write src tests",
+    "format:check": "biome format src tests",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.0",
+    "@types/node": "^20.0.0",
+    "esbuild": "^0.24.0",
+    "jsdom": "^25.0.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}
