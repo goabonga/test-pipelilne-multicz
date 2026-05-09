@@ -90,8 +90,10 @@ type = "debian"
 ref  = "shomer-worker_{version}-1_all.deb"
 
 [components.web]
+# `static/**` and `templates/**` are NOT in paths — they're build
+# outputs of `web-frontend`. Cascade flows in via `depends_on` below.
 paths      = [
-    "packages/web/src/**",
+    "packages/web/src/shomer_web/*.py",
     "packages/web/pyproject.toml",
     "packages/web/Dockerfile",
     "packages/web/debian/**",
@@ -105,6 +107,10 @@ mirrors    = [
     { file = "packages/web/chart/Chart.yaml", key = "appVersion" },
 ]
 changelog  = "packages/web/CHANGELOG.md"
+# Bumping web-frontend (TS/CSS/templates) auto-bumps web because the
+# regenerated assets land under packages/web/ and need a fresh
+# wheel + Docker image + .deb.
+depends_on = ["web-frontend"]
 post_bump  = ["uv lock"]
 
 [[components.web.writers]]
@@ -122,6 +128,28 @@ ref  = "ghcr.io/goabonga/shomer-web:{version}"
 [[components.web.artifacts]]
 type = "debian"
 ref  = "shomer-web_{version}-1_all.deb"
+
+# `web-frontend` is the Node project that builds shomer-web's TS/CSS
+# bundle and copies the Jinja templates into packages/web/. It has
+# its own tag stream (web-frontend-vX.Y.Z) and changelog. The
+# post_bump runs the build, which writes into packages/web/src/
+# shomer_web/{static,templates}/ — those files are detected by hash
+# diff and added to the release commit. `web` cascades a patch
+# through depends_on, so a fresh image / chart / .deb is produced.
+[components.web-frontend]
+paths      = [
+    "packages/web-frontend/src/**",
+    "packages/web-frontend/scripts/**",
+    "packages/web-frontend/package.json",
+    "packages/web-frontend/tsconfig.json",
+    "packages/web-frontend/biome.json",
+]
+bump_files = [
+    { file = "packages/web-frontend/package.json", key = "version" },
+    { file = "VERSION", key = 'regex:^web-frontend=(.+)$' },
+]
+changelog  = "packages/web-frontend/CHANGELOG.md"
+post_bump  = ["npm --prefix packages/web-frontend run build"]
 
 [components.cli]
 paths      = ["packages/cli/**"]
