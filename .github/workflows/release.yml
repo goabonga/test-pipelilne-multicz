@@ -121,13 +121,17 @@ jobs:
           API=$(jq -r          '.bumps.api.next_version           // empty' /tmp/release.json)
           WORKER=$(jq -r       '.bumps.worker.next_version        // empty' /tmp/release.json)
           CLI=$(jq -r          '.bumps.cli.next_version           // empty' /tmp/release.json)
+          WEB=$(jq -r          '.bumps.web.next_version           // empty' /tmp/release.json)
           CHART_API=$(jq -r    '.bumps["chart-api"].next_version    // empty' /tmp/release.json)
           CHART_WORKER=$(jq -r '.bumps["chart-worker"].next_version // empty' /tmp/release.json)
+          CHART_WEB=$(jq -r    '.bumps["chart-web"].next_version    // empty' /tmp/release.json)
           echo "api_version=$API"                   >> "$GITHUB_OUTPUT"
           echo "worker_version=$WORKER"             >> "$GITHUB_OUTPUT"
           echo "cli_version=$CLI"                   >> "$GITHUB_OUTPUT"
+          echo "web_version=$WEB"                   >> "$GITHUB_OUTPUT"
           echo "chart_api_version=$CHART_API"       >> "$GITHUB_OUTPUT"
           echo "chart_worker_version=$CHART_WORKER" >> "$GITHUB_OUTPUT"
+          echo "chart_web_version=$CHART_WEB"       >> "$GITHUB_OUTPUT"
 
       - name: Compute lowercase owner
         if: steps.plan.outputs.release == 'true'
@@ -147,9 +151,13 @@ jobs:
           REPO='${{ github.event.repository.name }}'
           echo "api=${REPO}-api"       >> "$GITHUB_OUTPUT"
           echo "worker=${REPO}-worker" >> "$GITHUB_OUTPUT"
+          echo "web=${REPO}-web"       >> "$GITHUB_OUTPUT"
 
       - name: Login to ghcr.io (docker)
-        if: steps.bump.outputs.api_version != '' || steps.bump.outputs.worker_version != ''
+        if: >-
+          steps.bump.outputs.api_version != '' ||
+          steps.bump.outputs.worker_version != '' ||
+          steps.bump.outputs.web_version != ''
         uses: docker/login-action@v4
         with:
           registry: ghcr.io
@@ -157,7 +165,10 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: docker/setup-buildx-action@v4
-        if: steps.bump.outputs.api_version != '' || steps.bump.outputs.worker_version != ''
+        if: >-
+          steps.bump.outputs.api_version != '' ||
+          steps.bump.outputs.worker_version != '' ||
+          steps.bump.outputs.web_version != ''
 
       - name: Build and push api image
         id: push_api
@@ -185,6 +196,19 @@ jobs:
           cache-from: type=gha,scope=${{ steps.names.outputs.worker }}
           cache-to: type=gha,mode=max,scope=${{ steps.names.outputs.worker }}
 
+      - name: Build and push web image
+        id: push_web
+        if: steps.bump.outputs.web_version != ''
+        uses: docker/build-push-action@v7
+        with:
+          context: packages/web
+          push: true
+          tags: |
+            ghcr.io/${{ steps.owner.outputs.value }}/${{ steps.names.outputs.web }}:${{ steps.bump.outputs.web_version }}
+            ghcr.io/${{ steps.owner.outputs.value }}/${{ steps.names.outputs.web }}:latest
+          cache-from: type=gha,scope=${{ steps.names.outputs.web }}
+          cache-to: type=gha,mode=max,scope=${{ steps.names.outputs.web }}
+
       - name: Summarise pushed images
         if: steps.push_api.outcome == 'success' || steps.push_worker.outcome == 'success'
         run: |
@@ -201,31 +225,46 @@ jobs:
             if [ -n "${{ steps.push_worker.outputs.digest }}" ]; then
               echo "| ghcr.io/${{ steps.owner.outputs.value }}/${{ steps.names.outputs.worker }} | \`${{ steps.bump.outputs.worker_version }}\` + \`latest\` | \`${{ steps.push_worker.outputs.digest }}\` |"
             fi
+            if [ -n "${{ steps.push_web.outputs.digest }}" ]; then
+              echo "| ghcr.io/${{ steps.owner.outputs.value }}/${{ steps.names.outputs.web }} | \`${{ steps.bump.outputs.web_version }}\` + \`latest\` | \`${{ steps.push_web.outputs.digest }}\` |"
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
 
       - uses: azure/setup-helm@v5
-        if: steps.bump.outputs.chart_api_version != '' || steps.bump.outputs.chart_worker_version != ''
+        if: >-
+          steps.bump.outputs.chart_api_version != '' ||
+          steps.bump.outputs.chart_worker_version != '' ||
+          steps.bump.outputs.chart_web_version != ''
 
       - name: Helm registry login
-        if: steps.bump.outputs.chart_api_version != '' || steps.bump.outputs.chart_worker_version != ''
+        if: >-
+          steps.bump.outputs.chart_api_version != '' ||
+          steps.bump.outputs.chart_worker_version != '' ||
+          steps.bump.outputs.chart_web_version != ''
         run: |
           echo '${{ secrets.GITHUB_TOKEN }}' | helm registry login ghcr.io \
             -u '${{ github.actor }}' --password-stdin
 
       # Rewrite each Chart.yaml's `name:` to use the dynamic
-      # ${reponame}-{api,worker} value before packaging. The committed
-      # value (`shomer-api` / `shomer-worker`) stays canonical for
-      # local `helm install`; this rewrite only affects the working
-      # tree during the workflow run, and the templates already pull
-      # the name via `.Chart.Name` so the rendered manifests follow.
+      # ${reponame}-{api,worker,web} value before packaging. The
+      # committed value (`shomer-api` / `shomer-worker` / `shomer-web`)
+      # stays canonical for local `helm install`; this rewrite only
+      # affects the working tree during the workflow run, and the
+      # templates already pull the name via `.Chart.Name` so the
+      # rendered manifests follow.
       - name: Rewrite chart names
-        if: steps.bump.outputs.chart_api_version != '' || steps.bump.outputs.chart_worker_version != ''
+        if: >-
+          steps.bump.outputs.chart_api_version != '' ||
+          steps.bump.outputs.chart_worker_version != '' ||
+          steps.bump.outputs.chart_web_version != ''
         run: |
           set -euo pipefail
           sed -i "s/^name: shomer-api$/name: ${{ steps.names.outputs.api }}/" \
             packages/api/chart/Chart.yaml
           sed -i "s/^name: shomer-worker$/name: ${{ steps.names.outputs.worker }}/" \
             packages/worker/chart/Chart.yaml
+          sed -i "s/^name: shomer-web$/name: ${{ steps.names.outputs.web }}/" \
+            packages/web/chart/Chart.yaml
 
       - name: Package and push api chart
         if: steps.bump.outputs.chart_api_version != ''
@@ -247,8 +286,21 @@ jobs:
           DIGEST=$(awk '/^Digest:/{print $2}' /tmp/push-chart-worker.out)
           echo "PUSH_CHART_WORKER_DIGEST=$DIGEST" >> "$GITHUB_ENV"
 
+      - name: Package and push web chart
+        if: steps.bump.outputs.chart_web_version != ''
+        run: |
+          set -euo pipefail
+          helm package packages/web/chart --destination /tmp
+          helm push "/tmp/${{ steps.names.outputs.web }}-${{ steps.bump.outputs.chart_web_version }}.tgz" \
+            "oci://ghcr.io/${{ steps.owner.outputs.value }}/charts" 2>&1 | tee /tmp/push-chart-web.out
+          DIGEST=$(awk '/^Digest:/{print $2}' /tmp/push-chart-web.out)
+          echo "PUSH_CHART_WEB_DIGEST=$DIGEST" >> "$GITHUB_ENV"
+
       - name: Summarise pushed charts
-        if: steps.bump.outputs.chart_api_version != '' || steps.bump.outputs.chart_worker_version != ''
+        if: >-
+          steps.bump.outputs.chart_api_version != '' ||
+          steps.bump.outputs.chart_worker_version != '' ||
+          steps.bump.outputs.chart_web_version != ''
         run: |
           {
             echo
@@ -262,13 +314,17 @@ jobs:
             if [ -n "${PUSH_CHART_WORKER_DIGEST:-}" ]; then
               echo "| ${{ steps.names.outputs.worker }} | \`${{ steps.bump.outputs.chart_worker_version }}\` | \`${PUSH_CHART_WORKER_DIGEST}\` |"
             fi
+            if [ -n "${PUSH_CHART_WEB_DIGEST:-}" ]; then
+              echo "| ${{ steps.names.outputs.web }} | \`${{ steps.bump.outputs.chart_web_version }}\` | \`${PUSH_CHART_WEB_DIGEST}\` |"
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Install debian build tooling
         if: >-
           steps.bump.outputs.api_version != '' ||
           steps.bump.outputs.worker_version != '' ||
-          steps.bump.outputs.cli_version != ''
+          steps.bump.outputs.cli_version != '' ||
+          steps.bump.outputs.web_version != ''
         run: |
           sudo apt-get update -qq
           # build-essential pulls gcc / libc / make / dpkg-dev which
@@ -317,11 +373,23 @@ jobs:
           dpkg-buildpackage -us -uc -b
           mv "$WORK"/shomer-cli_*.deb "$WORK"/shomer-cli_*.buildinfo "$WORK"/shomer-cli_*.changes /tmp/
 
+      - name: Build web debian package
+        if: steps.bump.outputs.web_version != ''
+        run: |
+          set -euo pipefail
+          WORK=/tmp/build-web
+          rm -rf "$WORK" && mkdir -p "$WORK"
+          cp -r packages/web "$WORK/shomer-web"
+          cd "$WORK/shomer-web"
+          dpkg-buildpackage -us -uc -b
+          mv "$WORK"/shomer-web_*.deb "$WORK"/shomer-web_*.buildinfo "$WORK"/shomer-web_*.changes /tmp/
+
       - name: Summarise built debian packages
         if: >-
           steps.bump.outputs.api_version != '' ||
           steps.bump.outputs.worker_version != '' ||
-          steps.bump.outputs.cli_version != ''
+          steps.bump.outputs.cli_version != '' ||
+          steps.bump.outputs.web_version != ''
         run: |
           {
             echo
@@ -353,6 +421,7 @@ jobs:
               api-v*)    [ -f /tmp/shomer-api_*.deb    ] && ASSETS=(/tmp/shomer-api_*.deb) ;;
               worker-v*) [ -f /tmp/shomer-worker_*.deb ] && ASSETS=(/tmp/shomer-worker_*.deb) ;;
               cli-v*)    [ -f /tmp/shomer-cli_*.deb    ] && ASSETS=(/tmp/shomer-cli_*.deb) ;;
+              web-v*)    [ -f /tmp/shomer-web_*.deb    ] && ASSETS=(/tmp/shomer-web_*.deb) ;;
             esac
             multicz release-notes --tag "$tag" \
               | gh release create "$tag" --title "$tag" --notes-file - "${ASSETS[@]}"
