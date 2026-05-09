@@ -138,3 +138,17 @@ changelog  = "packages/worker/chart/CHANGELOG.md"
 [[components.chart-worker.artifacts]]
 type = "helm"
 ref  = "shomer-worker-{version}.tgz"
+
+# `docs` is a release-tracked component for the zensical site. Only
+# scoped here so `multicz changed` picks up doc-only commits and
+# `multicz status` / `plan` show the doc release stream alongside the
+# code components. The bump_rules override adds `docs = "patch"` to
+# the project defaults — `docs:` commits bump THIS component, but
+# stay non-bumping for api / worker / cli (which inherit the default
+# rules where `docs` is absent / treated as no-op).
+[components.docs]
+paths      = ["docs/**", "zensical.toml"]
+bump_files = [
+    { file = "VERSION", key = 'regex:^docs=(.+)$' },
+]
+bump_rules = { docs = "patch" }
