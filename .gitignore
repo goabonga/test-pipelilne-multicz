@@ -1,3 +1,7 @@
+# Node (web-frontend builds JS/CSS/templates that land in packages/web/)
+packages/web-frontend/node_modules/
+packages/web-frontend/dist/
+
 # Python
 __pycache__/
 *.py[cod]
