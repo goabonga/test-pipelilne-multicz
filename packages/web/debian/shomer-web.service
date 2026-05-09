@@ -1,0 +1,18 @@
+[Unit]
+Description=Shomer authorization web frontend
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+ExecStart=/usr/bin/shomer-web
+Restart=on-failure
+RestartSec=2s
+DynamicUser=yes
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target
