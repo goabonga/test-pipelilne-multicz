@@ -3,9 +3,12 @@
 
 # CI gate. Tree-shaped pipeline:
 #
-#   detect ─┬─ headers ──┬─ lint       ─┐
-#           │            ├─ format     ─┼─ test ─┬─ audit  ─┐
-#           │            └─ typecheck  ─┘        └─ bandit ─┴─ container ─ sbom ─ grype
+#   detect ─┬─ headers ──┬─ lint        ─┐
+#           │            ├─ format      ─┼─ test ─┬─ audit  ─┐
+#           │            ├─ typecheck   ─┘        └─ bandit ─┴─ container ─ sbom ─ grype
+#           │            ├─ js-lint     ─┐
+#           │            ├─ js-format   ─┼─ js-test
+#           │            └─ js-typecheck─┘
 #           │
 #           ├─ validate          (always, multicz schema check)
 #           ├─ docs              (always, zensical build smoke)
@@ -40,6 +43,7 @@ jobs:
       python: ${{ steps.list.outputs.python }}
       buildable: ${{ steps.list.outputs.buildable }}
       chart: ${{ steps.list.outputs.chart }}
+      js: ${{ steps.list.outputs.js }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -71,12 +75,20 @@ jobs:
 
           # Helm charts.
           CHART=$(echo "$CHANGED" | jq -c '
-            [.[] | select(. == "chart-api" or . == "chart-worker")]
+            [.[] | select(. == "chart-api" or . == "chart-worker" or . == "chart-web")]
+          ')
+
+          # Node frontend project — drives js-* matrix. Currently a
+          # singleton list, but kept as a list so a future second
+          # frontend slots in without restructuring.
+          JS=$(echo "$CHANGED" | jq -c '
+            [.[] | select(. == "web-frontend")]
           ')
 
           echo "python=$PYTHON"       >> "$GITHUB_OUTPUT"
           echo "buildable=$BUILDABLE" >> "$GITHUB_OUTPUT"
           echo "chart=$CHART"         >> "$GITHUB_OUTPUT"
+          echo "js=$JS"               >> "$GITHUB_OUTPUT"
 
   headers:
     # Cheap, always-on gate: catches missing SPDX banners across the
@@ -224,6 +236,90 @@ jobs:
 
       - name: helm template smoke — ${{ matrix.chart }}
         run: helm template ci ${{ steps.dir.outputs.value }} > /tmp/${{ matrix.chart }}.yaml
+
+  js-lint:
+    needs: [detect, headers]
+    if: needs.detect.outputs.js != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project: ${{ fromJson(needs.detect.outputs.js) }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: packages/${{ matrix.project }}/package-lock.json
+      - run: npm ci
+        working-directory: packages/${{ matrix.project }}
+      - name: Biome lint — ${{ matrix.project }}
+        run: npm run lint
+        working-directory: packages/${{ matrix.project }}
+
+  js-format:
+    needs: [detect, headers]
+    if: needs.detect.outputs.js != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project: ${{ fromJson(needs.detect.outputs.js) }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: packages/${{ matrix.project }}/package-lock.json
+      - run: npm ci
+        working-directory: packages/${{ matrix.project }}
+      - name: Biome format check — ${{ matrix.project }}
+        run: npm run format:check
+        working-directory: packages/${{ matrix.project }}
+
+  js-typecheck:
+    needs: [detect, headers]
+    if: needs.detect.outputs.js != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project: ${{ fromJson(needs.detect.outputs.js) }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: packages/${{ matrix.project }}/package-lock.json
+      - run: npm ci
+        working-directory: packages/${{ matrix.project }}
+      - name: tsc --noEmit — ${{ matrix.project }}
+        run: npm run typecheck
+        working-directory: packages/${{ matrix.project }}
+
+  js-test:
+    needs: [js-lint, js-format, js-typecheck]
+    if: needs.detect.outputs.js != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project: ${{ fromJson(needs.detect.outputs.js) }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: packages/${{ matrix.project }}/package-lock.json
+      - run: npm ci
+        working-directory: packages/${{ matrix.project }}
+      - name: Vitest — ${{ matrix.project }}
+        run: npm test
+        working-directory: packages/${{ matrix.project }}
 
   test:
     needs: [lint, format, typecheck]
