@@ -89,6 +89,40 @@ ref  = "ghcr.io/goabonga/shomer-worker:{version}"
 type = "debian"
 ref  = "shomer-worker_{version}-1_all.deb"
 
+[components.web]
+paths      = [
+    "packages/web/src/**",
+    "packages/web/pyproject.toml",
+    "packages/web/Dockerfile",
+    "packages/web/debian/**",
+]
+bump_files = [
+    { file = "packages/web/pyproject.toml", key = "project.version" },
+    { file = "packages/web/src/shomer_web/__init__.py", key = 'regex:^__version__\s*=\s*"([^"]+)"' },
+    { file = "VERSION", key = 'regex:^web=(.+)$' },
+]
+mirrors    = [
+    { file = "packages/web/chart/Chart.yaml", key = "appVersion" },
+]
+changelog  = "packages/web/CHANGELOG.md"
+post_bump  = ["uv lock"]
+
+[[components.web.writers]]
+type            = "debian-changelog"
+file            = "packages/web/debian/changelog"
+package         = "shomer-web"
+distribution    = "unstable"
+maintainer      = "Chris <goabonga@pm.me>"
+debian_revision = 1
+
+[[components.web.artifacts]]
+type = "docker"
+ref  = "ghcr.io/goabonga/shomer-web:{version}"
+
+[[components.web.artifacts]]
+type = "debian"
+ref  = "shomer-web_{version}-1_all.deb"
+
 [components.cli]
 paths      = ["packages/cli/**"]
 bump_files = [
@@ -138,6 +172,18 @@ changelog  = "packages/worker/chart/CHANGELOG.md"
 [[components.chart-worker.artifacts]]
 type = "helm"
 ref  = "shomer-worker-{version}.tgz"
+
+[components.chart-web]
+paths      = ["packages/web/chart/**"]
+bump_files = [
+    { file = "packages/web/chart/Chart.yaml", key = "version" },
+    { file = "VERSION", key = 'regex:^chart-web=(.+)$' },
+]
+changelog  = "packages/web/chart/CHANGELOG.md"
+
+[[components.chart-web.artifacts]]
+type = "helm"
+ref  = "shomer-web-{version}.tgz"
 
 # `docs` is a release-tracked component for the zensical site. Only
 # scoped here so `multicz changed` picks up doc-only commits and
