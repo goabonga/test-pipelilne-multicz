@@ -10,7 +10,8 @@
     "format:check": "biome format src tests",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "build": "node scripts/build.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.0",
