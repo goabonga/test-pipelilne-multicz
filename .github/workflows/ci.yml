@@ -301,7 +301,12 @@ jobs:
         working-directory: packages/${{ matrix.project }}
 
   js-test:
-    needs: [js-lint, js-format, js-typecheck]
+    # `detect` must be in `needs:` directly — `needs.X.outputs` only
+    # resolves for jobs directly listed here, even if X is transitive
+    # via the other entries (lint/format/typecheck all need detect).
+    # Without it the if expression evaluates to null and the job
+    # silently never queues.
+    needs: [detect, js-lint, js-format, js-typecheck]
     if: needs.detect.outputs.js != '[]'
     runs-on: ubuntu-latest
     strategy:
@@ -322,7 +327,7 @@ jobs:
         working-directory: packages/${{ matrix.project }}
 
   test:
-    needs: [lint, format, typecheck]
+    needs: [detect, lint, format, typecheck]
     if: needs.detect.outputs.python != '[]'
     runs-on: ubuntu-latest
     strategy:
@@ -381,7 +386,7 @@ jobs:
           exit "$RC"
 
   bandit:
-    needs: [test]
+    needs: [detect, test]
     if: needs.detect.outputs.python != '[]'
     runs-on: ubuntu-latest
     strategy:
@@ -414,7 +419,7 @@ jobs:
           exit "$RC"
 
   container:
-    needs: [audit, bandit]
+    needs: [detect, audit, bandit]
     if: needs.detect.outputs.buildable != '[]'
     runs-on: ubuntu-latest
     strategy:
@@ -455,7 +460,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   sbom:
-    needs: [container]
+    needs: [detect, container]
     if: needs.detect.outputs.buildable != '[]'
     runs-on: ubuntu-latest
     strategy:
@@ -493,7 +498,7 @@ jobs:
           retention-days: 1
 
   grype:
-    needs: [sbom]
+    needs: [detect, sbom]
     if: needs.detect.outputs.buildable != '[]'
     runs-on: ubuntu-latest
     strategy:
