@@ -1,13 +1,16 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Chris <goabonga@pm.me>
 
-# CI gate. Five independent jobs:
+# CI gate. Eight independent jobs:
 #
 #   detect    → resolves the matrix (one entry per package whose files
 #               actually moved on this push / PR, via `multicz changed`).
 #   quality   → ruff lint + ruff format check + SPDX header check.
 #   validate  → `multicz validate --strict` against the repo state.
+#   typecheck → mypy --strict across the workspace.
 #   test      → matrix job, only fires for changed packages.
+#   audit     → pip-audit on the locked, non-dev dependency closure.
+#   bandit    → AST-based source scan for python security smells.
 #   docs      → `zensical build` smoke (catches broken markdown / config).
 #
 # `release.yml` keys off this workflow's `ci` name via workflow_run; if
@@ -77,6 +80,35 @@ jobs:
       - name: multicz validate
         run: multicz validate --strict
 
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: astral-sh/setup-uv@v8.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Install workspace
+        run: uv sync --frozen --all-packages
+
+      - name: Mypy (strict)
+        run: |
+          set -euo pipefail
+          uv run --with mypy mypy --strict \
+            packages/api/src \
+            packages/worker/src \
+            packages/cli/src | tee /tmp/mypy.out
+          {
+            echo "## typecheck"
+            echo
+            echo "**mypy --strict**"
+            echo
+            echo '```'
+            cat /tmp/mypy.out
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
   test:
     needs: detect
     if: needs.detect.outputs.list != '[]'
@@ -105,6 +137,79 @@ jobs:
           else
             echo "no tests/ for ${{ matrix.package }} — skipping"
           fi
+
+  audit:
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: astral-sh/setup-uv@v8.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Install pip-audit
+        run: uv tool install pip-audit
+
+      - name: Audit resolved dependencies
+        # `uv export` materialises the locked, non-dev resolution as a
+        # requirements.txt; `--no-emit-project` skips the editable
+        # workspace members that have no PyPI hash. Without `--no-deps`,
+        # pip-audit re-resolves and warns about hash absence; we trust
+        # uv.lock and pass `--no-deps` to make pip-audit only audit
+        # what's already pinned.
+        shell: bash --noprofile --norc -eo pipefail {0}
+        run: |
+          set +e
+          uv export --no-dev --no-emit-project \
+            --format requirements-txt -o /tmp/requirements.txt
+          pip-audit -r /tmp/requirements.txt --no-deps | tee /tmp/audit.out
+          RC=${PIPESTATUS[0]}
+          {
+            echo "## audit"
+            echo
+            echo "**pip-audit** \`requirements (no-dev)\` — exit $RC"
+            echo
+            echo '```'
+            cat /tmp/audit.out
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$RC"
+
+  bandit:
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: astral-sh/setup-uv@v8.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Install bandit
+        run: uv tool install bandit
+
+      - name: Bandit (AST-based source scan)
+        # Recursive scan of src/ only — tests/ are intentionally
+        # excluded (assert/subprocess patterns there are noise).
+        shell: bash --noprofile --norc -eo pipefail {0}
+        run: |
+          set +e
+          bandit -r \
+            packages/api/src \
+            packages/worker/src \
+            packages/cli/src | tee /tmp/bandit.out
+          RC=${PIPESTATUS[0]}
+          {
+            echo "## bandit"
+            echo
+            echo "**bandit** \`src/\` — exit $RC"
+            echo
+            echo '```'
+            cat /tmp/bandit.out
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$RC"
 
   docs:
     runs-on: ubuntu-latest

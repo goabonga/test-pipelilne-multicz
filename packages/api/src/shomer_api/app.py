@@ -44,4 +44,5 @@ def run() -> None:
     """Console-script entrypoint (``shomer-api``)."""
     import uvicorn
 
-    uvicorn.run("shomer_api.app:app", host="0.0.0.0", port=8000)
+    # Container / systemd service must listen on all interfaces.
+    uvicorn.run("shomer_api.app:app", host="0.0.0.0", port=8000)  # noqa: S104  # nosec B104
