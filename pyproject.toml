@@ -11,6 +11,7 @@ members = ["packages/*"]
 shomer-api = { workspace = true }
 shomer-worker = { workspace = true }
 shomer-cli = { workspace = true }
+shomer-web = { workspace = true }
 
 [dependency-groups]
 dev = [
@@ -31,5 +32,6 @@ testpaths = [
     "packages/api/tests",
     "packages/worker/tests",
     "packages/cli/tests",
+    "packages/web/tests",
 ]
 addopts = "-q"
