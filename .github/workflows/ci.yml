@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Chris <goabonga@pm.me>
 
-# CI gate. Eight independent jobs:
+# CI gate. Eleven independent jobs:
 #
 #   detect    → resolves the matrix (one entry per package whose files
 #               actually moved on this push / PR, via `multicz changed`).
@@ -11,6 +11,12 @@
 #   test      → matrix job, only fires for changed packages.
 #   audit     → pip-audit on the locked, non-dev dependency closure.
 #   bandit    → AST-based source scan for python security smells.
+#   container → matrix [api,worker]: build the docker image (no push),
+#               save the tarball as an artifact for sbom + grype.
+#   sbom      → matrix [api,worker]: syft on the saved tarball,
+#               emits an SPDX-JSON consumed by grype.
+#   grype     → matrix [api,worker]: vuln scan against the SBOM,
+#               --fail-on high. medium/low are reported only.
 #   docs      → `zensical build` smoke (catches broken markdown / config).
 #
 # `release.yml` keys off this workflow's `ci` name via workflow_run; if
@@ -207,6 +213,123 @@ jobs:
             echo
             echo '```'
             cat /tmp/bandit.out
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$RC"
+
+  container:
+    needs: [audit, bandit]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [api, worker]
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Build ${{ matrix.package }} image (load locally, no push)
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: packages/${{ matrix.package }}
+          load: true
+          tags: ${{ matrix.package }}:ci
+          cache-from: type=gha,scope=${{ matrix.package }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.package }}
+
+      - name: Save image tarball
+        run: docker save ${{ matrix.package }}:ci -o /tmp/${{ matrix.package }}.tar
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.package }}-image
+          path: /tmp/${{ matrix.package }}.tar
+          retention-days: 1
+
+      - name: Summarise ${{ matrix.package }} image
+        run: |
+          {
+            echo "## container — ${{ matrix.package }}"
+            echo
+            echo "- digest: \`${{ steps.build.outputs.digest }}\`"
+            echo "- imageid: \`${{ steps.build.outputs.imageid }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  sbom:
+    needs: container
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [api, worker]
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: ${{ matrix.package }}-image
+          path: /tmp
+
+      - name: Install syft
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh \
+            | sh -s -- -b /usr/local/bin
+
+      - name: Generate SBOM (SPDX JSON)
+        run: |
+          syft docker-archive:/tmp/${{ matrix.package }}.tar \
+            -o spdx-json=/tmp/${{ matrix.package }}.sbom.spdx.json \
+            -o table > /tmp/sbom.txt
+          {
+            echo "## sbom — ${{ matrix.package }}"
+            echo
+            echo "**syft** \`docker-archive:/tmp/${{ matrix.package }}.tar\` → \`spdx-json\`"
+            echo
+            echo '```'
+            head -n 30 /tmp/sbom.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.package }}-sbom
+          path: /tmp/${{ matrix.package }}.sbom.spdx.json
+          retention-days: 1
+
+  grype:
+    needs: sbom
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [api, worker]
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: ${{ matrix.package }}-sbom
+          path: /tmp
+
+      - name: Install grype
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh \
+            | sh -s -- -b /usr/local/bin
+
+      - name: Scan SBOM (--fail-on high)
+        # high or critical findings exit non-zero; medium / low are
+        # reported only. Tighten to `medium` for stricter gating.
+        shell: bash --noprofile --norc -eo pipefail {0}
+        run: |
+          set +e
+          grype sbom:/tmp/${{ matrix.package }}.sbom.spdx.json \
+            --fail-on high | tee /tmp/grype.out
+          RC=${PIPESTATUS[0]}
+          {
+            echo "## grype — ${{ matrix.package }}"
+            echo
+            echo "**grype** \`sbom:${{ matrix.package }}.sbom.spdx.json\` --fail-on high — exit $RC"
+            echo
+            echo '```'
+            cat /tmp/grype.out
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
           exit "$RC"
