@@ -47,6 +47,23 @@ jobs:
       - name: Install workspace (post_bump hooks need uv lock)
         run: uv sync --frozen --all-packages
 
+      # Node is required because the `web-frontend` component's
+      # post_bump hook runs `npm run build` to regenerate
+      # packages/web/src/shomer_web/{static,templates}/. Without a
+      # populated node_modules the multicz bump would either skip
+      # the rebuild (if post_bump_policy = deny) or fail. The
+      # frontend is small (esbuild + biome + vitest) so npm ci is a
+      # few seconds.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: packages/web-frontend/package-lock.json
+
+      - name: Install web-frontend deps
+        run: npm ci
+        working-directory: packages/web-frontend
+
       - uses: goabonga/multicz-action@v1
 
       - name: Configure git
