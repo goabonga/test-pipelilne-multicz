@@ -1,23 +1,27 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Chris <goabonga@pm.me>
 
-# CI gate. Eleven independent jobs:
+# CI gate. Tree-shaped pipeline:
 #
-#   detect    → resolves the matrix (one entry per package whose files
-#               actually moved on this push / PR, via `multicz changed`).
-#   quality   → ruff lint + ruff format check + SPDX header check.
-#   validate  → `multicz validate --strict` against the repo state.
-#   typecheck → mypy --strict across the workspace.
-#   test      → matrix job, only fires for changed packages.
-#   audit     → pip-audit on the locked, non-dev dependency closure.
-#   bandit    → AST-based source scan for python security smells.
-#   container → matrix [api,worker]: build the docker image (no push),
-#               save the tarball as an artifact for sbom + grype.
-#   sbom      → matrix [api,worker]: syft on the saved tarball,
-#               emits an SPDX-JSON consumed by grype.
-#   grype     → matrix [api,worker]: vuln scan against the SBOM,
-#               --fail-on high. medium/low are reported only.
-#   docs      → `zensical build` smoke (catches broken markdown / config).
+#   detect ─┬─ headers ──┬─ lint       ─┐
+#           │            ├─ format     ─┼─ test ─┬─ audit  ─┐
+#           │            └─ typecheck  ─┘        └─ bandit ─┴─ container ─ sbom ─ grype
+#           │
+#           ├─ validate          (always, multicz schema check)
+#           ├─ docs              (always, zensical build smoke)
+#           └─ chart-lint        (matrix on changed helm charts)
+#
+# Three independent always-on jobs (headers / validate / docs) gate the
+# rest of the pipeline before any python check runs — a missing SPDX
+# header or a malformed multicz.toml fails fast without burning runner
+# minutes on lint / format / typecheck / test.
+#
+# Static checks (lint / format / typecheck) and `bandit` are matrix
+# jobs gated by `detect.outputs.python` (changed ∩ [api, worker, cli]).
+# `test` needs the three static jobs to pass first. `audit` (workspace
+# scope) and `bandit` (per-package) gate the container build, which in
+# turn feeds `sbom` then `grype`. Failing upstream skips the whole tail
+# via `needs:`.
 #
 # `release.yml` keys off this workflow's `ci` name via workflow_run; if
 # any job here fails or is cancelled, no release fires.
@@ -33,7 +37,9 @@ jobs:
   detect:
     runs-on: ubuntu-latest
     outputs:
-      list: ${{ steps.list.outputs.list }}
+      python: ${{ steps.list.outputs.python }}
+      buildable: ${{ steps.list.outputs.buildable }}
+      chart: ${{ steps.list.outputs.chart }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -49,9 +55,32 @@ jobs:
           CHANGED_JSON: ${{ steps.changed.outputs.json }}
         run: |
           set -euo pipefail
-          echo "list=$(echo "$CHANGED_JSON" | jq -c '.changed')" >> "$GITHUB_OUTPUT"
+          CHANGED=$(echo "$CHANGED_JSON" | jq -c '.changed')
 
-  quality:
+          # Python source packages — drive lint / format / typecheck /
+          # test / bandit matrices.
+          PYTHON=$(echo "$CHANGED" | jq -c '
+            [.[] | select(. == "api" or . == "worker" or . == "cli")]
+          ')
+
+          # Buildable images — `cli` has no Dockerfile so it is
+          # excluded from container / sbom / grype.
+          BUILDABLE=$(echo "$CHANGED" | jq -c '
+            [.[] | select(. == "api" or . == "worker")]
+          ')
+
+          # Helm charts.
+          CHART=$(echo "$CHANGED" | jq -c '
+            [.[] | select(. == "chart-api" or . == "chart-worker")]
+          ')
+
+          echo "python=$PYTHON"       >> "$GITHUB_OUTPUT"
+          echo "buildable=$BUILDABLE" >> "$GITHUB_OUTPUT"
+          echo "chart=$CHART"         >> "$GITHUB_OUTPUT"
+
+  headers:
+    # Cheap, always-on gate: catches missing SPDX banners across the
+    # whole tree, *before* any python check runs.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -60,21 +89,14 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install workspace
-        run: uv sync --frozen --all-packages
-
-      - name: Ruff lint
-        run: uv run ruff check packages scripts
-
-      - name: Ruff format check
-        run: uv run ruff format --check packages scripts
-
       - name: SPDX license headers
         run: |
           uv run python scripts/add_license_header.py --path packages --check
           uv run python scripts/add_license_header.py --path scripts --check
 
   validate:
+    # Always run: a malformed multicz.toml must fail loudly even when
+    # no python source moved on this push.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -86,8 +108,30 @@ jobs:
       - name: multicz validate
         run: multicz validate --strict
 
-  typecheck:
+  docs:
+    # Always-on smoke: catches broken zensical config / dead links.
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: astral-sh/setup-uv@v8.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Install workspace + doc group
+        run: uv sync --frozen --all-packages --group doc
+
+      - name: Zensical build
+        run: uv run zensical build
+
+  lint:
+    needs: [detect, headers]
+    if: needs.detect.outputs.python != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{ fromJson(needs.detect.outputs.python) }}
     steps:
       - uses: actions/checkout@v6
 
@@ -98,15 +142,55 @@ jobs:
       - name: Install workspace
         run: uv sync --frozen --all-packages
 
-      - name: Mypy (strict)
+      - name: Ruff lint — ${{ matrix.package }}
+        run: uv run ruff check packages/${{ matrix.package }}
+
+  format:
+    needs: [detect, headers]
+    if: needs.detect.outputs.python != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{ fromJson(needs.detect.outputs.python) }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: astral-sh/setup-uv@v8.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Install workspace
+        run: uv sync --frozen --all-packages
+
+      - name: Ruff format check — ${{ matrix.package }}
+        run: uv run ruff format --check packages/${{ matrix.package }}
+
+  typecheck:
+    needs: [detect, headers]
+    if: needs.detect.outputs.python != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{ fromJson(needs.detect.outputs.python) }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: astral-sh/setup-uv@v8.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Install workspace
+        run: uv sync --frozen --all-packages
+
+      - name: Mypy (strict) — ${{ matrix.package }}
         run: |
           set -euo pipefail
           uv run --with mypy mypy --strict \
-            packages/api/src \
-            packages/worker/src \
-            packages/cli/src | tee /tmp/mypy.out
+            packages/${{ matrix.package }}/src | tee /tmp/mypy.out
           {
-            echo "## typecheck"
+            echo "## typecheck — ${{ matrix.package }}"
             echo
             echo "**mypy --strict**"
             echo
@@ -115,14 +199,40 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-  test:
-    needs: detect
-    if: needs.detect.outputs.list != '[]'
+  chart-lint:
+    needs: [detect, headers]
+    if: needs.detect.outputs.chart != '[]'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        package: ${{ fromJson(needs.detect.outputs.list) }}
+        chart: ${{ fromJson(needs.detect.outputs.chart) }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: azure/setup-helm@v5
+
+      - name: Resolve chart directory
+        id: dir
+        run: |
+          # `chart-api` -> packages/api/chart, `chart-worker` -> packages/worker/chart
+          NAME='${{ matrix.chart }}'
+          echo "value=packages/${NAME#chart-}/chart" >> "$GITHUB_OUTPUT"
+
+      - name: helm lint — ${{ matrix.chart }}
+        run: helm lint ${{ steps.dir.outputs.value }}
+
+      - name: helm template smoke — ${{ matrix.chart }}
+        run: helm template ci ${{ steps.dir.outputs.value }} > /tmp/${{ matrix.chart }}.yaml
+
+  test:
+    needs: [lint, format, typecheck]
+    if: needs.detect.outputs.python != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{ fromJson(needs.detect.outputs.python) }}
     steps:
       - uses: actions/checkout@v6
 
@@ -133,11 +243,9 @@ jobs:
       - name: Install workspace
         run: uv sync --frozen --all-packages
 
-      - name: Pytest for ${{ matrix.package }}
+      - name: Pytest — ${{ matrix.package }}
         run: |
           set -euo pipefail
-          # `chart-api` / `chart-worker` are Helm-only components — they
-          # have no tests/ directory to point pytest at.
           if [ -d "packages/${{ matrix.package }}/tests" ]; then
             uv run pytest packages/${{ matrix.package }}/tests -q
           else
@@ -158,12 +266,6 @@ jobs:
         run: uv tool install pip-audit
 
       - name: Audit resolved dependencies
-        # `uv export` materialises the locked, non-dev resolution as a
-        # requirements.txt; `--no-emit-project` skips the editable
-        # workspace members that have no PyPI hash. Without `--no-deps`,
-        # pip-audit re-resolves and warns about hash absence; we trust
-        # uv.lock and pass `--no-deps` to make pip-audit only audit
-        # what's already pinned.
         shell: bash --noprofile --norc -eo pipefail {0}
         run: |
           set +e
@@ -184,7 +286,12 @@ jobs:
 
   bandit:
     needs: [test]
+    if: needs.detect.outputs.python != '[]'
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{ fromJson(needs.detect.outputs.python) }}
     steps:
       - uses: actions/checkout@v6
 
@@ -195,21 +302,14 @@ jobs:
       - name: Install bandit
         run: uv tool install bandit
 
-      - name: Bandit (AST-based source scan)
-        # Recursive scan of src/ only — tests/ are intentionally
-        # excluded (assert/subprocess patterns there are noise).
+      - name: Bandit — ${{ matrix.package }}
         shell: bash --noprofile --norc -eo pipefail {0}
         run: |
           set +e
-          bandit -r \
-            packages/api/src \
-            packages/worker/src \
-            packages/cli/src | tee /tmp/bandit.out
+          bandit -r packages/${{ matrix.package }}/src | tee /tmp/bandit.out
           RC=${PIPESTATUS[0]}
           {
-            echo "## bandit"
-            echo
-            echo "**bandit** \`src/\` — exit $RC"
+            echo "## bandit — ${{ matrix.package }}"
             echo
             echo '```'
             cat /tmp/bandit.out
@@ -219,11 +319,12 @@ jobs:
 
   container:
     needs: [audit, bandit]
+    if: needs.detect.outputs.buildable != '[]'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        package: [api, worker]
+        package: ${{ fromJson(needs.detect.outputs.buildable) }}
     steps:
       - uses: actions/checkout@v6
 
@@ -258,12 +359,13 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   sbom:
-    needs: container
+    needs: [container]
+    if: needs.detect.outputs.buildable != '[]'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        package: [api, worker]
+        package: ${{ fromJson(needs.detect.outputs.buildable) }}
     steps:
       - uses: actions/download-artifact@v8
         with:
@@ -283,8 +385,6 @@ jobs:
           {
             echo "## sbom — ${{ matrix.package }}"
             echo
-            echo "**syft** \`docker-archive:/tmp/${{ matrix.package }}.tar\` → \`spdx-json\`"
-            echo
             echo '```'
             head -n 30 /tmp/sbom.txt
             echo '```'
@@ -297,12 +397,13 @@ jobs:
           retention-days: 1
 
   grype:
-    needs: sbom
+    needs: [sbom]
+    if: needs.detect.outputs.buildable != '[]'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        package: [api, worker]
+        package: ${{ fromJson(needs.detect.outputs.buildable) }}
     steps:
       - uses: actions/download-artifact@v8
         with:
@@ -315,8 +416,6 @@ jobs:
             | sh -s -- -b /usr/local/bin
 
       - name: Scan SBOM (--fail-on high)
-        # high or critical findings exit non-zero; medium / low are
-        # reported only. Tighten to `medium` for stricter gating.
         shell: bash --noprofile --norc -eo pipefail {0}
         run: |
           set +e
@@ -326,25 +425,8 @@ jobs:
           {
             echo "## grype — ${{ matrix.package }}"
             echo
-            echo "**grype** \`sbom:${{ matrix.package }}.sbom.spdx.json\` --fail-on high — exit $RC"
-            echo
             echo '```'
             cat /tmp/grype.out
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
           exit "$RC"
-
-  docs:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - uses: astral-sh/setup-uv@v8.1.0
-        with:
-          python-version: "3.12"
-
-      - name: Install workspace + doc group
-        run: uv sync --frozen --all-packages --group doc
-
-      - name: Zensical build
-        run: uv run zensical build
