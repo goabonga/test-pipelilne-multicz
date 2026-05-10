@@ -1,1 +1,1 @@
-debian/shomer-worker.service lib/systemd/system/
+debian/shomer-worker.service usr/lib/systemd/system/

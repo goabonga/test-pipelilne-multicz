@@ -1,1 +1,1 @@
-debian/shomer-api.service lib/systemd/system/
+debian/shomer-api.service usr/lib/systemd/system/
