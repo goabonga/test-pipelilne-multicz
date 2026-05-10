@@ -341,6 +341,7 @@ jobs:
     needs: [api-container]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v6   # need .github/actions/summary on disk
       - uses: actions/download-artifact@v8
         with: { name: api-image, path: /tmp }
       - name: Install syft
@@ -360,6 +361,7 @@ jobs:
     needs: [api-sbom]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v6
       - uses: actions/download-artifact@v8
         with: { name: api-sbom, path: /tmp }
       - name: Install grype
@@ -569,6 +571,7 @@ jobs:
     needs: [worker-container]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v6
       - uses: actions/download-artifact@v8
         with: { name: worker-image, path: /tmp }
       - name: Install syft
@@ -588,6 +591,7 @@ jobs:
     needs: [worker-sbom]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v6
       - uses: actions/download-artifact@v8
         with: { name: worker-sbom, path: /tmp }
       - name: Install grype
@@ -791,6 +795,7 @@ jobs:
     needs: [web-container]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v6
       - uses: actions/download-artifact@v8
         with: { name: web-image, path: /tmp }
       - name: Install syft
@@ -810,6 +815,7 @@ jobs:
     needs: [web-sbom]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v6
       - uses: actions/download-artifact@v8
         with: { name: web-sbom, path: /tmp }
       - name: Install grype
