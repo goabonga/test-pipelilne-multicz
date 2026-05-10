@@ -1,13 +1,20 @@
 # syntax=docker/dockerfile:1
-FROM python:3.12-slim AS runtime
+#
+# Multi-stage build on Chainguard distroless images. See api's
+# Dockerfile for the rationale.
+
+FROM cgr.dev/chainguard/python:latest-dev AS builder
 
 WORKDIR /app
-RUN pip install --no-cache-dir uv
-
 COPY pyproject.toml ./
 COPY src ./src
 
-RUN uv pip install --system --no-cache .
+RUN python -m venv /app/venv \
+ && /app/venv/bin/pip install --no-cache-dir .
 
-USER 1000:1000
+FROM cgr.dev/chainguard/python:latest
+
+COPY --from=builder /app/venv /app/venv
+ENV PATH="/app/venv/bin:$PATH"
+
 ENTRYPOINT ["shomer-worker"]
