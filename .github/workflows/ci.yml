@@ -26,7 +26,7 @@ on:
     branches: [main]
 
 jobs:
-  # ─────────────────────── always-on ───────────────────────
+  # ─────────────────────── always-on (detect, headers, validate) and docs (gated) ───────────────────────
 
   detect:
     runs-on: ubuntu-latest
@@ -64,6 +64,12 @@ jobs:
         run: multicz validate --strict
 
   docs:
+    # Gated on the `docs` multicz component (paths = docs/** + zensical.toml)
+    # so the heavy uv sync + zensical build only fires when something
+    # docs-related actually moved. Same gating idiom as every other
+    # per-component job.
+    needs: [detect, headers]
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'docs')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
