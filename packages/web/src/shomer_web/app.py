@@ -41,9 +41,7 @@ def healthz() -> dict[str, str]:
 
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(
-        request, "home.html", {"version": __version__}
-    )
+    return templates.TemplateResponse(request, "home.html", {"version": __version__})
 
 
 @app.get("/login", response_class=HTMLResponse)
