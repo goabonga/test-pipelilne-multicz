@@ -64,22 +64,85 @@ jobs:
         run: multicz validate --strict
 
   docs:
-    # Gated on the `docs` multicz component (paths = docs/** + zensical.toml)
-    # so the heavy uv sync + zensical build only fires when something
-    # docs-related actually moved. Same gating idiom as every other
-    # per-component job.
+    # Build always (PR + main). On main, also: deploy to GitHub Pages,
+    # bump the docs component (tag docs-vX.Y.Z + push), cut the
+    # matching GitHub Release. Replaces the standalone docs.yml that
+    # used to do the deploy on a separate trigger.
     needs: [detect, headers]
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'docs')
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # multicz bump push (GITHUB_TOKEN is enough on same-repo push)
+      pages: write      # actions/deploy-pages
+      id-token: write   # OIDC for actions/deploy-pages + actions/upload-pages-artifact
+    concurrency:
+      # Same group as Pages best-practice — one in-flight deploy per
+      # repo, cancel any older run when a fresher push lands.
+      group: pages
+      cancel-in-progress: true
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+
       - uses: astral-sh/setup-uv@v8.1.0
         with:
           python-version: "3.12"
+
       - name: Install workspace + doc group
         run: uv sync --frozen --all-packages --group doc
+
       - name: Zensical build
         run: uv run zensical build
+
+      # ─── below: only on main ───
+
+      - uses: actions/upload-pages-artifact@v3
+        if: github.ref == 'refs/heads/main'
+        with:
+          path: site
+
+      - name: Deploy to GitHub Pages
+        if: github.ref == 'refs/heads/main'
+        id: deploy
+        uses: actions/deploy-pages@v4
+
+      - name: Configure git
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - uses: goabonga/multicz-action@v1
+        if: github.ref == 'refs/heads/main'
+
+      - name: Bump, commit, tag, push docs
+        # `multicz bump --component docs` is a no-op when no commit is
+        # pending for the docs tag stream (the chore(release) loop
+        # filters itself out via release_commit_pattern), so it's safe
+        # to call unconditionally as long as docs really changed
+        # (which the if: at job level already enforces).
+        if: github.ref == 'refs/heads/main'
+        run: multicz bump --component docs --commit --tag --push
+
+      - name: Cut GitHub Release for the docs tag
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          for tag in $(git tag --points-at HEAD); do
+            case "$tag" in
+              docs-v*) ;;
+              *) continue ;;
+            esac
+            multicz release-notes --tag "$tag" \
+              | gh release create "$tag" --title "$tag" --notes-file -
+          done
 
   # ─────────────────────── api ───────────────────────
 
