@@ -45,6 +45,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
       - uses: astral-sh/setup-uv@v8.1.0
         with:
           python-version: "3.12"
@@ -74,6 +77,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
       - uses: astral-sh/setup-uv@v8.1.0
         with:
           python-version: "3.12"
@@ -173,6 +179,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
       - uses: astral-sh/setup-uv@v8.1.0
         with: { python-version: "3.12" }
       - run: uv sync --frozen --all-packages
@@ -185,6 +194,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
       - uses: astral-sh/setup-uv@v8.1.0
         with: { python-version: "3.12" }
       - run: uv sync --frozen --all-packages
@@ -197,6 +209,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
       - uses: astral-sh/setup-uv@v8.1.0
         with: { python-version: "3.12" }
       - run: uv sync --frozen --all-packages
@@ -208,6 +223,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
       - uses: astral-sh/setup-uv@v8.1.0
         with: { python-version: "3.12" }
       - run: uv sync --frozen --all-packages
@@ -219,6 +237,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
       - uses: astral-sh/setup-uv@v8.1.0
         with: { python-version: "3.12" }
       - run: uv tool install bandit
@@ -230,6 +251,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
       - uses: docker/setup-buildx-action@v4
       - name: Build api image
         id: build
@@ -276,6 +300,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
       - name: Install debian build tooling
         run: |
           sudo apt-get update -qq
@@ -302,6 +329,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
       - uses: astral-sh/setup-uv@v8.1.0
         with: { python-version: "3.12" }
       - run: uv sync --frozen --all-packages
@@ -314,6 +344,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
       - uses: astral-sh/setup-uv@v8.1.0
         with: { python-version: "3.12" }
       - run: uv sync --frozen --all-packages
@@ -326,6 +359,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
       - uses: astral-sh/setup-uv@v8.1.0
         with: { python-version: "3.12" }
       - run: uv sync --frozen --all-packages
@@ -337,6 +373,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
       - uses: astral-sh/setup-uv@v8.1.0
         with: { python-version: "3.12" }
       - run: uv sync --frozen --all-packages
@@ -348,6 +387,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
       - uses: astral-sh/setup-uv@v8.1.0
         with: { python-version: "3.12" }
       - run: uv tool install bandit
@@ -359,6 +401,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
       - uses: docker/setup-buildx-action@v4
       - name: Build worker image
         id: build
@@ -403,6 +448,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
       - name: Install debian build tooling
         run: |
           sudo apt-get update -qq
@@ -429,6 +477,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
       - uses: astral-sh/setup-uv@v8.1.0
         with: { python-version: "3.12" }
       - run: uv sync --frozen --all-packages
@@ -441,6 +492,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
       - uses: astral-sh/setup-uv@v8.1.0
         with: { python-version: "3.12" }
       - run: uv sync --frozen --all-packages
@@ -453,6 +507,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
       - uses: astral-sh/setup-uv@v8.1.0
         with: { python-version: "3.12" }
       - run: uv sync --frozen --all-packages
@@ -464,6 +521,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
       - uses: astral-sh/setup-uv@v8.1.0
         with: { python-version: "3.12" }
       - run: uv sync --frozen --all-packages
@@ -475,6 +535,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
       - uses: astral-sh/setup-uv@v8.1.0
         with: { python-version: "3.12" }
       - run: uv tool install bandit
@@ -486,6 +549,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
       - uses: docker/setup-buildx-action@v4
       - name: Build web image
         id: build
@@ -530,6 +596,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
       - name: Install debian build tooling
         run: |
           sudo apt-get update -qq
@@ -556,6 +625,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
       - uses: astral-sh/setup-uv@v8.1.0
         with: { python-version: "3.12" }
       - run: uv sync --frozen --all-packages
@@ -568,6 +640,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
       - uses: astral-sh/setup-uv@v8.1.0
         with: { python-version: "3.12" }
       - run: uv sync --frozen --all-packages
@@ -580,6 +655,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
       - uses: astral-sh/setup-uv@v8.1.0
         with: { python-version: "3.12" }
       - run: uv sync --frozen --all-packages
@@ -591,6 +669,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
       - uses: astral-sh/setup-uv@v8.1.0
         with: { python-version: "3.12" }
       - run: uv sync --frozen --all-packages
@@ -602,6 +683,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
       - uses: astral-sh/setup-uv@v8.1.0
         with: { python-version: "3.12" }
       - run: uv tool install bandit
@@ -613,6 +697,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
       - name: Install debian build tooling
         run: |
           sudo apt-get update -qq
@@ -640,6 +727,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
       - uses: astral-sh/setup-uv@v8.1.0
         with: { python-version: "3.12" }
       - run: uv tool install pip-audit
@@ -657,6 +747,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
       - uses: azure/setup-helm@v5
       - name: helm lint — chart-api
         run: helm lint packages/api/chart
@@ -669,6 +762,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
       - uses: azure/setup-helm@v5
       - name: helm lint — chart-worker
         run: helm lint packages/worker/chart
@@ -681,6 +777,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
       - uses: azure/setup-helm@v5
       - name: helm lint — chart-web
         run: helm lint packages/web/chart
@@ -695,6 +794,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -712,6 +814,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -729,6 +834,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -745,6 +853,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
