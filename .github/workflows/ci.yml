@@ -322,35 +322,22 @@ jobs:
         with: { name: api-deb, path: /tmp/shomer-api_*.deb, retention-days: 1 }
 
   api-deb-validate:
-    # Install the just-built .deb on a fresh runner and run the
-    # `tests/install/test_api.py` suite against the system-installed
-    # package. On failure the .deb artifact is deleted so a broken
-    # build can't be mistaken for a working one by humans inspecting
-    # the run or by any downstream consumer.
+    # Three independent gates against the just-built .deb (lintian,
+    # pytest, systemd-analyze security). On any failure the artifact
+    # is deleted so a broken build can't be mistaken for a working
+    # one downstream. See `.github/actions/validate-deb/action.yml`.
     needs: [api-deb]
     runs-on: ubuntu-latest
     permissions:
-      actions: write   # geekyeggo/delete-artifact needs this to wipe on failure
+      actions: write   # delete-artifact (cleanup on validation failure)
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
-      - uses: actions/download-artifact@v8
-        with: { name: api-deb, path: /tmp }
-      - name: Install pytest + the api .deb (system-wide)
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends python3-pytest
-          sudo apt-get install -y --no-install-recommends /tmp/shomer-api_*.deb
-      - name: Run install-validation suite
-        run: python3 -m pytest tests/install/test_api.py -v
-      - name: Delete artifact on validation failure
-        if: failure()
-        uses: geekyeggo/delete-artifact@v5
+      - uses: ./.github/actions/validate-deb
         with:
-          name: api-deb
-          failOnError: false
+          component: api
 
   # ─────────────────────── worker ───────────────────────
 
@@ -510,21 +497,9 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
-      - uses: actions/download-artifact@v8
-        with: { name: worker-deb, path: /tmp }
-      - name: Install pytest + the worker .deb (system-wide)
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends python3-pytest
-          sudo apt-get install -y --no-install-recommends /tmp/shomer-worker_*.deb
-      - name: Run install-validation suite
-        run: python3 -m pytest tests/install/test_worker.py -v
-      - name: Delete artifact on validation failure
-        if: failure()
-        uses: geekyeggo/delete-artifact@v5
+      - uses: ./.github/actions/validate-deb
         with:
-          name: worker-deb
-          failOnError: false
+          component: worker
 
   # ─────────────────────── web ───────────────────────
 
@@ -684,21 +659,9 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
-      - uses: actions/download-artifact@v8
-        with: { name: web-deb, path: /tmp }
-      - name: Install pytest + the web .deb (system-wide)
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends python3-pytest
-          sudo apt-get install -y --no-install-recommends /tmp/shomer-web_*.deb
-      - name: Run install-validation suite
-        run: python3 -m pytest tests/install/test_web.py -v
-      - name: Delete artifact on validation failure
-        if: failure()
-        uses: geekyeggo/delete-artifact@v5
+      - uses: ./.github/actions/validate-deb
         with:
-          name: web-deb
-          failOnError: false
+          component: web
 
   # ─────────────────────── cli (no container) ───────────────────────
 
@@ -811,21 +774,10 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
-      - uses: actions/download-artifact@v8
-        with: { name: cli-deb, path: /tmp }
-      - name: Install pytest + the cli .deb (system-wide)
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends python3-pytest
-          sudo apt-get install -y --no-install-recommends /tmp/shomer-cli_*.deb
-      - name: Run install-validation suite
-        run: python3 -m pytest tests/install/test_cli.py -v
-      - name: Delete artifact on validation failure
-        if: failure()
-        uses: geekyeggo/delete-artifact@v5
+      - uses: ./.github/actions/validate-deb
         with:
-          name: cli-deb
-          failOnError: false
+          component: cli
+          has-systemd: "false"   # cli ships no .service unit
 
   # ─────────────────────── audit (workspace-wide) ───────────────────────
 

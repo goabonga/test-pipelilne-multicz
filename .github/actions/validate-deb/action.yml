@@ -1,0 +1,68 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+name: validate deb
+description: |
+  Install a freshly-built .deb on the runner and run three independent
+  gates against it:
+
+    1. lintian — packaging QA (errors fail the gate)
+    2. pytest — install-validation suite under `tests/install/`
+    3. systemd-analyze security — exposure score ≤ 5 (skipped when
+       `has-systemd: "false"`, e.g. for the CLI which ships no unit)
+
+  On any failure the upstream `<component>-deb` artifact is deleted so
+  a broken build cannot be picked up downstream by humans inspecting
+  the run or by any consumer that downloads CI artifacts.
+
+  Caller MUST set `permissions: actions: write` on the job — the
+  artifact-delete step uses the GITHUB_TOKEN with that scope.
+
+inputs:
+  component:
+    required: true
+    description: Component name — api / worker / web / cli.
+  has-systemd:
+    required: false
+    default: "true"
+    description: |
+      Set to "false" when the .deb ships no systemd unit (skips
+      step 3). Components without a `debian/<pkg>.service` file
+      (e.g. cli) must pass "false" here.
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/download-artifact@v8
+      with:
+        name: ${{ inputs.component }}-deb
+        path: /tmp
+
+    - name: Install pytest, lintian + the .deb (system-wide)
+      shell: bash
+      run: |
+        set -euo pipefail
+        sudo apt-get update -qq
+        sudo apt-get install -y --no-install-recommends python3-pytest lintian
+        sudo apt-get install -y --no-install-recommends /tmp/shomer-${{ inputs.component }}_*.deb
+        sudo systemctl daemon-reload
+
+    - name: lintian — packaging QA (errors fail the gate)
+      shell: bash
+      run: lintian --fail-on error /tmp/shomer-${{ inputs.component }}_*.deb
+
+    - name: pytest — install-validation suite
+      shell: bash
+      run: python3 -m pytest tests/install/test_${{ inputs.component }}.py -v
+
+    - name: systemd-analyze security — exposure score ≤ 5
+      if: ${{ inputs.has-systemd == 'true' }}
+      shell: bash
+      run: systemd-analyze security --threshold=5 shomer-${{ inputs.component }}.service
+
+    - name: Delete artifact on any validation failure
+      if: failure()
+      uses: geekyeggo/delete-artifact@v5
+      with:
+        name: ${{ inputs.component }}-deb
+        failOnError: false
