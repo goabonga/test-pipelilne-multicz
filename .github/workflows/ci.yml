@@ -63,18 +63,44 @@ jobs:
       - name: multicz validate
         run: multicz validate --strict
 
-  docs:
-    # Build always (PR + main). On main, also: deploy to GitHub Pages,
-    # bump the docs component (tag docs-vX.Y.Z + push), cut the
-    # matching GitHub Release. Replaces the standalone docs.yml that
-    # used to do the deploy on a separate trigger.
+  docs-build:
+    # Always fires (PR + main) when something docs-related changed.
+    # Smoke-checks the zensical build and uploads `site/` as a Pages
+    # artifact so docs-deploy (downstream, main-only) can publish it.
+    # On a PR this job alone runs — the artifact upload is fine even
+    # when nothing consumes it (Pages best-practice: 1 build job + 1
+    # deploy job, the artifact bridges them).
     needs: [detect, headers]
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'docs')
     runs-on: ubuntu-latest
     permissions:
-      contents: write   # multicz bump push (GITHUB_TOKEN is enough on same-repo push)
+      contents: read
+      id-token: write   # required by upload-pages-artifact
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v8.1.0
+        with:
+          python-version: "3.12"
+      - name: Install workspace + doc group
+        run: uv sync --frozen --all-packages --group doc
+      - name: Zensical build
+        run: uv run zensical build
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  docs-deploy:
+    # Picks up the artifact uploaded by docs-build, deploys it to
+    # Pages, then bumps + tags + cuts the GitHub Release for the
+    # docs component. Skipped on PRs (gated on main) and auto-skipped
+    # if docs-build was skipped (no docs change).
+    needs: [docs-build]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # multicz bump push
       pages: write      # actions/deploy-pages
-      id-token: write   # OIDC for actions/deploy-pages + actions/upload-pages-artifact
+      id-token: write   # OIDC for actions/deploy-pages
     concurrency:
       # Same group as Pages best-practice — one in-flight deploy per
       # repo, cancel any older run when a fresher push lands.
@@ -89,48 +115,26 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
 
-      - uses: astral-sh/setup-uv@v8.1.0
-        with:
-          python-version: "3.12"
-
-      - name: Install workspace + doc group
-        run: uv sync --frozen --all-packages --group doc
-
-      - name: Zensical build
-        run: uv run zensical build
-
-      # ─── below: only on main ───
-
-      - uses: actions/upload-pages-artifact@v3
-        if: github.ref == 'refs/heads/main'
-        with:
-          path: site
-
       - name: Deploy to GitHub Pages
-        if: github.ref == 'refs/heads/main'
         id: deploy
         uses: actions/deploy-pages@v4
 
       - name: Configure git
-        if: github.ref == 'refs/heads/main'
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - uses: goabonga/multicz-action@v1
-        if: github.ref == 'refs/heads/main'
 
       - name: Bump, commit, tag, push docs
         # `multicz bump --component docs` is a no-op when no commit is
         # pending for the docs tag stream (the chore(release) loop
         # filters itself out via release_commit_pattern), so it's safe
         # to call unconditionally as long as docs really changed
-        # (which the if: at job level already enforces).
-        if: github.ref == 'refs/heads/main'
+        # (which the upstream docs-build's if: already enforces).
         run: multicz bump --component docs --commit --tag --push
 
       - name: Cut GitHub Release for the docs tag
-        if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
