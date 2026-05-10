@@ -115,9 +115,23 @@ jobs:
       - name: Install workspace + doc group
         run: uv sync --frozen --all-packages --group doc
 
+      - name: Configure git
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - uses: goabonga/multicz-action@v1
+
+      # ─── 1. write-only bump: VERSION line + pyproject get the new
+      #    docs version on disk, nothing committed / tagged / pushed yet.
+      - name: Bump docs (write only)
+        run: multicz bump --component docs
+
+      # ─── 2. build with the just-bumped values in the working tree.
       - name: Zensical build
         run: uv run zensical build
 
+      # ─── 3. publish the built site to Pages.
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site
@@ -126,19 +140,15 @@ jobs:
         id: deploy
         uses: actions/deploy-pages@v4
 
-      - name: Configure git
-        run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-      - uses: goabonga/multicz-action@v1
-
-      - name: Bump, commit, tag, push docs
-        # `multicz bump --component docs` is a no-op when no commit is
-        # pending for the docs tag stream (the chore(release) loop
-        # filters itself out via release_commit_pattern), so it's safe
-        # to call unconditionally as long as docs really changed
-        # (which the upstream docs-build's if: already enforces).
+      # ─── 4. now that the build + deploy succeeded, materialise the
+      #    release in git: commit (chore(release): bump docs ...),
+      #    tag (docs-vX.Y.Z), push --follow-tags.
+      #
+      #    A second `multicz bump` is idempotent — it re-plans, sees
+      #    the same target version, re-writes the bump_files no-op,
+      #    then `git add` the already-dirty files and creates the
+      #    release commit + tag.
+      - name: Commit, tag, push docs
         run: multicz bump --component docs --commit --tag --push
 
       - name: Cut GitHub Release for the docs tag
