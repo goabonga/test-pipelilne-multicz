@@ -64,18 +64,14 @@ jobs:
         run: multicz validate --strict
 
   docs-build:
-    # Always fires (PR + main) when something docs-related changed.
-    # Smoke-checks the zensical build and uploads `site/` as a Pages
-    # artifact so docs-deploy (downstream, main-only) can publish it.
-    # On a PR this job alone runs — the artifact upload is fine even
-    # when nothing consumes it (Pages best-practice: 1 build job + 1
-    # deploy job, the artifact bridges them).
+    # Pure smoke check — fires on PR + main when something
+    # docs-related changed. Validates the zensical build doesn't
+    # break, nothing else. No artifact, no Pages-specific tooling.
+    # docs-deploy gates on this passing before it does its own
+    # full-chain build + upload + deploy.
     needs: [detect, headers]
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'docs')
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write   # required by upload-pages-artifact
     steps:
       - uses: actions/checkout@v6
       - uses: astral-sh/setup-uv@v8.1.0
@@ -85,25 +81,22 @@ jobs:
         run: uv sync --frozen --all-packages --group doc
       - name: Zensical build
         run: uv run zensical build
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: site
 
   docs-deploy:
-    # Picks up the artifact uploaded by docs-build, deploys it to
-    # Pages, then bumps + tags + cuts the GitHub Release for the
-    # docs component. Skipped on PRs (gated on main) and auto-skipped
-    # if docs-build was skipped (no docs change).
+    # Self-contained: re-runs the build, uploads it as a Pages
+    # artifact, deploys, then bumps + tags + cuts the GitHub
+    # Release. Gated on main; auto-skipped when docs-build skipped
+    # (no docs change) or fails (broken build).
     needs: [docs-build]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: write   # multicz bump push
       pages: write      # actions/deploy-pages
-      id-token: write   # OIDC for actions/deploy-pages
+      id-token: write   # OIDC for actions/deploy-pages + actions/upload-pages-artifact
     concurrency:
-      # Same group as Pages best-practice — one in-flight deploy per
-      # repo, cancel any older run when a fresher push lands.
+      # Pages best-practice — one in-flight deploy per repo, cancel
+      # any older run when a fresher push lands.
       group: pages
       cancel-in-progress: true
     environment:
@@ -114,6 +107,20 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+
+      - uses: astral-sh/setup-uv@v8.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Install workspace + doc group
+        run: uv sync --frozen --all-packages --group doc
+
+      - name: Zensical build
+        run: uv run zensical build
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
 
       - name: Deploy to GitHub Pages
         id: deploy
