@@ -8,10 +8,11 @@ description: |
 
     1. lintian — packaging QA (errors fail the gate)
     2. pytest — install-validation suite under `tests/install/`
-    3. systemd-analyze security — display score ≤ 2.0 ("OK :-)" zone),
+    3. systemd-analyze security — display score ≤ 1.0 ("OK :-)" zone),
        skipped when `has-systemd: "false"` (e.g. cli ships no unit).
-       Note: `--threshold=N` is a *percentage* (0–100), so 20 means
-       "fail if internal exposure > 20%", i.e. display score > 2.0.
+       Note: `--threshold=N` is a *percentage* (0–100) on the internal
+       exposure (= display_score / 10), so 10 means "fail if internal
+       exposure > 10%", i.e. display score > 1.0.
 
   On any failure the upstream `<component>-deb` artifact is deleted so
   a broken build cannot be picked up downstream by humans inspecting
@@ -57,10 +58,10 @@ runs:
       shell: bash
       run: python3 -m pytest tests/install/test_${{ inputs.component }}.py -v
 
-    - name: systemd-analyze security — display score ≤ 2.0 ("OK :-)")
+    - name: systemd-analyze security — display score ≤ 1.0 ("OK :-)")
       if: ${{ inputs.has-systemd == 'true' }}
       shell: bash
-      run: systemd-analyze security --threshold=20 shomer-${{ inputs.component }}.service
+      run: systemd-analyze security --threshold=10 shomer-${{ inputs.component }}.service
 
     - name: Delete artifact on any validation failure
       if: failure()

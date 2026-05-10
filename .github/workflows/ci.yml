@@ -431,7 +431,7 @@ jobs:
         uses: ./.github/actions/summary
         with:
           title: api-deb-validate
-          body: 'lintian + `tests/install/test_api.py` + `systemd-analyze security` (display score ≤ 2.0).'
+          body: 'lintian + `tests/install/test_api.py` + `systemd-analyze security` (display score ≤ 1.0).'
 
   # ─────────────────────── worker ───────────────────────
 
@@ -655,7 +655,7 @@ jobs:
         uses: ./.github/actions/summary
         with:
           title: worker-deb-validate
-          body: 'lintian + `tests/install/test_worker.py` + `systemd-analyze security` (display score ≤ 2.0).'
+          body: 'lintian + `tests/install/test_worker.py` + `systemd-analyze security` (display score ≤ 1.0).'
 
   # ─────────────────────── web ───────────────────────
 
@@ -879,7 +879,7 @@ jobs:
         uses: ./.github/actions/summary
         with:
           title: web-deb-validate
-          body: 'lintian + `tests/install/test_web.py` + `systemd-analyze security` (display score ≤ 2.0).'
+          body: 'lintian + `tests/install/test_web.py` + `systemd-analyze security` (display score ≤ 1.0).'
 
   # ─────────────────────── cli (no container) ───────────────────────
 
