@@ -40,6 +40,13 @@ jobs:
         uses: goabonga/multicz-action/changed@v1
         with:
           output: json
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: detect
+          body: |
+            Changed components: `${{ steps.changed.outputs.json }}`
 
   headers:
     runs-on: ubuntu-latest
@@ -55,6 +62,12 @@ jobs:
         run: |
           uv run python scripts/add_license_header.py --path packages --check
           uv run python scripts/add_license_header.py --path scripts --check
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: headers
+          body: SPDX header check on `packages/` and `scripts/`.
 
   validate:
     runs-on: ubuntu-latest
@@ -65,6 +78,12 @@ jobs:
       - uses: goabonga/multicz-action@v1
       - name: multicz validate
         run: multicz validate --strict
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: validate
+          body: '`multicz validate --strict` on the workspace config.'
 
   docs-build:
     # Pure smoke check — fires on PR + main when something
@@ -87,6 +106,12 @@ jobs:
         run: uv sync --frozen --all-packages --group doc
       - name: Zensical build
         run: uv run zensical build
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: docs-build
+          body: '`zensical build` smoke check.'
 
   docs-deploy:
     # Self-contained: re-runs the build, uploads it as a Pages
@@ -170,6 +195,13 @@ jobs:
             multicz release-notes --tag "$tag" \
               | gh release create "$tag" --title "$tag" --notes-file -
           done
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: docs-deploy
+          body: |
+            Deployed to: ${{ steps.deploy.outputs.page_url }}
 
   # ─────────────────────── api ───────────────────────
 
@@ -187,6 +219,12 @@ jobs:
       - run: uv sync --frozen --all-packages
       - name: Ruff lint — api
         run: uv run ruff check packages/api
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: api-lint
+          body: '`ruff check` on `packages/api/`.'
 
   api-format:
     needs: [detect, headers]
@@ -202,6 +240,12 @@ jobs:
       - run: uv sync --frozen --all-packages
       - name: Ruff format check — api
         run: uv run ruff format --check packages/api
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: api-format
+          body: '`ruff format --check` on `packages/api/`.'
 
   api-typecheck:
     needs: [detect, headers]
@@ -217,6 +261,12 @@ jobs:
       - run: uv sync --frozen --all-packages
       - name: Mypy --strict — api
         run: uv run --with mypy mypy --strict packages/api/src
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: api-typecheck
+          body: '`mypy --strict` on `packages/api/src/`.'
 
   api-test:
     needs: [api-lint, api-format, api-typecheck]
@@ -231,6 +281,12 @@ jobs:
       - run: uv sync --frozen --all-packages
       - name: Pytest — api
         run: uv run pytest packages/api/tests -q
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: api-test
+          body: '`pytest` on `packages/api/tests/`.'
 
   api-bandit:
     needs: [api-test]
@@ -245,6 +301,12 @@ jobs:
       - run: uv tool install bandit
       - name: Bandit — api
         run: bandit -r packages/api/src
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: api-bandit
+          body: '`bandit -r` on `packages/api/src/`.'
 
   api-container:
     needs: [api-bandit, audit]
@@ -268,6 +330,12 @@ jobs:
         run: docker save api:ci -o /tmp/api.tar
       - uses: actions/upload-artifact@v7
         with: { name: api-image, path: /tmp/api.tar, retention-days: 1 }
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: api-container
+          body: 'Built `api:ci` (saved to artifact `api-image`).'
 
   api-sbom:
     needs: [api-container]
@@ -281,6 +349,12 @@ jobs:
         run: syft docker-archive:/tmp/api.tar -o spdx-json=/tmp/api.sbom.spdx.json
       - uses: actions/upload-artifact@v7
         with: { name: api-sbom, path: /tmp/api.sbom.spdx.json, retention-days: 1 }
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: api-sbom
+          body: 'SPDX SBOM via `syft` (artifact `api-sbom`).'
 
   api-grype:
     needs: [api-sbom]
@@ -292,6 +366,12 @@ jobs:
         run: curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
       - name: Scan SBOM (--fail-on high)
         run: grype sbom:/tmp/api.sbom.spdx.json --fail-on high
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: api-grype
+          body: '`grype --fail-on high` on the api SBOM.'
 
   api-deb:
     # Smoke-build the .deb on every change so packaging regressions
@@ -320,6 +400,12 @@ jobs:
           mv "$WORK"/shomer-api_*.deb "$WORK"/shomer-api_*.buildinfo "$WORK"/shomer-api_*.changes /tmp/
       - uses: actions/upload-artifact@v7
         with: { name: api-deb, path: /tmp/shomer-api_*.deb, retention-days: 1 }
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: api-deb
+          body: 'Built `shomer-api_*.deb` (artifact `api-deb`).'
 
   api-deb-validate:
     # Three independent gates against the just-built .deb (lintian,
@@ -338,6 +424,12 @@ jobs:
       - uses: ./.github/actions/validate-deb
         with:
           component: api
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: api-deb-validate
+          body: 'lintian + `tests/install/test_api.py` + `systemd-analyze security` (threshold 5).'
 
   # ─────────────────────── worker ───────────────────────
 
@@ -355,6 +447,12 @@ jobs:
       - run: uv sync --frozen --all-packages
       - name: Ruff lint — worker
         run: uv run ruff check packages/worker
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: worker-lint
+          body: '`ruff check` on `packages/worker/`.'
 
   worker-format:
     needs: [detect, headers]
@@ -370,6 +468,12 @@ jobs:
       - run: uv sync --frozen --all-packages
       - name: Ruff format check — worker
         run: uv run ruff format --check packages/worker
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: worker-format
+          body: '`ruff format --check` on `packages/worker/`.'
 
   worker-typecheck:
     needs: [detect, headers]
@@ -385,6 +489,12 @@ jobs:
       - run: uv sync --frozen --all-packages
       - name: Mypy --strict — worker
         run: uv run --with mypy mypy --strict packages/worker/src
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: worker-typecheck
+          body: '`mypy --strict` on `packages/worker/src/`.'
 
   worker-test:
     needs: [worker-lint, worker-format, worker-typecheck]
@@ -399,6 +509,12 @@ jobs:
       - run: uv sync --frozen --all-packages
       - name: Pytest — worker
         run: uv run pytest packages/worker/tests -q
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: worker-test
+          body: '`pytest` on `packages/worker/tests/`.'
 
   worker-bandit:
     needs: [worker-test]
@@ -413,6 +529,12 @@ jobs:
       - run: uv tool install bandit
       - name: Bandit — worker
         run: bandit -r packages/worker/src
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: worker-bandit
+          body: '`bandit -r` on `packages/worker/src/`.'
 
   worker-container:
     needs: [worker-bandit, audit]
@@ -436,6 +558,12 @@ jobs:
         run: docker save worker:ci -o /tmp/worker.tar
       - uses: actions/upload-artifact@v7
         with: { name: worker-image, path: /tmp/worker.tar, retention-days: 1 }
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: worker-container
+          body: 'Built `worker:ci` (saved to artifact `worker-image`).'
 
   worker-sbom:
     needs: [worker-container]
@@ -449,6 +577,12 @@ jobs:
         run: syft docker-archive:/tmp/worker.tar -o spdx-json=/tmp/worker.sbom.spdx.json
       - uses: actions/upload-artifact@v7
         with: { name: worker-sbom, path: /tmp/worker.sbom.spdx.json, retention-days: 1 }
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: worker-sbom
+          body: 'SPDX SBOM via `syft` (artifact `worker-sbom`).'
 
   worker-grype:
     needs: [worker-sbom]
@@ -460,6 +594,12 @@ jobs:
         run: curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
       - name: Scan SBOM (--fail-on high)
         run: grype sbom:/tmp/worker.sbom.spdx.json --fail-on high
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: worker-grype
+          body: '`grype --fail-on high` on the worker SBOM.'
 
   worker-deb:
     needs: [worker-bandit, audit]
@@ -486,6 +626,12 @@ jobs:
           mv "$WORK"/shomer-worker_*.deb "$WORK"/shomer-worker_*.buildinfo "$WORK"/shomer-worker_*.changes /tmp/
       - uses: actions/upload-artifact@v7
         with: { name: worker-deb, path: /tmp/shomer-worker_*.deb, retention-days: 1 }
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: worker-deb
+          body: 'Built `shomer-worker_*.deb` (artifact `worker-deb`).'
 
   worker-deb-validate:
     needs: [worker-deb]
@@ -500,6 +646,12 @@ jobs:
       - uses: ./.github/actions/validate-deb
         with:
           component: worker
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: worker-deb-validate
+          body: 'lintian + `tests/install/test_worker.py` + `systemd-analyze security` (threshold 5).'
 
   # ─────────────────────── web ───────────────────────
 
@@ -517,6 +669,12 @@ jobs:
       - run: uv sync --frozen --all-packages
       - name: Ruff lint — web
         run: uv run ruff check packages/web
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: web-lint
+          body: '`ruff check` on `packages/web/`.'
 
   web-format:
     needs: [detect, headers]
@@ -532,6 +690,12 @@ jobs:
       - run: uv sync --frozen --all-packages
       - name: Ruff format check — web
         run: uv run ruff format --check packages/web
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: web-format
+          body: '`ruff format --check` on `packages/web/`.'
 
   web-typecheck:
     needs: [detect, headers]
@@ -547,6 +711,12 @@ jobs:
       - run: uv sync --frozen --all-packages
       - name: Mypy --strict — web
         run: uv run --with mypy mypy --strict packages/web/src
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: web-typecheck
+          body: '`mypy --strict` on `packages/web/src/`.'
 
   web-test:
     needs: [web-lint, web-format, web-typecheck]
@@ -561,6 +731,12 @@ jobs:
       - run: uv sync --frozen --all-packages
       - name: Pytest — web
         run: uv run pytest packages/web/tests -q
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: web-test
+          body: '`pytest` on `packages/web/tests/`.'
 
   web-bandit:
     needs: [web-test]
@@ -575,6 +751,12 @@ jobs:
       - run: uv tool install bandit
       - name: Bandit — web
         run: bandit -r packages/web/src
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: web-bandit
+          body: '`bandit -r` on `packages/web/src/`.'
 
   web-container:
     needs: [web-bandit, audit]
@@ -598,6 +780,12 @@ jobs:
         run: docker save web:ci -o /tmp/web.tar
       - uses: actions/upload-artifact@v7
         with: { name: web-image, path: /tmp/web.tar, retention-days: 1 }
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: web-container
+          body: 'Built `web:ci` (saved to artifact `web-image`).'
 
   web-sbom:
     needs: [web-container]
@@ -611,6 +799,12 @@ jobs:
         run: syft docker-archive:/tmp/web.tar -o spdx-json=/tmp/web.sbom.spdx.json
       - uses: actions/upload-artifact@v7
         with: { name: web-sbom, path: /tmp/web.sbom.spdx.json, retention-days: 1 }
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: web-sbom
+          body: 'SPDX SBOM via `syft` (artifact `web-sbom`).'
 
   web-grype:
     needs: [web-sbom]
@@ -622,6 +816,12 @@ jobs:
         run: curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
       - name: Scan SBOM (--fail-on high)
         run: grype sbom:/tmp/web.sbom.spdx.json --fail-on high
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: web-grype
+          body: '`grype --fail-on high` on the web SBOM.'
 
   web-deb:
     needs: [web-bandit, audit]
@@ -648,6 +848,12 @@ jobs:
           mv "$WORK"/shomer-web_*.deb "$WORK"/shomer-web_*.buildinfo "$WORK"/shomer-web_*.changes /tmp/
       - uses: actions/upload-artifact@v7
         with: { name: web-deb, path: /tmp/shomer-web_*.deb, retention-days: 1 }
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: web-deb
+          body: 'Built `shomer-web_*.deb` (artifact `web-deb`).'
 
   web-deb-validate:
     needs: [web-deb]
@@ -662,6 +868,12 @@ jobs:
       - uses: ./.github/actions/validate-deb
         with:
           component: web
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: web-deb-validate
+          body: 'lintian + `tests/install/test_web.py` + `systemd-analyze security` (threshold 5).'
 
   # ─────────────────────── cli (no container) ───────────────────────
 
@@ -679,6 +891,12 @@ jobs:
       - run: uv sync --frozen --all-packages
       - name: Ruff lint — cli
         run: uv run ruff check packages/cli
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: cli-lint
+          body: '`ruff check` on `packages/cli/`.'
 
   cli-format:
     needs: [detect, headers]
@@ -694,6 +912,12 @@ jobs:
       - run: uv sync --frozen --all-packages
       - name: Ruff format check — cli
         run: uv run ruff format --check packages/cli
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: cli-format
+          body: '`ruff format --check` on `packages/cli/`.'
 
   cli-typecheck:
     needs: [detect, headers]
@@ -709,6 +933,12 @@ jobs:
       - run: uv sync --frozen --all-packages
       - name: Mypy --strict — cli
         run: uv run --with mypy mypy --strict packages/cli/src
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: cli-typecheck
+          body: '`mypy --strict` on `packages/cli/src/`.'
 
   cli-test:
     needs: [cli-lint, cli-format, cli-typecheck]
@@ -723,6 +953,12 @@ jobs:
       - run: uv sync --frozen --all-packages
       - name: Pytest — cli
         run: uv run pytest packages/cli/tests -q
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: cli-test
+          body: '`pytest` on `packages/cli/tests/`.'
 
   cli-bandit:
     needs: [cli-test]
@@ -737,6 +973,12 @@ jobs:
       - run: uv tool install bandit
       - name: Bandit — cli
         run: bandit -r packages/cli/src
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: cli-bandit
+          body: '`bandit -r` on `packages/cli/src/`.'
 
   cli-deb:
     needs: [cli-bandit, audit]
@@ -763,6 +1005,12 @@ jobs:
           mv "$WORK"/shomer-cli_*.deb "$WORK"/shomer-cli_*.buildinfo "$WORK"/shomer-cli_*.changes /tmp/
       - uses: actions/upload-artifact@v7
         with: { name: cli-deb, path: /tmp/shomer-cli_*.deb, retention-days: 1 }
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: cli-deb
+          body: 'Built `shomer-cli_*.deb` (artifact `cli-deb`).'
 
   cli-deb-validate:
     needs: [cli-deb]
@@ -778,6 +1026,12 @@ jobs:
         with:
           component: cli
           has-systemd: "false"   # cli ships no .service unit
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: cli-deb-validate
+          body: 'lintian + `tests/install/test_cli.py` (no systemd unit on the cli package).'
 
   # ─────────────────────── audit (workspace-wide) ───────────────────────
 
@@ -799,6 +1053,12 @@ jobs:
           uv export --no-dev --no-emit-project \
             --format requirements-txt -o /tmp/requirements.txt
           pip-audit -r /tmp/requirements.txt --no-deps
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: audit
+          body: '`pip-audit` on the resolved, non-dev dependency closure (`uv export --no-dev`).'
 
   # ─────────────────────── helm charts ───────────────────────
 
@@ -816,6 +1076,12 @@ jobs:
         run: helm lint packages/api/chart
       - name: helm template smoke — chart-api
         run: helm template ci packages/api/chart > /tmp/chart-api.yaml
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: chart-api-lint
+          body: '`helm lint` + `helm template` smoke on `packages/api/chart/`.'
 
   chart-worker-lint:
     needs: [detect, headers]
@@ -831,6 +1097,12 @@ jobs:
         run: helm lint packages/worker/chart
       - name: helm template smoke — chart-worker
         run: helm template ci packages/worker/chart > /tmp/chart-worker.yaml
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: chart-worker-lint
+          body: '`helm lint` + `helm template` smoke on `packages/worker/chart/`.'
 
   chart-web-lint:
     needs: [detect, headers]
@@ -846,6 +1118,12 @@ jobs:
         run: helm lint packages/web/chart
       - name: helm template smoke — chart-web
         run: helm template ci packages/web/chart > /tmp/chart-web.yaml
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: chart-web-lint
+          body: '`helm lint` + `helm template` smoke on `packages/web/chart/`.'
 
   # ─────────────────────── web-frontend (Node) ───────────────────────
 
@@ -868,6 +1146,12 @@ jobs:
       - name: Biome lint — web-frontend
         run: npm run lint
         working-directory: packages/web-frontend
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: web-frontend-lint
+          body: '`biome lint` (via `npm run lint`) on `packages/web-frontend/`.'
 
   web-frontend-format:
     needs: [detect, headers]
@@ -888,6 +1172,12 @@ jobs:
       - name: Biome format check — web-frontend
         run: npm run format:check
         working-directory: packages/web-frontend
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: web-frontend-format
+          body: '`biome format --check` (via `npm run format:check`) on `packages/web-frontend/`.'
 
   web-frontend-typecheck:
     needs: [detect, headers]
@@ -908,6 +1198,12 @@ jobs:
       - name: tsc --noEmit — web-frontend
         run: npm run typecheck
         working-directory: packages/web-frontend
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: web-frontend-typecheck
+          body: '`tsc --noEmit` (via `npm run typecheck`) on `packages/web-frontend/`.'
 
   web-frontend-test:
     needs: [web-frontend-lint, web-frontend-format, web-frontend-typecheck]
@@ -927,3 +1223,9 @@ jobs:
       - name: Vitest — web-frontend
         run: npm test
         working-directory: packages/web-frontend
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: web-frontend-test
+          body: '`vitest` (via `npm test`) on `packages/web-frontend/`.'
