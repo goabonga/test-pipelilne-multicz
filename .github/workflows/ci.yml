@@ -4,10 +4,12 @@
 # CI gate. Per-component named jobs — no matrix, every job is its own
 # graph node. Shape per component (python/buildable/chart/js):
 #
-#                   ┌─ X-lint       ─┐
-#   detect ─ headers ─ X-format     ─┼─ X-test ─┬─ X-bandit ─┐
-#                   ├─ X-typecheck  ─┘          └─ audit ────┴─ X-container ─ X-sbom ─ X-grype
-#                   └─ ...
+#                   ┌─ X-lint       ─┐                       ┌─ X-container ─ X-sbom ─ X-grype
+#   detect ─ headers ─ X-format     ─┼─ X-test ─ X-bandit ─┐ │
+#                   ├─ X-typecheck  ─┘                     │ ├─ X-deb
+#                   └─ ...                                  ─┤
+#                                            audit ────────┘ │
+#                                                            └─ (per-component fan-out)
 #
 # Always-on (no needs.detect): headers, validate, docs.
 #
@@ -177,6 +179,31 @@ jobs:
       - name: Scan SBOM (--fail-on high)
         run: grype sbom:/tmp/api.sbom.spdx.json --fail-on high
 
+  api-deb:
+    # Smoke-build the .deb on every change so packaging regressions
+    # surface in PR CI, not only when release.yml fires.
+    needs: [api-bandit, audit]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install debian build tooling
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            build-essential debhelper dh-python python3-all \
+            python3-hatchling pybuild-plugin-pyproject dpkg-dev
+      - name: Build api .deb
+        run: |
+          set -euo pipefail
+          WORK=/tmp/build-api
+          rm -rf "$WORK" && mkdir -p "$WORK"
+          cp -r packages/api "$WORK/shomer-api"
+          cd "$WORK/shomer-api"
+          dpkg-buildpackage -us -uc -b
+          mv "$WORK"/shomer-api_*.deb "$WORK"/shomer-api_*.buildinfo "$WORK"/shomer-api_*.changes /tmp/
+      - uses: actions/upload-artifact@v7
+        with: { name: api-deb, path: /tmp/shomer-api_*.deb, retention-days: 1 }
+
   # ─────────────────────── worker ───────────────────────
 
   worker-lint:
@@ -280,6 +307,29 @@ jobs:
         run: curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
       - name: Scan SBOM (--fail-on high)
         run: grype sbom:/tmp/worker.sbom.spdx.json --fail-on high
+
+  worker-deb:
+    needs: [worker-bandit, audit]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install debian build tooling
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            build-essential debhelper dh-python python3-all \
+            python3-hatchling pybuild-plugin-pyproject dpkg-dev
+      - name: Build worker .deb
+        run: |
+          set -euo pipefail
+          WORK=/tmp/build-worker
+          rm -rf "$WORK" && mkdir -p "$WORK"
+          cp -r packages/worker "$WORK/shomer-worker"
+          cd "$WORK/shomer-worker"
+          dpkg-buildpackage -us -uc -b
+          mv "$WORK"/shomer-worker_*.deb "$WORK"/shomer-worker_*.buildinfo "$WORK"/shomer-worker_*.changes /tmp/
+      - uses: actions/upload-artifact@v7
+        with: { name: worker-deb, path: /tmp/shomer-worker_*.deb, retention-days: 1 }
 
   # ─────────────────────── web ───────────────────────
 
@@ -385,6 +435,29 @@ jobs:
       - name: Scan SBOM (--fail-on high)
         run: grype sbom:/tmp/web.sbom.spdx.json --fail-on high
 
+  web-deb:
+    needs: [web-bandit, audit]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install debian build tooling
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            build-essential debhelper dh-python python3-all \
+            python3-hatchling pybuild-plugin-pyproject dpkg-dev
+      - name: Build web .deb
+        run: |
+          set -euo pipefail
+          WORK=/tmp/build-web
+          rm -rf "$WORK" && mkdir -p "$WORK"
+          cp -r packages/web "$WORK/shomer-web"
+          cd "$WORK/shomer-web"
+          dpkg-buildpackage -us -uc -b
+          mv "$WORK"/shomer-web_*.deb "$WORK"/shomer-web_*.buildinfo "$WORK"/shomer-web_*.changes /tmp/
+      - uses: actions/upload-artifact@v7
+        with: { name: web-deb, path: /tmp/shomer-web_*.deb, retention-days: 1 }
+
   # ─────────────────────── cli (no container) ───────────────────────
 
   cli-lint:
@@ -444,6 +517,29 @@ jobs:
       - run: uv tool install bandit
       - name: Bandit — cli
         run: bandit -r packages/cli/src
+
+  cli-deb:
+    needs: [cli-bandit, audit]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install debian build tooling
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            build-essential debhelper dh-python python3-all \
+            python3-hatchling pybuild-plugin-pyproject dpkg-dev
+      - name: Build cli .deb
+        run: |
+          set -euo pipefail
+          WORK=/tmp/build-cli
+          rm -rf "$WORK" && mkdir -p "$WORK"
+          cp -r packages/cli "$WORK/shomer-cli"
+          cd "$WORK/shomer-cli"
+          dpkg-buildpackage -us -uc -b
+          mv "$WORK"/shomer-cli_*.deb "$WORK"/shomer-cli_*.buildinfo "$WORK"/shomer-cli_*.changes /tmp/
+      - uses: actions/upload-artifact@v7
+        with: { name: cli-deb, path: /tmp/shomer-cli_*.deb, retention-days: 1 }
 
   # ─────────────────────── audit (workspace-wide) ───────────────────────
 
