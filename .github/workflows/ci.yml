@@ -264,8 +264,28 @@ jobs:
           title: api-bandit
           body: '`bandit -r` on `packages/api/src/`.'
 
+  api-hadolint:
+    # Dockerfile lint — runs parallel to the Python lint family,
+    # gates `api-container` so a broken Dockerfile fails before
+    # consuming a builder.
+    needs: [detect, headers]
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'api')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: packages/api/Dockerfile
+          format: tty
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: api-hadolint
+          body: '`hadolint` on `packages/api/Dockerfile`.'
+
   api-container:
-    needs: [api-bandit, audit]
+    needs: [api-bandit, audit, api-hadolint]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -279,6 +299,8 @@ jobs:
         with:
           context: packages/api
           load: true
+          provenance: mode=max
+          sbom: true
           tags: api:ci
           cache-from: type=gha,scope=api
           cache-to: type=gha,mode=max,scope=api
@@ -494,8 +516,25 @@ jobs:
           title: worker-bandit
           body: '`bandit -r` on `packages/worker/src/`.'
 
+  worker-hadolint:
+    needs: [detect, headers]
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'worker')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: packages/worker/Dockerfile
+          format: tty
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: worker-hadolint
+          body: '`hadolint` on `packages/worker/Dockerfile`.'
+
   worker-container:
-    needs: [worker-bandit, audit]
+    needs: [worker-bandit, audit, worker-hadolint]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -510,6 +549,8 @@ jobs:
           context: packages/worker
           load: true
           tags: worker:ci
+          provenance: mode=max
+          sbom: true
           cache-from: type=gha,scope=worker
           cache-to: type=gha,mode=max,scope=worker
       - name: Save image tarball
@@ -733,8 +774,25 @@ jobs:
           title: web-bandit
           body: '`bandit -r` on `packages/web/src/`.'
 
+  web-hadolint:
+    needs: [detect, headers]
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'web')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: packages/web/Dockerfile
+          format: tty
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: web-hadolint
+          body: '`hadolint` on `packages/web/Dockerfile`.'
+
   web-container:
-    needs: [web-bandit, audit, web-frontend-build]
+    needs: [web-bandit, audit, web-frontend-build, web-hadolint]
     # Run when the web image actually needs rebuilding — i.e. web's
     # Python passed bandit AND audit succeeded. web-frontend-build
     # being skipped is fine: we fall back to the committed dist.
@@ -759,6 +817,8 @@ jobs:
           context: packages/web
           load: true
           tags: web:ci
+          provenance: mode=max
+          sbom: true
           cache-from: type=gha,scope=web
           cache-to: type=gha,mode=max,scope=web
       - name: Save image tarball
@@ -1701,6 +1761,7 @@ jobs:
       contents: write   # gh release create
       packages: write   # docker push
       actions: write    # delete-artifact (cleanup after publish)
+      id-token: write   # cosign keyless via GitHub OIDC
     steps:
       - uses: actions/checkout@v6
         with:
@@ -1754,6 +1815,7 @@ jobs:
       contents: write
       packages: write
       actions: write
+      id-token: write   # cosign keyless via GitHub OIDC
     steps:
       - uses: actions/checkout@v6
         with:
@@ -1804,6 +1866,7 @@ jobs:
       contents: write
       packages: write
       actions: write
+      id-token: write   # cosign keyless via GitHub OIDC
     steps:
       - uses: actions/checkout@v6
         with:
