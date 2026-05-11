@@ -1,7 +1,7 @@
 image:
   repository: ghcr.io/goabonga/shomer-web
   tag: ""              # falls back to .Chart.AppVersion
-  pullPolicy: IfNotPresent
+  pullPolicy: Always   # CI kind smoke overrides to IfNotPresent via --set
 
 replicaCount: 2
 
