@@ -62,3 +62,21 @@ def test_packaged_resources_present(run, system_python) -> None:
     listing = out.stdout
     assert "templates" in listing, f"templates dir missing from package: {listing!r}"
     assert "static" in listing, f"static dir missing from package: {listing!r}"
+
+
+def test_appstream_metainfo_installed() -> None:
+    from pathlib import Path
+
+    metainfo = Path("/usr/share/metainfo/shomer-web.metainfo.xml")
+    assert metainfo.is_file(), f"missing {metainfo}"
+    body = metainfo.read_text()
+    assert "<id>io.github.goabonga.shomer-web</id>" in body
+    assert "<icon type=\"stock\">shomer-web</icon>" in body
+
+
+def test_hicolor_icon_installed() -> None:
+    from pathlib import Path
+
+    icon = Path("/usr/share/icons/hicolor/scalable/apps/shomer-web.svg")
+    assert icon.is_file(), f"missing {icon}"
+    assert icon.read_text().lstrip().startswith("<?xml")
