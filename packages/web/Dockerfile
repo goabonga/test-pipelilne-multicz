@@ -9,6 +9,7 @@
 # build BEFORE this Docker image is built (see release.yml's
 # post_bump hook for web-frontend).
 
+# hadolint ignore=DL3007
 FROM cgr.dev/chainguard/python:latest-dev AS builder
 
 WORKDIR /app
@@ -18,6 +19,7 @@ COPY src ./src
 RUN python -m venv /app/venv \
  && /app/venv/bin/pip install --no-cache-dir .
 
+# hadolint ignore=DL3007
 FROM cgr.dev/chainguard/python:latest
 
 COPY --from=builder /app/venv /app/venv
