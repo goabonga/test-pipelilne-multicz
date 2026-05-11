@@ -52,6 +52,10 @@ jobs:
             Changed components: `${{ steps.changed.outputs.json }}`
 
   headers:
+    # Same gate as `detect`: validate-first means a broken multicz
+    # config kills the run upstream, before headers (and everything
+    # downstream) bothers to start.
+    needs: [detect]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
