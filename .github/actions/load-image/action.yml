@@ -1,0 +1,59 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+name: load image
+description: |
+  Ensure `/tmp/<component>.tar` exists, containing the
+  `<component>:ci` docker image. Two paths:
+
+  1. **Artifact**: this run's matching `*-container` job uploaded
+     `<component>-image`. Download it, done.
+  2. **Pull fallback**: no artifact (component didn't change this
+     run). Pull `ghcr.io/<owner>/<repo>-<component>:latest`, retag
+     to `<component>:ci`, save to `/tmp/<component>.tar`.
+
+  Downstream `kind load image-archive /tmp/<component>.tar` works
+  unchanged in both cases — so a partial-change run still gets the
+  full system loaded into its kind cluster, with the unchanged
+  components served from their last released image.
+
+inputs:
+  component:
+    required: true
+    description: Component name — api / worker / web.
+  token:
+    required: true
+    description: Token with `packages:read` on ghcr (for the pull fallback).
+
+runs:
+  using: composite
+  steps:
+    - id: artifact
+      continue-on-error: true
+      uses: actions/download-artifact@v8
+      with:
+        name: ${{ inputs.component }}-image
+        path: /tmp
+
+    - uses: docker/login-action@v4
+      if: steps.artifact.outcome != 'success'
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ inputs.token }}
+
+    - name: Resolve ${{ inputs.component }} → /tmp/${{ inputs.component }}.tar
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [[ -f /tmp/${{ inputs.component }}.tar ]]; then
+          echo "[load-image] using fresh artifact for ${{ inputs.component }}"
+          exit 0
+        fi
+        OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+        REPO="${{ github.event.repository.name }}"
+        IMAGE="ghcr.io/${OWNER}/${REPO}-${{ inputs.component }}:latest"
+        echo "[load-image] no fresh artifact, pulling $IMAGE"
+        docker pull "$IMAGE"
+        docker tag "$IMAGE" "${{ inputs.component }}:ci"
+        docker save "${{ inputs.component }}:ci" -o /tmp/${{ inputs.component }}.tar

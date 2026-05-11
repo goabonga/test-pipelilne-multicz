@@ -1031,8 +1031,15 @@ jobs:
 
   audit:
     # Single workspace-level audit on the locked, non-dev dependency
-    # closure. Fans into every container job.
+    # closure. Fans into every container job — but doesn't require
+    # every test to have run (audits the workspace lockfile, not a
+    # specific component's tests). So we drop the default "all needs
+    # must succeed" gate and run as long as the workflow hasn't
+    # failed or been cancelled. Without this, a partial-change PR
+    # (e.g. only api changed → cli-test skipped) would skip audit
+    # → skip every container → no fresh image artifact for owasp.
     needs: [api-test, worker-test, web-test, cli-test]
+    if: '!failure() && !cancelled()'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -1279,10 +1286,12 @@ jobs:
 
   owasp-api:
     # Spin up an ephemeral kind cluster, deploy the FULL stack
-    # (api + worker + web) from CI image artifacts so the scan target
-    # has its real neighbours, then port-forward api and run an OWASP
-    # ZAP baseline against it. Gated on grype (not just container
-    # build) so a known-vulnerable image never reaches dynamic-scan.
+    # (api + worker + web) so the scan target has its real
+    # neighbours, then port-forward api and run an OWASP ZAP baseline.
+    # Images come from CI artifacts when their component changed this
+    # run, else are pulled from `ghcr.io/.../<X>:latest` (the load-image
+    # composite handles the fallback). Runs as long as SOMETHING
+    # upstream succeeded — a single api/chart change is enough.
     needs:
       - api-grype
       - worker-grype
@@ -1290,7 +1299,18 @@ jobs:
       - chart-api-checkov
       - chart-worker-checkov
       - chart-web-checkov
+    if: >-
+      !failure() && !cancelled() && (
+        needs.api-grype.result == 'success' ||
+        needs.worker-grype.result == 'success' ||
+        needs.web-grype.result == 'success' ||
+        needs.chart-api-checkov.result == 'success' ||
+        needs.chart-worker-checkov.result == 'success' ||
+        needs.chart-web-checkov.result == 'success'
+      )
     runs-on: ubuntu-latest
+    permissions:
+      packages: read   # load-image's ghcr.io fallback pull
     steps:
       - uses: actions/checkout@v6
         with:
@@ -1300,18 +1320,17 @@ jobs:
         with:
           component: api
           port: "8000"
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
           title: owasp-api
-          body: 'kind + helm install api/worker/web + OWASP ZAP baseline scan on api (report: `zap-api-baseline`).'
+          body: 'kind + helm install api/worker/web (fresh artifact when changed, ghcr `:latest` otherwise) + OWASP ZAP baseline on api (`zap-api-baseline`).'
 
   owasp-web:
     # Same shape as owasp-api but targeting web. Both jobs install
-    # the same 3 charts; only the ZAP-scan target differs. Runs in a
-    # separate kind cluster so the two scans are fully independent
-    # and parallel.
+    # the same 3 charts; only the ZAP-scan target differs.
     needs:
       - api-grype
       - worker-grype
@@ -1319,7 +1338,18 @@ jobs:
       - chart-api-checkov
       - chart-worker-checkov
       - chart-web-checkov
+    if: >-
+      !failure() && !cancelled() && (
+        needs.api-grype.result == 'success' ||
+        needs.worker-grype.result == 'success' ||
+        needs.web-grype.result == 'success' ||
+        needs.chart-api-checkov.result == 'success' ||
+        needs.chart-worker-checkov.result == 'success' ||
+        needs.chart-web-checkov.result == 'success'
+      )
     runs-on: ubuntu-latest
+    permissions:
+      packages: read
     steps:
       - uses: actions/checkout@v6
         with:
@@ -1329,12 +1359,13 @@ jobs:
         with:
           component: web
           port: "8080"
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
           title: owasp-web
-          body: 'kind + helm install api/worker/web + OWASP ZAP baseline scan on web (report: `zap-web-baseline`).'
+          body: 'kind + helm install api/worker/web (fresh artifact when changed, ghcr `:latest` otherwise) + OWASP ZAP baseline on web (`zap-web-baseline`).'
 
   # ─────────────────────── web-frontend (Node) ───────────────────────
 

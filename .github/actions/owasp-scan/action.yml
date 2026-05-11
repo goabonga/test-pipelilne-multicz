@@ -24,16 +24,29 @@ inputs:
   port:
     required: true
     description: Service port (and local forward port). 8000 for api, 8080 for web.
+  token:
+    required: true
+    description: Token with `packages:read` on ghcr (passed to `load-image` for the pull fallback).
 
 runs:
   using: composite
   steps:
-    - uses: actions/download-artifact@v8
-      with: { name: api-image, path: /tmp }
-    - uses: actions/download-artifact@v8
-      with: { name: worker-image, path: /tmp }
-    - uses: actions/download-artifact@v8
-      with: { name: web-image, path: /tmp }
+    # Each component image: fresh artifact if its container rebuilt
+    # this run, else `:latest` pulled from ghcr. Means owasp-* can
+    # run on a partial-change PR (e.g. only api changed → worker/web
+    # served from their last released images).
+    - uses: ./.github/actions/load-image
+      with:
+        component: api
+        token: ${{ inputs.token }}
+    - uses: ./.github/actions/load-image
+      with:
+        component: worker
+        token: ${{ inputs.token }}
+    - uses: ./.github/actions/load-image
+      with:
+        component: web
+        token: ${{ inputs.token }}
 
     - uses: helm/kind-action@v1.10.0
       with:
