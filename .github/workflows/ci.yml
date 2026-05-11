@@ -29,6 +29,9 @@ jobs:
   # ─────────────────────── always-on (detect, headers, validate) and docs (gated) ───────────────────────
 
   detect:
+    # Gate on validate so a broken multicz.toml fails loudly upfront
+    # rather than cryptically inside the `changed` action below.
+    needs: [validate]
     runs-on: ubuntu-latest
     outputs:
       changed: ${{ steps.changed.outputs.json }}
