@@ -1111,24 +1111,6 @@ jobs:
           title: chart-api-checkov
           body: '`checkov --framework helm` static security scan on `packages/api/chart/`.'
 
-  chart-api-deploy:
-    needs: [api-container, chart-api-checkov]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-      - uses: ./.github/actions/bump-preview
-      - uses: ./.github/actions/chart-deploy
-        with:
-          component: api
-      - name: Summary
-        if: always()
-        uses: ./.github/actions/summary
-        with:
-          title: chart-api-deploy
-          body: 'kind cluster + `helm install --wait` on `packages/api/chart/` (image loaded from artifact).'
-
   chart-worker-lint:
     needs: [detect, headers]
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'chart-worker')
@@ -1171,24 +1153,6 @@ jobs:
         with:
           title: chart-worker-checkov
           body: '`checkov --framework helm` static security scan on `packages/worker/chart/`.'
-
-  chart-worker-deploy:
-    needs: [worker-container, chart-worker-checkov]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-      - uses: ./.github/actions/bump-preview
-      - uses: ./.github/actions/chart-deploy
-        with:
-          component: worker
-      - name: Summary
-        if: always()
-        uses: ./.github/actions/summary
-        with:
-          title: chart-worker-deploy
-          body: 'kind cluster + `helm install --wait` on `packages/worker/chart/` (image loaded from artifact).'
 
   chart-web-lint:
     needs: [detect, headers]
@@ -1233,23 +1197,82 @@ jobs:
           title: chart-web-checkov
           body: '`checkov --framework helm` static security scan on `packages/web/chart/`.'
 
-  chart-web-deploy:
-    needs: [web-container, chart-web-checkov]
+  # ─────────────────────── k8s integration (single cluster) ───────────────────────
+
+  charts-deploy:
+    # Single kind cluster, all 3 charts (api / worker / web) installed
+    # side-by-side from their respective CI image artifacts. Validates
+    # that the three services co-exist and reach Ready in one
+    # namespace — more meaningful than 3 isolated cluster smokes.
+    needs:
+      - api-container
+      - worker-container
+      - web-container
+      - chart-api-checkov
+      - chart-worker-checkov
+      - chart-web-checkov
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
-      - uses: ./.github/actions/chart-deploy
+
+      - uses: actions/download-artifact@v8
+        with: { name: api-image, path: /tmp }
+      - uses: actions/download-artifact@v8
+        with: { name: worker-image, path: /tmp }
+      - uses: actions/download-artifact@v8
+        with: { name: web-image, path: /tmp }
+
+      - uses: helm/kind-action@v1.10.0
         with:
-          component: web
+          cluster_name: shomer
+          wait: 60s
+
+      - name: Load all 3 images into kind
+        run: |
+          set -euo pipefail
+          for c in api worker web; do
+            kind load image-archive /tmp/${c}.tar --name shomer
+          done
+
+      - uses: azure/setup-helm@v5
+
+      - name: helm install api / worker / web (each --wait)
+        run: |
+          set -euo pipefail
+          for c in api worker web; do
+            helm install "$c" "packages/$c/chart" \
+              --set image.repository="$c" \
+              --set image.tag=ci \
+              --set image.pullPolicy=IfNotPresent \
+              --wait --timeout 2m
+          done
+
+      - name: Cluster state (always)
+        if: always()
+        run: kubectl get all -A
+
+      - name: Diagnostics on failure
+        if: failure()
+        run: |
+          for c in api worker web; do
+            echo "=== describe $c ==="
+            kubectl describe deployment "$c" || true
+            echo "=== logs $c ==="
+            kubectl logs -l app.kubernetes.io/name="$c" --tail=200 || true
+          done
+
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
-          title: chart-web-deploy
-          body: 'kind cluster + `helm install --wait` on `packages/web/chart/` (image loaded from artifact).'
+          title: charts-deploy
+          body: |
+            Single `kind` cluster `shomer` with api / worker / web installed
+            side-by-side from CI image artifacts. Each `helm install --wait`
+            for pod readiness.
 
   # ─────────────────────── web-frontend (Node) ───────────────────────
 
