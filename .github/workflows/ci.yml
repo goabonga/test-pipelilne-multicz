@@ -1089,6 +1089,28 @@ jobs:
           title: chart-api-lint
           body: '`helm lint` + `helm template` smoke on `packages/api/chart/`.'
 
+  chart-api-checkov:
+    needs: [chart-api-lint]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
+      - uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: packages/api/chart
+          framework: helm
+          quiet: true
+          output_format: cli
+          soft_fail: false
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: chart-api-checkov
+          body: '`checkov --framework helm` static security scan on `packages/api/chart/`.'
+
   chart-worker-lint:
     needs: [detect, headers]
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'chart-worker')
@@ -1110,6 +1132,28 @@ jobs:
           title: chart-worker-lint
           body: '`helm lint` + `helm template` smoke on `packages/worker/chart/`.'
 
+  chart-worker-checkov:
+    needs: [chart-worker-lint]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
+      - uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: packages/worker/chart
+          framework: helm
+          quiet: true
+          output_format: cli
+          soft_fail: false
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: chart-worker-checkov
+          body: '`checkov --framework helm` static security scan on `packages/worker/chart/`.'
+
   chart-web-lint:
     needs: [detect, headers]
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'chart-web')
@@ -1130,6 +1174,28 @@ jobs:
         with:
           title: chart-web-lint
           body: '`helm lint` + `helm template` smoke on `packages/web/chart/`.'
+
+  chart-web-checkov:
+    needs: [chart-web-lint]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
+      - uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: packages/web/chart
+          framework: helm
+          quiet: true
+          output_format: cli
+          soft_fail: false
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: chart-web-checkov
+          body: '`checkov --framework helm` static security scan on `packages/web/chart/`.'
 
   # ─────────────────────── web-frontend (Node) ───────────────────────
 
