@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  AppStream metadata for shomer-cli. Picked up by appstream-glib /
+  app-stream-builder at .deb install time so AppCenter / Software /
+  Discover can show the icon + summary under the "Installed" tab.
+
+  `type="console-application"` is the right kind for a CLI tool —
+  there's no .desktop file (no GUI window to launch).
+-->
+<component type="console-application">
+  <id>io.github.goabonga.shomer-cli</id>
+  <name>Shomer CLI</name>
+  <summary>Operator CLI for Shomer authorization servers</summary>
+  <description>
+    <p>
+      Command-line tool to probe and manage Shomer auth servers
+      from an operator workstation. Subcommands include health
+      checks against /healthz and reporting the local CLI version.
+    </p>
+  </description>
+  <icon type="stock">shomer</icon>
+  <metadata_license>MIT</metadata_license>
+  <project_license>MIT</project_license>
+  <url type="homepage">https://github.com/goabonga/shomer</url>
+  <developer id="io.github.goabonga">
+    <name>Chris</name>
+  </developer>
+  <provides>
+    <binary>shomer</binary>
+  </provides>
+  <categories>
+    <category>System</category>
+    <category>Network</category>
+  </categories>
+</component>
