@@ -1159,6 +1159,11 @@ jobs:
           quiet: true
           output_format: cli
           soft_fail: false
+          # CKV_K8S_21: namespace is deploy-time (--namespace), not a
+          # chart concern. CKV_K8S_43: image digest pinning is
+          # incompatible with our `:VERSION` + `:latest` tag scheme
+          # and is enforced via cosign attestation instead.
+          skip_check: CKV_K8S_21,CKV_K8S_43
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
@@ -1234,6 +1239,10 @@ jobs:
           quiet: true
           output_format: cli
           soft_fail: false
+          # Plus CKV_K8S_8 / CKV_K8S_9: worker is a polling loop with
+          # no HTTP server (no /healthz). Chainguard distroless ships
+          # no shell, so an `exec` probe isn't feasible either.
+          skip_check: CKV_K8S_21,CKV_K8S_43,CKV_K8S_8,CKV_K8S_9
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
@@ -1306,6 +1315,7 @@ jobs:
           quiet: true
           output_format: cli
           soft_fail: false
+          skip_check: CKV_K8S_21,CKV_K8S_43
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
