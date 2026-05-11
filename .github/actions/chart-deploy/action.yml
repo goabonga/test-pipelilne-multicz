@@ -1,0 +1,61 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+name: chart deploy
+description: |
+  Spin up an ephemeral kind cluster, load the component's container
+  image (already built and saved as a CI artifact upstream), helm
+  install the chart pinned to that image, wait for readiness, and
+  dump cluster state for diagnostics. Acts as a smoke test that the
+  chart + image actually deploy and reach Ready.
+
+  REQUIRES the caller to have already run `actions/checkout` so the
+  chart sources are on disk, and the upstream `<component>-image`
+  artifact must exist.
+
+inputs:
+  component:
+    required: true
+    description: api / worker / web — chart path = `packages/<X>/chart/`.
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/download-artifact@v8
+      with:
+        name: ${{ inputs.component }}-image
+        path: /tmp
+
+    - uses: helm/kind-action@v1.10.0
+      with:
+        cluster_name: shomer-${{ inputs.component }}
+        wait: 60s
+
+    - name: Load image into kind
+      shell: bash
+      run: |
+        kind load image-archive /tmp/${{ inputs.component }}.tar \
+          --name shomer-${{ inputs.component }}
+
+    - uses: azure/setup-helm@v5
+
+    - name: Helm install + --wait for pod readiness
+      shell: bash
+      run: |
+        helm install ${{ inputs.component }} packages/${{ inputs.component }}/chart \
+          --set image.repository=${{ inputs.component }} \
+          --set image.tag=ci \
+          --set image.pullPolicy=IfNotPresent \
+          --wait --timeout 2m
+
+    - name: Cluster state (always)
+      if: always()
+      shell: bash
+      run: kubectl get all -A
+
+    - name: Diagnostics on failure
+      if: failure()
+      shell: bash
+      run: |
+        kubectl describe deployment ${{ inputs.component }} || true
+        kubectl logs -l app.kubernetes.io/name=${{ inputs.component }} --tail=200 || true

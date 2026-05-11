@@ -1111,6 +1111,24 @@ jobs:
           title: chart-api-checkov
           body: '`checkov --framework helm` static security scan on `packages/api/chart/`.'
 
+  chart-api-deploy:
+    needs: [api-container, chart-api-checkov]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
+      - uses: ./.github/actions/chart-deploy
+        with:
+          component: api
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: chart-api-deploy
+          body: 'kind cluster + `helm install --wait` on `packages/api/chart/` (image loaded from artifact).'
+
   chart-worker-lint:
     needs: [detect, headers]
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'chart-worker')
@@ -1154,6 +1172,24 @@ jobs:
           title: chart-worker-checkov
           body: '`checkov --framework helm` static security scan on `packages/worker/chart/`.'
 
+  chart-worker-deploy:
+    needs: [worker-container, chart-worker-checkov]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
+      - uses: ./.github/actions/chart-deploy
+        with:
+          component: worker
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: chart-worker-deploy
+          body: 'kind cluster + `helm install --wait` on `packages/worker/chart/` (image loaded from artifact).'
+
   chart-web-lint:
     needs: [detect, headers]
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'chart-web')
@@ -1196,6 +1232,24 @@ jobs:
         with:
           title: chart-web-checkov
           body: '`checkov --framework helm` static security scan on `packages/web/chart/`.'
+
+  chart-web-deploy:
+    needs: [web-container, chart-web-checkov]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
+      - uses: ./.github/actions/chart-deploy
+        with:
+          component: web
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: chart-web-deploy
+          body: 'kind cluster + `helm install --wait` on `packages/web/chart/` (image loaded from artifact).'
 
   # ─────────────────────── web-frontend (Node) ───────────────────────
 
