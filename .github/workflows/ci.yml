@@ -299,8 +299,10 @@ jobs:
         with:
           context: packages/api
           load: true
-          provenance: mode=max
-          sbom: true
+          # `provenance` / `sbom` flags are incompatible with `load:
+          # true` (manifest lists don't go through the docker
+          # exporter). Provenance + SBOM attestation are attached at
+          # push time via cosign in `.github/actions/publish-image`.
           tags: api:ci
           cache-from: type=gha,scope=api
           cache-to: type=gha,mode=max,scope=api
@@ -548,9 +550,8 @@ jobs:
         with:
           context: packages/worker
           load: true
+          # See api-container: attestations done via cosign post-push.
           tags: worker:ci
-          provenance: mode=max
-          sbom: true
           cache-from: type=gha,scope=worker
           cache-to: type=gha,mode=max,scope=worker
       - name: Save image tarball
@@ -816,9 +817,8 @@ jobs:
         with:
           context: packages/web
           load: true
+          # See api-container: attestations done via cosign post-push.
           tags: web:ci
-          provenance: mode=max
-          sbom: true
           cache-from: type=gha,scope=web
           cache-to: type=gha,mode=max,scope=web
       - name: Save image tarball
