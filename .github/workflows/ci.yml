@@ -723,13 +723,15 @@ jobs:
           body: '`mypy --strict` on `packages/web/src/`.'
 
   web-test:
-    needs: [web-lint, web-format, web-typecheck]
+    needs: [web-lint, web-format, web-typecheck, web-frontend-build]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
+      - uses: actions/download-artifact@v8
+        with: { name: web-frontend-dist, path: . }   # restores packages/web/src/shomer_web/{static,templates}/
       - uses: astral-sh/setup-uv@v8.1.0
         with: { python-version: "3.12" }
       - run: uv sync --frozen --all-packages
@@ -763,13 +765,15 @@ jobs:
           body: '`bandit -r` on `packages/web/src/`.'
 
   web-container:
-    needs: [web-bandit, audit]
+    needs: [web-bandit, audit, web-frontend-build]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
+      - uses: actions/download-artifact@v8
+        with: { name: web-frontend-dist, path: . }
       - uses: docker/setup-buildx-action@v4
       - name: Build web image
         id: build
@@ -830,13 +834,15 @@ jobs:
           body: '`grype --fail-on high` on the web SBOM.'
 
   web-deb:
-    needs: [web-bandit, audit]
+    needs: [web-bandit, audit, web-frontend-build]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
+      - uses: actions/download-artifact@v8
+        with: { name: web-frontend-dist, path: . }
       - name: Install debian build tooling
         run: |
           sudo apt-get update -qq
@@ -1436,3 +1442,40 @@ jobs:
         with:
           title: web-frontend-test
           body: '`vitest` (via `npm test`) on `packages/web-frontend/`.'
+
+  web-frontend-build:
+    # Build the JS/CSS bundle + Jinja templates and publish them as
+    # the `web-frontend-dist` artifact. The downstream Python web
+    # package consumes the artifact (web-test / web-container /
+    # web-deb) so a stale committed dist on a contributor's branch
+    # never sneaks into a release — CI always rebuilds.
+    needs: [web-frontend-typecheck, web-frontend-test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: packages/web-frontend/package-lock.json
+      - run: npm ci
+        working-directory: packages/web-frontend
+      - name: Build → packages/web/src/shomer_web/{static,templates}/
+        run: npm run build
+        working-directory: packages/web-frontend
+      - uses: actions/upload-artifact@v7
+        with:
+          name: web-frontend-dist
+          path: |
+            packages/web/src/shomer_web/static/
+            packages/web/src/shomer_web/templates/
+          retention-days: 1
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: web-frontend-build
+          body: '`npm run build` → `static/{main.js, main.css}` + `templates/*.html`, uploaded as `web-frontend-dist`.'
