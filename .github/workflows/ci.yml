@@ -1,22 +1,51 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Chris <goabonga@pm.me>
 
-# CI gate. Per-component named jobs — no matrix, every job is its own
-# graph node. Shape per component (python/buildable/chart/js):
+# CI + release pipeline. Per-component named jobs — no matrix, every
+# job is its own graph node so dependencies are explicit and the
+# GitHub Actions UI tells you at a glance which component broke.
 #
-#                   ┌─ X-lint       ─┐                       ┌─ X-container ─ X-sbom ─ X-grype
-#   detect ─ headers ─ X-format     ─┼─ X-test ─ X-bandit ─┐ │
-#                   ├─ X-typecheck  ─┘                     │ ├─ X-deb
-#                   └─ ...                                  ─┤
-#                                            audit ────────┘ │
-#                                                            └─ (per-component fan-out)
+# ─── Graph entry (linear, every job downstream skips on failure):
 #
-# Always-on (no needs.detect): headers, validate, docs.
+#   validate ── detect ── headers ──> per-component chains
+#                                     docs-build
 #
-# Per-component conditional `if:` uses
-# `contains(fromJson(needs.detect.outputs.changed), '<name>')` —
-# detect must be in `needs:` directly because GitHub Actions only
-# exposes outputs for direct needs, not transitive.
+# ─── Per-component chain (python/buildable — api / worker / web):
+#
+#                    ┌─ X-lint     ─┐                            ┌─ X-container ─ X-sbom ─ X-grype ─┐
+#   detect, headers ─┼─ X-format   ─┼─ X-test ─ X-bandit ─ audit ┤                                  ├─ owasp-X (kind+ZAP, web/api only)
+#                    └─ X-typecheck┘                             └─ X-deb ─ X-deb-validate ────────┘
+#
+# - cli has the same lint/test/bandit/deb chain, no container/sbom/grype/owasp.
+# - charts (chart-{api,worker,web}) have chart-X-lint → chart-X-checkov.
+# - web-frontend has its own JS chain that feeds web-frontend-build,
+#   consumed by web-{test,container,deb} via `web-frontend-dist` artifact.
+#
+# Per-component change-gating uses
+#   `if: contains(fromJson(needs.detect.outputs.changed).changed, '<name>')`
+# on the *-lint/format/typecheck/test entry points. The skip then
+# cascades down via `needs:` so unchanged components produce no work.
+# detect must sit in `needs:` directly because GitHub Actions only
+# exposes outputs for *direct* needs, not transitive.
+#
+# ─── Release fan-out (main only, !chore(release), all upstream green):
+#
+#   owasp-api ─┐
+#   owasp-web ─┤
+#   *-deb-validate (4) ─┤
+#   docs-build         ─┼─> release-bump  ┬─> release-api          (docker + .deb + gh release)
+#   validate           ─┘                 ├─> release-worker       (idem)
+#                                         ├─> release-web          (idem)
+#                                         ├─> release-cli          (.deb + gh release, no docker)
+#                                         ├─> release-chart-api    (helm OCI push + gh release)
+#                                         ├─> release-chart-worker (idem)
+#                                         ├─> release-chart-web    (idem)
+#                                         └─> release-docs         (zensical build + Pages + gh release)
+#
+# release-bump runs `multicz bump --commit --tag --push` for ALL
+# components that bumped — one atomic commit, N per-component tags.
+# Each downstream `release-<X>` job has `if: needs.release-bump.outputs.<X>_version != ''`,
+# so a component that didn't bump produces no publish.
 
 name: ci
 
@@ -26,7 +55,7 @@ on:
     branches: [main]
 
 jobs:
-  # ─────────────────────── always-on (detect, headers, validate) and docs (gated) ───────────────────────
+  # ─────────────────────── graph entry: validate ─ detect ─ headers + docs-build ───────────────────────
 
   detect:
     # Gate on validate so a broken multicz.toml fails loudly upfront
