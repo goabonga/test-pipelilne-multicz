@@ -89,8 +89,8 @@ jobs:
     # Pure smoke check — fires on PR + main when something
     # docs-related changed. Validates the zensical build doesn't
     # break, nothing else. No artifact, no Pages-specific tooling.
-    # docs-deploy gates on this passing before it does its own
-    # full-chain build + upload + deploy.
+    # `release-docs` gates on this (transitively, via `release-bump`)
+    # before it does the full build + Pages deploy.
     needs: [detect, headers]
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'docs')
     runs-on: ubuntu-latest
@@ -113,95 +113,10 @@ jobs:
           title: docs-build
           body: '`zensical build` smoke check.'
 
-  docs-deploy:
-    # Self-contained: re-runs the build, uploads it as a Pages
-    # artifact, deploys, then bumps + tags + cuts the GitHub
-    # Release. Gated on main; auto-skipped when docs-build skipped
-    # (no docs change) or fails (broken build).
-    needs: [docs-build]
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write   # multicz bump push
-      pages: write      # actions/deploy-pages
-      id-token: write   # OIDC for actions/deploy-pages + actions/upload-pages-artifact
-    concurrency:
-      # Pages best-practice — one in-flight deploy per repo, cancel
-      # any older run when a fresher push lands.
-      group: pages
-      cancel-in-progress: true
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
-
-      - uses: astral-sh/setup-uv@v8.1.0
-        with:
-          python-version: "3.12"
-
-      - name: Install workspace + doc group
-        run: uv sync --frozen --all-packages --group doc
-
-      - name: Configure git
-        run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-      - uses: goabonga/multicz-action@v1
-
-      # ─── 1. write-only bump: VERSION line + pyproject get the new
-      #    docs version on disk, nothing committed / tagged / pushed yet.
-      - name: Bump docs (write only)
-        run: multicz bump --component docs
-
-      # ─── 2. build with the just-bumped values in the working tree.
-      - name: Zensical build
-        run: uv run zensical build
-
-      # ─── 3. publish the built site to Pages.
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: site
-
-      - name: Deploy to GitHub Pages
-        id: deploy
-        uses: actions/deploy-pages@v4
-
-      # ─── 4. now that the build + deploy succeeded, materialise the
-      #    release in git: commit (chore(release): bump docs ...),
-      #    tag (docs-vX.Y.Z), push --follow-tags.
-      #
-      #    A second `multicz bump` is idempotent — it re-plans, sees
-      #    the same target version, re-writes the bump_files no-op,
-      #    then `git add` the already-dirty files and creates the
-      #    release commit + tag.
-      - name: Commit, tag, push docs
-        run: multicz bump --component docs --commit --tag --push
-
-      - name: Cut GitHub Release for the docs tag
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          for tag in $(git tag --points-at HEAD); do
-            case "$tag" in
-              docs-v*) ;;
-              *) continue ;;
-            esac
-            multicz release-notes --tag "$tag" \
-              | gh release create "$tag" --title "$tag" --notes-file -
-          done
-      - name: Summary
-        if: always()
-        uses: ./.github/actions/summary
-        with:
-          title: docs-deploy
-          body: |
-            Deployed to: ${{ steps.deploy.outputs.page_url }}
+  # docs-deploy is gone. The bump for `docs` now happens in
+  # `release-bump` alongside the other components; the build +
+  # Pages deploy + GitHub Release moved to `release-docs` (after
+  # `release-bump`, mirroring `release-api` / `release-chart-X`).
 
   # ─────────────────────── api ───────────────────────
 
@@ -1456,7 +1371,7 @@ jobs:
       - worker-deb-validate
       - web-deb-validate
       - cli-deb-validate
-      - docs-deploy
+      - docs-build
     if: >-
       !failure() &&
       !cancelled() &&
@@ -1473,13 +1388,11 @@ jobs:
       chart_api_version: ${{ steps.bump.outputs.chart_api_version }}
       chart_worker_version: ${{ steps.bump.outputs.chart_worker_version }}
       chart_web_version: ${{ steps.bump.outputs.chart_web_version }}
+      docs_version: ${{ steps.bump.outputs.docs_version }}
       owner: ${{ steps.owner.outputs.value }}
       repo: ${{ steps.names.outputs.repo }}
 
     steps:
-      # `ref: main` (not the push SHA) so docs-deploy's potential bump
-      # commit is picked up — we want to release on top of any
-      # upstream-in-this-run state change.
       - uses: actions/checkout@v6
         with:
           ref: main
@@ -1579,6 +1492,7 @@ jobs:
           CHART_API=$(jq -r    '.bumps["chart-api"].next_version    // empty' /tmp/release.json)
           CHART_WORKER=$(jq -r '.bumps["chart-worker"].next_version // empty' /tmp/release.json)
           CHART_WEB=$(jq -r    '.bumps["chart-web"].next_version    // empty' /tmp/release.json)
+          DOCS=$(jq -r         '.bumps.docs.next_version          // empty' /tmp/release.json)
           echo "api_version=$API"                   >> "$GITHUB_OUTPUT"
           echo "worker_version=$WORKER"             >> "$GITHUB_OUTPUT"
           echo "cli_version=$CLI"                   >> "$GITHUB_OUTPUT"
@@ -1586,6 +1500,7 @@ jobs:
           echo "chart_api_version=$CHART_API"       >> "$GITHUB_OUTPUT"
           echo "chart_worker_version=$CHART_WORKER" >> "$GITHUB_OUTPUT"
           echo "chart_web_version=$CHART_WEB"       >> "$GITHUB_OUTPUT"
+          echo "docs_version=$DOCS"                 >> "$GITHUB_OUTPUT"
 
       - name: Compute lowercase owner
         id: owner
@@ -1882,3 +1797,57 @@ jobs:
           body: |
             Pushed `oci://ghcr.io/${{ needs.release-bump.outputs.owner }}/charts/${{ needs.release-bump.outputs.repo }}-web:${{ needs.release-bump.outputs.chart_web_version }}`,
             cut GitHub Release `chart-web-v${{ needs.release-bump.outputs.chart_web_version }}`.
+
+  release-docs:
+    # Build the docs site with the just-bumped version (release-bump
+    # already committed the new docs version + tag + push), upload to
+    # GitHub Pages, then cut the docs-vX.Y.Z GitHub Release.
+    needs: [release-bump]
+    if: needs.release-bump.outputs.docs_version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # gh release create
+      pages: write      # actions/deploy-pages
+      id-token: write   # OIDC for upload-pages-artifact + deploy-pages
+    concurrency:
+      group: pages      # one in-flight Pages deploy per repo
+      cancel-in-progress: true
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+      - uses: astral-sh/setup-uv@v8.1.0
+        with:
+          python-version: "3.12"
+      - name: Install workspace + doc group
+        run: uv sync --frozen --all-packages --group doc
+      - uses: goabonga/multicz-action@v1
+      - name: Zensical build
+        run: uv run zensical build
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
+      - name: gh release create docs-v${{ needs.release-bump.outputs.docs_version }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="docs-v${{ needs.release-bump.outputs.docs_version }}"
+          multicz release-notes --tag "$TAG" \
+            | gh release create "$TAG" --title "$TAG" --notes-file -
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: release-docs
+          body: |
+            Built + deployed docs `${{ needs.release-bump.outputs.docs_version }}` to ${{ steps.deploy.outputs.page_url }},
+            cut GitHub Release `docs-v${{ needs.release-bump.outputs.docs_version }}`.
