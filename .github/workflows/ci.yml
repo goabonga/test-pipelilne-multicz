@@ -122,11 +122,11 @@ jobs:
           body: '`multicz validate --strict` on the workspace config.'
 
   docs-build:
-    # Pure smoke check — fires on PR + main when something
-    # docs-related changed. Validates the zensical build doesn't
-    # break, nothing else. No artifact, no Pages-specific tooling.
-    # `release-docs` gates on this (transitively, via `release-bump`)
-    # before it does the full build + Pages deploy.
+    # Build the zensical site on every docs change (PR + main). On
+    # main, `release-docs` reuses the resulting `docs-site` artifact
+    # instead of rebuilding — bump-preview already wrote the next
+    # version into the working tree, so the bytes are identical to
+    # what release-docs would produce.
     needs: [detect, headers]
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'docs')
     runs-on: ubuntu-latest
@@ -142,12 +142,17 @@ jobs:
         run: uv sync --frozen --all-packages --group doc
       - name: Zensical build
         run: uv run zensical build
+      - uses: actions/upload-artifact@v7
+        with:
+          name: docs-site
+          path: site/
+          retention-days: 1
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
           title: docs-build
-          body: '`zensical build` smoke check.'
+          body: '`zensical build` → uploaded as `docs-site` for `release-docs` to consume.'
 
   # docs-deploy is gone. The bump for `docs` now happens in
   # `release-bump` alongside the other components; the build +
@@ -1835,9 +1840,10 @@ jobs:
             cut GitHub Release `chart-web-v${{ needs.release-bump.outputs.chart_web_version }}`.
 
   release-docs:
-    # Build the docs site with the just-bumped version (release-bump
-    # already committed the new docs version + tag + push), upload to
-    # GitHub Pages, then cut the docs-vX.Y.Z GitHub Release.
+    # Consume the already-built `docs-site` artifact (produced by
+    # `docs-build` earlier in this run with the same bump-previewed
+    # version that `release-bump` then committed) — no rebuild. Upload
+    # to GitHub Pages, then cut the docs-vX.Y.Z GitHub Release.
     needs: [release-bump]
     if: needs.release-bump.outputs.docs_version != ''
     runs-on: ubuntu-latest
@@ -1857,14 +1863,11 @@ jobs:
           ref: main
           fetch-depth: 0
           token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
-      - uses: astral-sh/setup-uv@v8.1.0
-        with:
-          python-version: "3.12"
-      - name: Install workspace + doc group
-        run: uv sync --frozen --all-packages --group doc
       - uses: goabonga/multicz-action@v1
-      - name: Zensical build
-        run: uv run zensical build
+      - uses: actions/download-artifact@v8
+        with:
+          name: docs-site
+          path: site
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site
@@ -1885,5 +1888,5 @@ jobs:
         with:
           title: release-docs
           body: |
-            Built + deployed docs `${{ needs.release-bump.outputs.docs_version }}` to ${{ steps.deploy.outputs.page_url }},
+            Reused `docs-site` artifact from `docs-build`, deployed docs `${{ needs.release-bump.outputs.docs_version }}` to ${{ steps.deploy.outputs.page_url }},
             cut GitHub Release `docs-v${{ needs.release-bump.outputs.docs_version }}`.
