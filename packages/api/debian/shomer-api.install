@@ -1,1 +1,3 @@
 debian/shomer-api.service usr/lib/systemd/system/
+debian/shomer-api.metainfo.xml usr/share/metainfo/
+data/shomer-api.svg usr/share/icons/hicolor/scalable/apps/

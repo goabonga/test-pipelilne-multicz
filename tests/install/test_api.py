@@ -47,3 +47,21 @@ def test_fastapi_app_object_loads(run, system_python) -> None:
         "from shomer_api.app import app; print(app.title, app.version)",
     )
     assert "Shomer" in out.stdout
+
+
+def test_appstream_metainfo_installed() -> None:
+    from pathlib import Path
+
+    metainfo = Path("/usr/share/metainfo/shomer-api.metainfo.xml")
+    assert metainfo.is_file(), f"missing {metainfo}"
+    body = metainfo.read_text()
+    assert "<id>io.github.goabonga.shomer-api</id>" in body
+    assert "<icon type=\"stock\">shomer-api</icon>" in body
+
+
+def test_hicolor_icon_installed() -> None:
+    from pathlib import Path
+
+    icon = Path("/usr/share/icons/hicolor/scalable/apps/shomer-api.svg")
+    assert icon.is_file(), f"missing {icon}"
+    assert icon.read_text().lstrip().startswith("<?xml")

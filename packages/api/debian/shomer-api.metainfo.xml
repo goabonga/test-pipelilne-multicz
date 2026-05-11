@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="console-application">
+  <id>io.github.goabonga.shomer-api</id>
+  <name>Shomer API</name>
+  <summary>Shomer authorization HTTP API server</summary>
+  <description>
+    <p>
+      FastAPI service exposing the Shomer OAuth2/OIDC authorization
+      surface. Ships a hardened systemd unit (`shomer-api.service`)
+      with full sandbox (DynamicUser, ProtectSystem=strict,
+      MemoryDenyWriteExecute, ...).
+    </p>
+  </description>
+  <icon type="stock">shomer-api</icon>
+  <metadata_license>MIT</metadata_license>
+  <project_license>MIT</project_license>
+  <url type="homepage">https://github.com/goabonga/shomer</url>
+  <developer id="io.github.goabonga">
+    <name>Chris</name>
+  </developer>
+  <provides>
+    <binary>shomer-api</binary>
+  </provides>
+  <categories>
+    <category>System</category>
+    <category>Network</category>
+    <category>Security</category>
+  </categories>
+</component>
