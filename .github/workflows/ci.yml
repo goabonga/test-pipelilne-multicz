@@ -1099,6 +1099,38 @@ jobs:
           title: chart-api-checkov
           body: '`checkov --framework helm` static security scan on `packages/api/chart/`.'
 
+  chart-api-package:
+    # Package the chart with the bumped version + rewritten name so
+    # `release-chart-api` can just download + helm push — no helm
+    # package at release time.
+    needs: [chart-api-checkov]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
+      - uses: azure/setup-helm@v5
+      - name: Rewrite Chart.yaml name for this repo's namespace
+        run: |
+          REPO='${{ github.event.repository.name }}'
+          sed -i "s/^name: shomer-api$/name: ${REPO}-api/" packages/api/chart/Chart.yaml
+      - name: helm package
+        run: |
+          mkdir -p /tmp/chart-api
+          helm package packages/api/chart --destination /tmp/chart-api
+      - uses: actions/upload-artifact@v7
+        with:
+          name: chart-api-tgz
+          path: /tmp/chart-api/
+          retention-days: 1
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: chart-api-package
+          body: '`helm package` (bump-previewed version + rewritten name) → `chart-api-tgz` artifact.'
+
   chart-worker-lint:
     needs: [detect, headers]
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'chart-worker')
@@ -1142,6 +1174,35 @@ jobs:
           title: chart-worker-checkov
           body: '`checkov --framework helm` static security scan on `packages/worker/chart/`.'
 
+  chart-worker-package:
+    needs: [chart-worker-checkov]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
+      - uses: azure/setup-helm@v5
+      - name: Rewrite Chart.yaml name for this repo's namespace
+        run: |
+          REPO='${{ github.event.repository.name }}'
+          sed -i "s/^name: shomer-worker$/name: ${REPO}-worker/" packages/worker/chart/Chart.yaml
+      - name: helm package
+        run: |
+          mkdir -p /tmp/chart-worker
+          helm package packages/worker/chart --destination /tmp/chart-worker
+      - uses: actions/upload-artifact@v7
+        with:
+          name: chart-worker-tgz
+          path: /tmp/chart-worker/
+          retention-days: 1
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: chart-worker-package
+          body: '`helm package` (bump-previewed version + rewritten name) → `chart-worker-tgz` artifact.'
+
   chart-web-lint:
     needs: [detect, headers]
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'chart-web')
@@ -1184,6 +1245,35 @@ jobs:
         with:
           title: chart-web-checkov
           body: '`checkov --framework helm` static security scan on `packages/web/chart/`.'
+
+  chart-web-package:
+    needs: [chart-web-checkov]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
+      - uses: azure/setup-helm@v5
+      - name: Rewrite Chart.yaml name for this repo's namespace
+        run: |
+          REPO='${{ github.event.repository.name }}'
+          sed -i "s/^name: shomer-web$/name: ${REPO}-web/" packages/web/chart/Chart.yaml
+      - name: helm package
+        run: |
+          mkdir -p /tmp/chart-web
+          helm package packages/web/chart --destination /tmp/chart-web
+      - uses: actions/upload-artifact@v7
+        with:
+          name: chart-web-tgz
+          path: /tmp/chart-web/
+          retention-days: 1
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: chart-web-package
+          body: '`helm package` (bump-previewed version + rewritten name) → `chart-web-tgz` artifact.'
 
   # ─────────────────────── OWASP baseline (kind + ZAP, per HTTP service) ───────────────────────
 
@@ -1412,6 +1502,9 @@ jobs:
       - worker-deb-validate
       - web-deb-validate
       - cli-deb-validate
+      - chart-api-package
+      - chart-worker-package
+      - chart-web-package
       - docs-build
     if: >-
       !failure() &&
@@ -1742,9 +1835,7 @@ jobs:
       - uses: ./.github/actions/publish-chart
         with:
           component: api
-          version: ${{ needs.release-bump.outputs.chart_api_version }}
           owner: ${{ needs.release-bump.outputs.owner }}
-          repo: ${{ needs.release-bump.outputs.repo }}
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: gh release create chart-api-v${{ needs.release-bump.outputs.chart_api_version }}
         env:
@@ -1780,9 +1871,7 @@ jobs:
       - uses: ./.github/actions/publish-chart
         with:
           component: worker
-          version: ${{ needs.release-bump.outputs.chart_worker_version }}
           owner: ${{ needs.release-bump.outputs.owner }}
-          repo: ${{ needs.release-bump.outputs.repo }}
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: gh release create chart-worker-v${{ needs.release-bump.outputs.chart_worker_version }}
         env:
@@ -1818,9 +1907,7 @@ jobs:
       - uses: ./.github/actions/publish-chart
         with:
           component: web
-          version: ${{ needs.release-bump.outputs.chart_web_version }}
           owner: ${{ needs.release-bump.outputs.owner }}
-          repo: ${{ needs.release-bump.outputs.repo }}
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: gh release create chart-web-v${{ needs.release-bump.outputs.chart_web_version }}
         env:

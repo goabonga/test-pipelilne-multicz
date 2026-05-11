@@ -3,25 +3,22 @@
 
 name: publish helm chart
 description: |
-  Package a component's helm chart and push it as an OCI artifact to
-  `oci://ghcr.io/<owner>/charts`. The Chart.yaml `name:` field is
-  rewritten in-place from `shomer-<component>` to `<repo>-<component>`
-  so forks/siblings push under their own namespace without
-  overwriting the upstream chart.
+  Download the `chart-<component>-tgz` CI artifact (a pre-packaged
+  .tgz produced upstream by the matching `chart-<X>-package` job,
+  with the bumped version baked in and the chart name already
+  rewritten for this repo's namespace), then push it as an OCI
+  artifact to `oci://ghcr.io/<owner>/charts`.
+
+  No re-package — the CI job already built it with the correct
+  version + name.
 
 inputs:
   component:
     required: true
-    description: Component name — api / worker / web. Chart lives at `packages/<X>/chart/`.
-  version:
-    required: true
-    description: Chart version (semver, used in the .tgz filename).
+    description: Component name — api / worker / web.
   owner:
     required: true
     description: Lowercase ghcr namespace.
-  repo:
-    required: true
-    description: Repo name — used as chart-name prefix.
   token:
     required: true
     description: Token with `packages:write` scope on ghcr.
@@ -29,6 +26,11 @@ inputs:
 runs:
   using: composite
   steps:
+    - uses: actions/download-artifact@v8
+      with:
+        name: chart-${{ inputs.component }}-tgz
+        path: /tmp/chart
+
     - uses: azure/setup-helm@v5
 
     - name: helm registry login
@@ -37,25 +39,10 @@ runs:
         TOKEN: ${{ inputs.token }}
       run: echo "$TOKEN" | helm registry login ghcr.io -u '${{ github.actor }}' --password-stdin
 
-    - name: Rewrite Chart.yaml `name:` for this repo's namespace
+    - name: helm push
       shell: bash
       run: |
         set -euo pipefail
-        sed -i "s/^name: shomer-${{ inputs.component }}$/name: ${{ inputs.repo }}-${{ inputs.component }}/" \
-          packages/${{ inputs.component }}/chart/Chart.yaml
-
-    - name: helm package + push
-      shell: bash
-      id: push
-      run: |
-        set -euo pipefail
-        helm package packages/${{ inputs.component }}/chart --destination /tmp
-        helm push "/tmp/${{ inputs.repo }}-${{ inputs.component }}-${{ inputs.version }}.tgz" \
-          "oci://ghcr.io/${{ inputs.owner }}/charts" 2>&1 | tee /tmp/push-chart-${{ inputs.component }}.out
-        DIGEST=$(awk '/^Digest:/{print $2}' /tmp/push-chart-${{ inputs.component }}.out)
-        echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
-
-outputs:
-  digest:
-    description: Pushed chart digest.
-    value: ${{ steps.push.outputs.digest }}
+        # One .tgz expected per chart-<X>-tgz artifact.
+        TGZ=$(ls /tmp/chart/*.tgz | head -1)
+        helm push "$TGZ" "oci://ghcr.io/${{ inputs.owner }}/charts"

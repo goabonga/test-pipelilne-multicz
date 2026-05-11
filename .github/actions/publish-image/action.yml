@@ -3,10 +3,16 @@
 
 name: publish docker image
 description: |
-  Build and push a component's container image to `ghcr.io` under
-  `<owner>/<repo>-<component>` with two tags: the version and `latest`.
-  GHA cache scope is per-image so concurrent builds don't trash each
-  other.
+  Download the `<component>-image` CI artifact (a `docker save`
+  tarball produced upstream by the matching `*-container` job),
+  `docker load` it, retag to ghcr, and push the version + latest
+  tags. Byte-identical to what `docker build` would produce now — the
+  upstream container was built with `bump-preview` writing the same
+  version that `release-bump` then committed.
+
+  No rebuild: we trust the CI artifact. Faster (~3 min saved per
+  image) and removes the divergence risk between "what got tested"
+  and "what got published".
 
 inputs:
   component:
@@ -17,10 +23,10 @@ inputs:
     description: Version to tag (also publishes `latest`).
   owner:
     required: true
-    description: Lowercase ghcr namespace (typically `${{ github.repository_owner }}` lowercased).
+    description: Lowercase ghcr namespace.
   repo:
     required: true
-    description: Repo name (typically `${{ github.event.repository.name }}`) — used as image-name prefix.
+    description: Repo name — used as image-name prefix (`<repo>-<component>`).
   token:
     required: true
     description: Token with `packages:write` scope on ghcr.
@@ -28,24 +34,24 @@ inputs:
 runs:
   using: composite
   steps:
+    - uses: actions/download-artifact@v8
+      with:
+        name: ${{ inputs.component }}-image
+        path: /tmp
+
     - uses: docker/login-action@v4
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ inputs.token }}
-    - uses: docker/setup-buildx-action@v4
-    - id: build
-      uses: docker/build-push-action@v7
-      with:
-        context: packages/${{ inputs.component }}
-        push: true
-        tags: |
-          ghcr.io/${{ inputs.owner }}/${{ inputs.repo }}-${{ inputs.component }}:${{ inputs.version }}
-          ghcr.io/${{ inputs.owner }}/${{ inputs.repo }}-${{ inputs.component }}:latest
-        cache-from: type=gha,scope=${{ inputs.repo }}-${{ inputs.component }}
-        cache-to: type=gha,mode=max,scope=${{ inputs.repo }}-${{ inputs.component }}
 
-outputs:
-  digest:
-    description: Pushed image digest.
-    value: ${{ steps.build.outputs.digest }}
+    - name: docker load + retag + push
+      shell: bash
+      run: |
+        set -euo pipefail
+        docker load -i /tmp/${{ inputs.component }}.tar
+        TARGET="ghcr.io/${{ inputs.owner }}/${{ inputs.repo }}-${{ inputs.component }}"
+        docker tag "${{ inputs.component }}:ci" "$TARGET:${{ inputs.version }}"
+        docker tag "${{ inputs.component }}:ci" "$TARGET:latest"
+        docker push "$TARGET:${{ inputs.version }}"
+        docker push "$TARGET:latest"
