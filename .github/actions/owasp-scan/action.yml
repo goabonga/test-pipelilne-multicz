@@ -3,52 +3,64 @@
 
 name: owasp scan
 description: |
-  Spin up an ephemeral kind cluster, helm install the component's
-  chart from its CI image artifact, port-forward the service, and run
-  an OWASP ZAP baseline scan against it. Uploads the ZAP HTML + JSON
+  Spin up an ephemeral kind cluster, helm install ALL three charts
+  (api + worker + web) from their CI image artifacts so the scan
+  target sees its real neighbours (web reaches api, api reaches
+  worker, etc.), then port-forward the target service and run an
+  OWASP ZAP baseline scan against it. Uploads the ZAP HTML + JSON
   report as the `zap-<component>-baseline` artifact.
 
   REQUIRES: the caller has already run `actions/checkout` and the
-  upstream `<component>-image` CI artifact exists (uploaded by the
-  matching `<X>-container` job).
+  three upstream `<X>-image` artifacts exist (uploaded by the
+  matching `*-container` jobs upstream in the grype-gated chain).
 
 inputs:
   component:
     required: true
-    description: Component name — api / web. Drives chart path, image name, service name.
+    description: |
+      Component to ZAP-scan — api or web. The cluster deploys ALL 3
+      services regardless; this just selects which one gets the
+      port-forward + scan.
   port:
     required: true
-    description: Service port (and the local port we forward to). 8000 for api, 8080 for web.
+    description: Service port (and local forward port). 8000 for api, 8080 for web.
 
 runs:
   using: composite
   steps:
     - uses: actions/download-artifact@v8
-      with:
-        name: ${{ inputs.component }}-image
-        path: /tmp
+      with: { name: api-image, path: /tmp }
+    - uses: actions/download-artifact@v8
+      with: { name: worker-image, path: /tmp }
+    - uses: actions/download-artifact@v8
+      with: { name: web-image, path: /tmp }
 
     - uses: helm/kind-action@v1.10.0
       with:
         cluster_name: shomer-${{ inputs.component }}
         wait: 60s
 
-    - name: Load image into kind
+    - name: Load all 3 images into kind
       shell: bash
       run: |
-        kind load image-archive /tmp/${{ inputs.component }}.tar \
-          --name shomer-${{ inputs.component }}
+        set -euo pipefail
+        for c in api worker web; do
+          kind load image-archive /tmp/${c}.tar --name shomer-${{ inputs.component }}
+        done
 
     - uses: azure/setup-helm@v5
 
-    - name: helm install ${{ inputs.component }} --wait
+    - name: helm install api / worker / web (each --wait)
       shell: bash
       run: |
-        helm install ${{ inputs.component }} packages/${{ inputs.component }}/chart \
-          --set image.repository=${{ inputs.component }} \
-          --set image.tag=ci \
-          --set image.pullPolicy=IfNotPresent \
-          --wait --timeout 2m
+        set -euo pipefail
+        for c in api worker web; do
+          helm install "$c" "packages/$c/chart" \
+            --set image.repository="$c" \
+            --set image.tag=ci \
+            --set image.pullPolicy=IfNotPresent \
+            --wait --timeout 2m
+        done
 
     - name: Port-forward svc/${{ inputs.component }} → localhost:${{ inputs.port }}
       shell: bash
@@ -85,5 +97,9 @@ runs:
       if: failure()
       shell: bash
       run: |
-        kubectl describe deployment ${{ inputs.component }} || true
-        kubectl logs -l app.kubernetes.io/name=${{ inputs.component }} --tail=200 || true
+        for c in api worker web; do
+          echo "=== describe $c ==="
+          kubectl describe deployment "$c" || true
+          echo "=== logs $c ==="
+          kubectl logs -l app.kubernetes.io/name="$c" --tail=200 || true
+        done

@@ -1206,11 +1206,18 @@ jobs:
   # ─────────────────────── OWASP baseline (kind + ZAP, per HTTP service) ───────────────────────
 
   owasp-api:
-    # Spin up an ephemeral kind cluster, helm install ONLY api from
-    # its CI image artifact, port-forward and ZAP-baseline scan it.
-    # Gated on grype (not just container build) so a known-vulnerable
-    # image never reaches the dynamic-scan stage.
-    needs: [api-grype, chart-api-checkov]
+    # Spin up an ephemeral kind cluster, deploy the FULL stack
+    # (api + worker + web) from CI image artifacts so the scan target
+    # has its real neighbours, then port-forward api and run an OWASP
+    # ZAP baseline against it. Gated on grype (not just container
+    # build) so a known-vulnerable image never reaches dynamic-scan.
+    needs:
+      - api-grype
+      - worker-grype
+      - web-grype
+      - chart-api-checkov
+      - chart-worker-checkov
+      - chart-web-checkov
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -1226,14 +1233,20 @@ jobs:
         uses: ./.github/actions/summary
         with:
           title: owasp-api
-          body: 'kind + `helm install api` + OWASP ZAP baseline scan (report: `zap-api-baseline`).'
+          body: 'kind + helm install api/worker/web + OWASP ZAP baseline scan on api (report: `zap-api-baseline`).'
 
   owasp-web:
-    # Same shape as owasp-api but targeting the web frontend. The web
-    # image already has the bundled JS/CSS/templates baked in by
-    # `web-container` (which depends on `web-frontend-build`), so this
-    # job consumes only `web-image`.
-    needs: [web-grype, chart-web-checkov]
+    # Same shape as owasp-api but targeting web. Both jobs install
+    # the same 3 charts; only the ZAP-scan target differs. Runs in a
+    # separate kind cluster so the two scans are fully independent
+    # and parallel.
+    needs:
+      - api-grype
+      - worker-grype
+      - web-grype
+      - chart-api-checkov
+      - chart-worker-checkov
+      - chart-web-checkov
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -1249,7 +1262,7 @@ jobs:
         uses: ./.github/actions/summary
         with:
           title: owasp-web
-          body: 'kind + `helm install web` + OWASP ZAP baseline scan (report: `zap-web-baseline`).'
+          body: 'kind + helm install api/worker/web + OWASP ZAP baseline scan on web (report: `zap-web-baseline`).'
 
   # ─────────────────────── web-frontend (Node) ───────────────────────
 
