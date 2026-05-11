@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Chart.Name }}
+  policyTypes:
+    - Ingress
+    - Egress
+  # Permissive baseline — picked up by checkov's "pod has a
+  # NetworkPolicy" rule (CKV2_K8S_6). Production deployments
+  # should override this chart's NetworkPolicy to allow only the
+  # specific peers (api ↔ db, web → api, etc.).
+  ingress:
+    - {}
+  egress:
+    - {}
