@@ -4,3 +4,4 @@ description: Shomer background worker.
 type: application
 version: 0.0.0
 appVersion: "0.0.0"
+icon: https://raw.githubusercontent.com/goabonga/shomer/main/assets/shomer.svg
