@@ -44,3 +44,21 @@ def test_tick_callable_resolves(run, system_python) -> None:
         "from shomer_worker.main import tick; print(callable(tick))",
     )
     assert out.stdout.strip() == "True"
+
+
+def test_appstream_metainfo_installed() -> None:
+    from pathlib import Path
+
+    metainfo = Path("/usr/share/metainfo/shomer-worker.metainfo.xml")
+    assert metainfo.is_file(), f"missing {metainfo}"
+    body = metainfo.read_text()
+    assert "<id>io.github.goabonga.shomer-worker</id>" in body
+    assert "<icon type=\"stock\">shomer-worker</icon>" in body
+
+
+def test_hicolor_icon_installed() -> None:
+    from pathlib import Path
+
+    icon = Path("/usr/share/icons/hicolor/scalable/apps/shomer-worker.svg")
+    assert icon.is_file(), f"missing {icon}"
+    assert icon.read_text().lstrip().startswith("<?xml")

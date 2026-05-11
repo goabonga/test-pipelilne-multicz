@@ -1,1 +1,3 @@
 debian/shomer-worker.service usr/lib/systemd/system/
+debian/shomer-worker.metainfo.xml usr/share/metainfo/
+data/shomer-worker.svg usr/share/icons/hicolor/scalable/apps/
