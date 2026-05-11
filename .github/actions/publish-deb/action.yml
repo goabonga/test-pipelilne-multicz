@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+name: build debian package
+description: |
+  Install the debhelper / pybuild toolchain and run `dpkg-buildpackage`
+  for one component. The .deb (+ .buildinfo + .changes) ends up in
+  `/tmp/shomer-<component>_*.deb` for the caller to attach as a
+  GitHub Release asset.
+
+  dpkg-source enforces the source dir name match
+  `debian/control#Source:`, so we copy `packages/<X>/` into
+  `/tmp/build-<X>/shomer-<X>/` before building.
+
+inputs:
+  component:
+    required: true
+    description: Component name — api / worker / web / cli.
+
+runs:
+  using: composite
+  steps:
+    - name: Install debian build tooling
+      shell: bash
+      run: |
+        sudo apt-get update -qq
+        sudo apt-get install -y --no-install-recommends \
+          build-essential debhelper dh-python python3-all \
+          python3-hatchling pybuild-plugin-pyproject dpkg-dev
+
+    - name: dpkg-buildpackage
+      shell: bash
+      run: |
+        set -euo pipefail
+        WORK=/tmp/build-${{ inputs.component }}
+        rm -rf "$WORK" && mkdir -p "$WORK"
+        cp -r packages/${{ inputs.component }} "$WORK/shomer-${{ inputs.component }}"
+        cd "$WORK/shomer-${{ inputs.component }}"
+        dpkg-buildpackage -us -uc -b
+        mv "$WORK"/shomer-${{ inputs.component }}_*.deb \
+           "$WORK"/shomer-${{ inputs.component }}_*.buildinfo \
+           "$WORK"/shomer-${{ inputs.component }}_*.changes /tmp/

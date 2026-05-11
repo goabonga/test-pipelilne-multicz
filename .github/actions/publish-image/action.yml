@@ -1,0 +1,51 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+name: publish docker image
+description: |
+  Build and push a component's container image to `ghcr.io` under
+  `<owner>/<repo>-<component>` with two tags: the version and `latest`.
+  GHA cache scope is per-image so concurrent builds don't trash each
+  other.
+
+inputs:
+  component:
+    required: true
+    description: Component name — api / worker / web.
+  version:
+    required: true
+    description: Version to tag (also publishes `latest`).
+  owner:
+    required: true
+    description: Lowercase ghcr namespace (typically `${{ github.repository_owner }}` lowercased).
+  repo:
+    required: true
+    description: Repo name (typically `${{ github.event.repository.name }}`) — used as image-name prefix.
+  token:
+    required: true
+    description: Token with `packages:write` scope on ghcr.
+
+runs:
+  using: composite
+  steps:
+    - uses: docker/login-action@v4
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ inputs.token }}
+    - uses: docker/setup-buildx-action@v4
+    - id: build
+      uses: docker/build-push-action@v7
+      with:
+        context: packages/${{ inputs.component }}
+        push: true
+        tags: |
+          ghcr.io/${{ inputs.owner }}/${{ inputs.repo }}-${{ inputs.component }}:${{ inputs.version }}
+          ghcr.io/${{ inputs.owner }}/${{ inputs.repo }}-${{ inputs.component }}:latest
+        cache-from: type=gha,scope=${{ inputs.repo }}-${{ inputs.component }}
+        cache-to: type=gha,mode=max,scope=${{ inputs.repo }}-${{ inputs.component }}
+
+outputs:
+  digest:
+    description: Pushed image digest.
+    value: ${{ steps.build.outputs.digest }}

@@ -1408,10 +1408,13 @@ jobs:
 
   # ─────────────────────── release (main only, full graph green) ───────────────────────
 
-  release:
-    # Single release stage the whole CI graph funnels into. Replaces
-    # the separate release.yml workflow_run pipeline so the entire
-    # path "tested → bumped → tagged → published" lives in one run.
+  release-bump:
+    # Single bump stage that the whole CI graph funnels into. multicz
+    # discovers which components changed since their last tag,
+    # commits + tags + pushes ALL of them in one atomic commit. The
+    # bumped versions are exposed as job outputs; downstream
+    # `release-<component>` publish jobs consume those outputs to
+    # decide whether to run.
     #
     # Triple gate:
     #   1. On `main` only — PRs and other branches skip.
@@ -1436,7 +1439,16 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write   # push release commit + tags
-      packages: write   # push docker image + helm chart to ghcr.io
+    outputs:
+      api_version: ${{ steps.bump.outputs.api_version }}
+      worker_version: ${{ steps.bump.outputs.worker_version }}
+      cli_version: ${{ steps.bump.outputs.cli_version }}
+      web_version: ${{ steps.bump.outputs.web_version }}
+      chart_api_version: ${{ steps.bump.outputs.chart_api_version }}
+      chart_worker_version: ${{ steps.bump.outputs.chart_worker_version }}
+      chart_web_version: ${{ steps.bump.outputs.chart_web_version }}
+      owner: ${{ steps.owner.outputs.value }}
+      repo: ${{ steps.names.outputs.repo }}
 
     steps:
       # `ref: main` (not the push SHA) so docs-deploy's potential bump
@@ -1477,8 +1489,6 @@ jobs:
           git config user.email "${EMAIL:-41898282+github-actions[bot]@users.noreply.github.com}"
 
       - name: Detect GPG availability
-        # Secrets can't be referenced from `if:` directly, so promote
-        # their presence to a step output.
         id: gpg
         env:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
@@ -1552,300 +1562,297 @@ jobs:
           echo "chart_web_version=$CHART_WEB"       >> "$GITHUB_OUTPUT"
 
       - name: Compute lowercase owner
-        if: steps.plan.outputs.release == 'true'
         id: owner
         run: |
           echo "value=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
 
-      # Derive artifact names from the repository name so a fork (or a
-      # `shomer-test` sibling) builds + pushes under its own namespace
-      # rather than overwriting the upstream `shomer-*` images and
-      # charts. On the canonical repo this is a no-op: repository.name
-      # is "shomer" -> name = "shomer-api", same as before.
-      - name: Compute artifact names
-        if: steps.plan.outputs.release == 'true'
+      # Output the bare repo name for downstream publish jobs to build
+      # their image/chart names (`<repo>-<component>`). Lets a fork
+      # publish under its own namespace without overwriting upstream.
+      - name: Compute repo name
         id: names
         run: |
-          REPO='${{ github.event.repository.name }}'
-          echo "api=${REPO}-api"       >> "$GITHUB_OUTPUT"
-          echo "worker=${REPO}-worker" >> "$GITHUB_OUTPUT"
-          echo "web=${REPO}-web"       >> "$GITHUB_OUTPUT"
-
-      - name: Login to ghcr.io (docker)
-        if: >-
-          steps.bump.outputs.api_version != '' ||
-          steps.bump.outputs.worker_version != '' ||
-          steps.bump.outputs.web_version != ''
-        uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: docker/setup-buildx-action@v4
-        if: >-
-          steps.bump.outputs.api_version != '' ||
-          steps.bump.outputs.worker_version != '' ||
-          steps.bump.outputs.web_version != ''
-
-      - name: Build and push api image
-        id: push_api
-        if: steps.bump.outputs.api_version != ''
-        uses: docker/build-push-action@v7
-        with:
-          context: packages/api
-          push: true
-          tags: |
-            ghcr.io/${{ steps.owner.outputs.value }}/${{ steps.names.outputs.api }}:${{ steps.bump.outputs.api_version }}
-            ghcr.io/${{ steps.owner.outputs.value }}/${{ steps.names.outputs.api }}:latest
-          cache-from: type=gha,scope=${{ steps.names.outputs.api }}
-          cache-to: type=gha,mode=max,scope=${{ steps.names.outputs.api }}
-
-      - name: Build and push worker image
-        id: push_worker
-        if: steps.bump.outputs.worker_version != ''
-        uses: docker/build-push-action@v7
-        with:
-          context: packages/worker
-          push: true
-          tags: |
-            ghcr.io/${{ steps.owner.outputs.value }}/${{ steps.names.outputs.worker }}:${{ steps.bump.outputs.worker_version }}
-            ghcr.io/${{ steps.owner.outputs.value }}/${{ steps.names.outputs.worker }}:latest
-          cache-from: type=gha,scope=${{ steps.names.outputs.worker }}
-          cache-to: type=gha,mode=max,scope=${{ steps.names.outputs.worker }}
-
-      - name: Build and push web image
-        id: push_web
-        if: steps.bump.outputs.web_version != ''
-        uses: docker/build-push-action@v7
-        with:
-          context: packages/web
-          push: true
-          tags: |
-            ghcr.io/${{ steps.owner.outputs.value }}/${{ steps.names.outputs.web }}:${{ steps.bump.outputs.web_version }}
-            ghcr.io/${{ steps.owner.outputs.value }}/${{ steps.names.outputs.web }}:latest
-          cache-from: type=gha,scope=${{ steps.names.outputs.web }}
-          cache-to: type=gha,mode=max,scope=${{ steps.names.outputs.web }}
-
-      - name: Summarise pushed images
-        if: steps.push_api.outcome == 'success' || steps.push_worker.outcome == 'success' || steps.push_web.outcome == 'success'
-        run: |
-          {
-            echo "## release"
-            echo
-            echo "### Pushed docker images"
-            echo
-            echo "| image | tag | digest |"
-            echo "|---|---|---|"
-            if [ -n "${{ steps.push_api.outputs.digest }}" ]; then
-              echo "| ghcr.io/${{ steps.owner.outputs.value }}/${{ steps.names.outputs.api }} | \`${{ steps.bump.outputs.api_version }}\` + \`latest\` | \`${{ steps.push_api.outputs.digest }}\` |"
-            fi
-            if [ -n "${{ steps.push_worker.outputs.digest }}" ]; then
-              echo "| ghcr.io/${{ steps.owner.outputs.value }}/${{ steps.names.outputs.worker }} | \`${{ steps.bump.outputs.worker_version }}\` + \`latest\` | \`${{ steps.push_worker.outputs.digest }}\` |"
-            fi
-            if [ -n "${{ steps.push_web.outputs.digest }}" ]; then
-              echo "| ghcr.io/${{ steps.owner.outputs.value }}/${{ steps.names.outputs.web }} | \`${{ steps.bump.outputs.web_version }}\` + \`latest\` | \`${{ steps.push_web.outputs.digest }}\` |"
-            fi
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - uses: azure/setup-helm@v5
-        if: >-
-          steps.bump.outputs.chart_api_version != '' ||
-          steps.bump.outputs.chart_worker_version != '' ||
-          steps.bump.outputs.chart_web_version != ''
-
-      - name: Helm registry login
-        if: >-
-          steps.bump.outputs.chart_api_version != '' ||
-          steps.bump.outputs.chart_worker_version != '' ||
-          steps.bump.outputs.chart_web_version != ''
-        run: |
-          echo '${{ secrets.GITHUB_TOKEN }}' | helm registry login ghcr.io \
-            -u '${{ github.actor }}' --password-stdin
-
-      # Rewrite each Chart.yaml's `name:` to use the dynamic
-      # ${reponame}-{api,worker,web} value before packaging. The
-      # committed value (`shomer-api` / `shomer-worker` / `shomer-web`)
-      # stays canonical for local `helm install`; this rewrite only
-      # affects the working tree during the workflow run, and the
-      # templates already pull the name via `.Chart.Name` so the
-      # rendered manifests follow.
-      - name: Rewrite chart names
-        if: >-
-          steps.bump.outputs.chart_api_version != '' ||
-          steps.bump.outputs.chart_worker_version != '' ||
-          steps.bump.outputs.chart_web_version != ''
-        run: |
-          set -euo pipefail
-          sed -i "s/^name: shomer-api$/name: ${{ steps.names.outputs.api }}/" \
-            packages/api/chart/Chart.yaml
-          sed -i "s/^name: shomer-worker$/name: ${{ steps.names.outputs.worker }}/" \
-            packages/worker/chart/Chart.yaml
-          sed -i "s/^name: shomer-web$/name: ${{ steps.names.outputs.web }}/" \
-            packages/web/chart/Chart.yaml
-
-      - name: Package and push api chart
-        if: steps.bump.outputs.chart_api_version != ''
-        run: |
-          set -euo pipefail
-          helm package packages/api/chart --destination /tmp
-          helm push "/tmp/${{ steps.names.outputs.api }}-${{ steps.bump.outputs.chart_api_version }}.tgz" \
-            "oci://ghcr.io/${{ steps.owner.outputs.value }}/charts" 2>&1 | tee /tmp/push-chart-api.out
-          DIGEST=$(awk '/^Digest:/{print $2}' /tmp/push-chart-api.out)
-          echo "PUSH_CHART_API_DIGEST=$DIGEST" >> "$GITHUB_ENV"
-
-      - name: Package and push worker chart
-        if: steps.bump.outputs.chart_worker_version != ''
-        run: |
-          set -euo pipefail
-          helm package packages/worker/chart --destination /tmp
-          helm push "/tmp/${{ steps.names.outputs.worker }}-${{ steps.bump.outputs.chart_worker_version }}.tgz" \
-            "oci://ghcr.io/${{ steps.owner.outputs.value }}/charts" 2>&1 | tee /tmp/push-chart-worker.out
-          DIGEST=$(awk '/^Digest:/{print $2}' /tmp/push-chart-worker.out)
-          echo "PUSH_CHART_WORKER_DIGEST=$DIGEST" >> "$GITHUB_ENV"
-
-      - name: Package and push web chart
-        if: steps.bump.outputs.chart_web_version != ''
-        run: |
-          set -euo pipefail
-          helm package packages/web/chart --destination /tmp
-          helm push "/tmp/${{ steps.names.outputs.web }}-${{ steps.bump.outputs.chart_web_version }}.tgz" \
-            "oci://ghcr.io/${{ steps.owner.outputs.value }}/charts" 2>&1 | tee /tmp/push-chart-web.out
-          DIGEST=$(awk '/^Digest:/{print $2}' /tmp/push-chart-web.out)
-          echo "PUSH_CHART_WEB_DIGEST=$DIGEST" >> "$GITHUB_ENV"
-
-      - name: Summarise pushed charts
-        if: >-
-          steps.bump.outputs.chart_api_version != '' ||
-          steps.bump.outputs.chart_worker_version != '' ||
-          steps.bump.outputs.chart_web_version != ''
-        run: |
-          {
-            echo
-            echo "### Pushed helm charts"
-            echo
-            echo "| chart | version | digest |"
-            echo "|---|---|---|"
-            if [ -n "${PUSH_CHART_API_DIGEST:-}" ]; then
-              echo "| ${{ steps.names.outputs.api }} | \`${{ steps.bump.outputs.chart_api_version }}\` | \`${PUSH_CHART_API_DIGEST}\` |"
-            fi
-            if [ -n "${PUSH_CHART_WORKER_DIGEST:-}" ]; then
-              echo "| ${{ steps.names.outputs.worker }} | \`${{ steps.bump.outputs.chart_worker_version }}\` | \`${PUSH_CHART_WORKER_DIGEST}\` |"
-            fi
-            if [ -n "${PUSH_CHART_WEB_DIGEST:-}" ]; then
-              echo "| ${{ steps.names.outputs.web }} | \`${{ steps.bump.outputs.chart_web_version }}\` | \`${PUSH_CHART_WEB_DIGEST}\` |"
-            fi
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Install debian build tooling
-        if: >-
-          steps.bump.outputs.api_version != '' ||
-          steps.bump.outputs.worker_version != '' ||
-          steps.bump.outputs.cli_version != '' ||
-          steps.bump.outputs.web_version != ''
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends \
-            build-essential debhelper dh-python python3-all \
-            python3-hatchling pybuild-plugin-pyproject dpkg-dev
-
-      # dpkg-source enforces that the source dir name match the
-      # package name from debian/control. Our workspace layout is
-      # packages/{api,worker,cli,web}/ but the packages are
-      # shomer-{api,worker,cli,web} — so copy each one to a tmp dir
-      # at the correct name and build from there.
-      - name: Build api debian package
-        if: steps.bump.outputs.api_version != ''
-        run: |
-          set -euo pipefail
-          WORK=/tmp/build-api
-          rm -rf "$WORK" && mkdir -p "$WORK"
-          cp -r packages/api "$WORK/shomer-api"
-          cd "$WORK/shomer-api"
-          dpkg-buildpackage -us -uc -b
-          mv "$WORK"/shomer-api_*.deb "$WORK"/shomer-api_*.buildinfo "$WORK"/shomer-api_*.changes /tmp/
-
-      - name: Build worker debian package
-        if: steps.bump.outputs.worker_version != ''
-        run: |
-          set -euo pipefail
-          WORK=/tmp/build-worker
-          rm -rf "$WORK" && mkdir -p "$WORK"
-          cp -r packages/worker "$WORK/shomer-worker"
-          cd "$WORK/shomer-worker"
-          dpkg-buildpackage -us -uc -b
-          mv "$WORK"/shomer-worker_*.deb "$WORK"/shomer-worker_*.buildinfo "$WORK"/shomer-worker_*.changes /tmp/
-
-      - name: Build cli debian package
-        if: steps.bump.outputs.cli_version != ''
-        run: |
-          set -euo pipefail
-          WORK=/tmp/build-cli
-          rm -rf "$WORK" && mkdir -p "$WORK"
-          cp -r packages/cli "$WORK/shomer-cli"
-          cd "$WORK/shomer-cli"
-          dpkg-buildpackage -us -uc -b
-          mv "$WORK"/shomer-cli_*.deb "$WORK"/shomer-cli_*.buildinfo "$WORK"/shomer-cli_*.changes /tmp/
-
-      - name: Build web debian package
-        if: steps.bump.outputs.web_version != ''
-        run: |
-          set -euo pipefail
-          WORK=/tmp/build-web
-          rm -rf "$WORK" && mkdir -p "$WORK"
-          cp -r packages/web "$WORK/shomer-web"
-          cd "$WORK/shomer-web"
-          dpkg-buildpackage -us -uc -b
-          mv "$WORK"/shomer-web_*.deb "$WORK"/shomer-web_*.buildinfo "$WORK"/shomer-web_*.changes /tmp/
-
-      - name: Summarise built debian packages
-        if: >-
-          steps.bump.outputs.api_version != '' ||
-          steps.bump.outputs.worker_version != '' ||
-          steps.bump.outputs.cli_version != '' ||
-          steps.bump.outputs.web_version != ''
-        run: |
-          {
-            echo
-            echo "### Built debian packages"
-            echo
-            echo "| package | filename |"
-            echo "|---|---|"
-            for f in /tmp/shomer-*.deb; do
-              [ -f "$f" ] || continue
-              echo "| $(dpkg-deb --field "$f" Package) | \`$(basename "$f")\` |"
-            done
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Cut a GitHub Release per bumped component
-        if: steps.plan.outputs.release == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          for tag in $(git tag --points-at HEAD); do
-            case "$tag" in
-              *-v*.*.*) ;;
-              *) continue ;;
-            esac
-            ASSETS=()
-            case "$tag" in
-              api-v*)    [ -f /tmp/shomer-api_*.deb    ] && ASSETS=(/tmp/shomer-api_*.deb) ;;
-              worker-v*) [ -f /tmp/shomer-worker_*.deb ] && ASSETS=(/tmp/shomer-worker_*.deb) ;;
-              cli-v*)    [ -f /tmp/shomer-cli_*.deb    ] && ASSETS=(/tmp/shomer-cli_*.deb) ;;
-              web-v*)    [ -f /tmp/shomer-web_*.deb    ] && ASSETS=(/tmp/shomer-web_*.deb) ;;
-            esac
-            multicz release-notes --tag "$tag" \
-              | gh release create "$tag" --title "$tag" --notes-file - "${ASSETS[@]}"
-          done
+          echo "repo=${{ github.event.repository.name }}" >> "$GITHUB_OUTPUT"
 
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
-          title: release
+          title: release-bump
           body: |
-            multicz plan → bump → tag → push, then docker/helm push to
-            `ghcr.io` and one GitHub Release per tag with the .deb
-            attached as an asset. Skipped when no commits since the
-            last tag bump anything (plan empty).
+            `multicz bump --commit --tag --push` (signed when
+            `GPG_PRIVATE_KEY` + `GPG_PASSPHRASE` are set). Per-component
+            publish jobs (`release-<component>`) read this job's
+            outputs to know what to publish.
+
+  # ─────────────────────── per-component publish jobs ───────────────────────
+
+  release-api:
+    needs: [release-bump]
+    if: needs.release-bump.outputs.api_version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # gh release create
+      packages: write   # docker push
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+      - uses: goabonga/multicz-action@v1
+      - uses: ./.github/actions/publish-image
+        with:
+          component: api
+          version: ${{ needs.release-bump.outputs.api_version }}
+          owner: ${{ needs.release-bump.outputs.owner }}
+          repo: ${{ needs.release-bump.outputs.repo }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: ./.github/actions/publish-deb
+        with:
+          component: api
+      - name: gh release create api-v${{ needs.release-bump.outputs.api_version }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="api-v${{ needs.release-bump.outputs.api_version }}"
+          multicz release-notes --tag "$TAG" \
+            | gh release create "$TAG" --title "$TAG" --notes-file - /tmp/shomer-api_*.deb
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: release-api
+          body: |
+            Pushed `ghcr.io/${{ needs.release-bump.outputs.owner }}/${{ needs.release-bump.outputs.repo }}-api:${{ needs.release-bump.outputs.api_version }}` (+ `latest`),
+            built `shomer-api_${{ needs.release-bump.outputs.api_version }}-1_all.deb`, cut GitHub Release `api-v${{ needs.release-bump.outputs.api_version }}` with the .deb attached.
+
+  release-worker:
+    needs: [release-bump]
+    if: needs.release-bump.outputs.worker_version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+      - uses: goabonga/multicz-action@v1
+      - uses: ./.github/actions/publish-image
+        with:
+          component: worker
+          version: ${{ needs.release-bump.outputs.worker_version }}
+          owner: ${{ needs.release-bump.outputs.owner }}
+          repo: ${{ needs.release-bump.outputs.repo }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: ./.github/actions/publish-deb
+        with:
+          component: worker
+      - name: gh release create worker-v${{ needs.release-bump.outputs.worker_version }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="worker-v${{ needs.release-bump.outputs.worker_version }}"
+          multicz release-notes --tag "$TAG" \
+            | gh release create "$TAG" --title "$TAG" --notes-file - /tmp/shomer-worker_*.deb
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: release-worker
+          body: |
+            Pushed `ghcr.io/${{ needs.release-bump.outputs.owner }}/${{ needs.release-bump.outputs.repo }}-worker:${{ needs.release-bump.outputs.worker_version }}` (+ `latest`),
+            built `shomer-worker_${{ needs.release-bump.outputs.worker_version }}-1_all.deb`, cut GitHub Release `worker-v${{ needs.release-bump.outputs.worker_version }}` with the .deb attached.
+
+  release-web:
+    needs: [release-bump]
+    if: needs.release-bump.outputs.web_version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+      - uses: goabonga/multicz-action@v1
+      - uses: ./.github/actions/publish-image
+        with:
+          component: web
+          version: ${{ needs.release-bump.outputs.web_version }}
+          owner: ${{ needs.release-bump.outputs.owner }}
+          repo: ${{ needs.release-bump.outputs.repo }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: ./.github/actions/publish-deb
+        with:
+          component: web
+      - name: gh release create web-v${{ needs.release-bump.outputs.web_version }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="web-v${{ needs.release-bump.outputs.web_version }}"
+          multicz release-notes --tag "$TAG" \
+            | gh release create "$TAG" --title "$TAG" --notes-file - /tmp/shomer-web_*.deb
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: release-web
+          body: |
+            Pushed `ghcr.io/${{ needs.release-bump.outputs.owner }}/${{ needs.release-bump.outputs.repo }}-web:${{ needs.release-bump.outputs.web_version }}` (+ `latest`),
+            built `shomer-web_${{ needs.release-bump.outputs.web_version }}-1_all.deb`, cut GitHub Release `web-v${{ needs.release-bump.outputs.web_version }}` with the .deb attached.
+
+  release-cli:
+    # cli has no docker image and no helm chart — just a .deb + tag.
+    needs: [release-bump]
+    if: needs.release-bump.outputs.cli_version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+      - uses: goabonga/multicz-action@v1
+      - uses: ./.github/actions/publish-deb
+        with:
+          component: cli
+      - name: gh release create cli-v${{ needs.release-bump.outputs.cli_version }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="cli-v${{ needs.release-bump.outputs.cli_version }}"
+          multicz release-notes --tag "$TAG" \
+            | gh release create "$TAG" --title "$TAG" --notes-file - /tmp/shomer-cli_*.deb
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: release-cli
+          body: |
+            Built `shomer-cli_${{ needs.release-bump.outputs.cli_version }}-1_all.deb`, cut GitHub Release `cli-v${{ needs.release-bump.outputs.cli_version }}` with the .deb attached.
+
+  release-chart-api:
+    needs: [release-bump]
+    if: needs.release-bump.outputs.chart_api_version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+      - uses: goabonga/multicz-action@v1
+      - uses: ./.github/actions/publish-chart
+        with:
+          component: api
+          version: ${{ needs.release-bump.outputs.chart_api_version }}
+          owner: ${{ needs.release-bump.outputs.owner }}
+          repo: ${{ needs.release-bump.outputs.repo }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: gh release create chart-api-v${{ needs.release-bump.outputs.chart_api_version }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="chart-api-v${{ needs.release-bump.outputs.chart_api_version }}"
+          multicz release-notes --tag "$TAG" \
+            | gh release create "$TAG" --title "$TAG" --notes-file -
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: release-chart-api
+          body: |
+            Pushed `oci://ghcr.io/${{ needs.release-bump.outputs.owner }}/charts/${{ needs.release-bump.outputs.repo }}-api:${{ needs.release-bump.outputs.chart_api_version }}`,
+            cut GitHub Release `chart-api-v${{ needs.release-bump.outputs.chart_api_version }}`.
+
+  release-chart-worker:
+    needs: [release-bump]
+    if: needs.release-bump.outputs.chart_worker_version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+      - uses: goabonga/multicz-action@v1
+      - uses: ./.github/actions/publish-chart
+        with:
+          component: worker
+          version: ${{ needs.release-bump.outputs.chart_worker_version }}
+          owner: ${{ needs.release-bump.outputs.owner }}
+          repo: ${{ needs.release-bump.outputs.repo }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: gh release create chart-worker-v${{ needs.release-bump.outputs.chart_worker_version }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="chart-worker-v${{ needs.release-bump.outputs.chart_worker_version }}"
+          multicz release-notes --tag "$TAG" \
+            | gh release create "$TAG" --title "$TAG" --notes-file -
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: release-chart-worker
+          body: |
+            Pushed `oci://ghcr.io/${{ needs.release-bump.outputs.owner }}/charts/${{ needs.release-bump.outputs.repo }}-worker:${{ needs.release-bump.outputs.chart_worker_version }}`,
+            cut GitHub Release `chart-worker-v${{ needs.release-bump.outputs.chart_worker_version }}`.
+
+  release-chart-web:
+    needs: [release-bump]
+    if: needs.release-bump.outputs.chart_web_version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+      - uses: goabonga/multicz-action@v1
+      - uses: ./.github/actions/publish-chart
+        with:
+          component: web
+          version: ${{ needs.release-bump.outputs.chart_web_version }}
+          owner: ${{ needs.release-bump.outputs.owner }}
+          repo: ${{ needs.release-bump.outputs.repo }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: gh release create chart-web-v${{ needs.release-bump.outputs.chart_web_version }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="chart-web-v${{ needs.release-bump.outputs.chart_web_version }}"
+          multicz release-notes --tag "$TAG" \
+            | gh release create "$TAG" --title "$TAG" --notes-file -
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: release-chart-web
+          body: |
+            Pushed `oci://ghcr.io/${{ needs.release-bump.outputs.owner }}/charts/${{ needs.release-bump.outputs.repo }}-web:${{ needs.release-bump.outputs.chart_web_version }}`,
+            cut GitHub Release `chart-web-v${{ needs.release-bump.outputs.chart_web_version }}`.
