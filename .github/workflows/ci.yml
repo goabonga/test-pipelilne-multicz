@@ -1700,6 +1700,7 @@ jobs:
     permissions:
       contents: write   # gh release create
       packages: write   # docker push
+      actions: write    # delete-artifact (cleanup after publish)
     steps:
       - uses: actions/checkout@v6
         with:
@@ -1725,6 +1726,16 @@ jobs:
           TAG="api-v${{ needs.release-bump.outputs.api_version }}"
           multicz release-notes --tag "$TAG" \
             | gh release create "$TAG" --title "$TAG" --notes-file - /tmp/shomer-api_*.deb
+      # Published — the CI artifacts are now obsolete (image lives in
+      # ghcr, .deb is a release asset). Drop them so the workflow
+      # run page doesn't carry duplicates after retention.
+      - name: Delete consumed CI artifacts
+        uses: geekyeggo/delete-artifact@v5
+        with:
+          name: |
+            api-image
+            api-deb
+          failOnError: false
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
@@ -1733,6 +1744,7 @@ jobs:
           body: |
             Pushed `ghcr.io/${{ needs.release-bump.outputs.owner }}/${{ needs.release-bump.outputs.repo }}-api:${{ needs.release-bump.outputs.api_version }}` (+ `latest`),
             built `shomer-api_${{ needs.release-bump.outputs.api_version }}-1_all.deb`, cut GitHub Release `api-v${{ needs.release-bump.outputs.api_version }}` with the .deb attached.
+            CI artifacts (`api-image`, `api-deb`) deleted post-publish.
 
   release-worker:
     needs: [release-bump]
@@ -1741,6 +1753,7 @@ jobs:
     permissions:
       contents: write
       packages: write
+      actions: write
     steps:
       - uses: actions/checkout@v6
         with:
@@ -1766,6 +1779,13 @@ jobs:
           TAG="worker-v${{ needs.release-bump.outputs.worker_version }}"
           multicz release-notes --tag "$TAG" \
             | gh release create "$TAG" --title "$TAG" --notes-file - /tmp/shomer-worker_*.deb
+      - name: Delete consumed CI artifacts
+        uses: geekyeggo/delete-artifact@v5
+        with:
+          name: |
+            worker-image
+            worker-deb
+          failOnError: false
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
@@ -1774,6 +1794,7 @@ jobs:
           body: |
             Pushed `ghcr.io/${{ needs.release-bump.outputs.owner }}/${{ needs.release-bump.outputs.repo }}-worker:${{ needs.release-bump.outputs.worker_version }}` (+ `latest`),
             built `shomer-worker_${{ needs.release-bump.outputs.worker_version }}-1_all.deb`, cut GitHub Release `worker-v${{ needs.release-bump.outputs.worker_version }}` with the .deb attached.
+            CI artifacts (`worker-image`, `worker-deb`) deleted post-publish.
 
   release-web:
     needs: [release-bump]
@@ -1782,6 +1803,7 @@ jobs:
     permissions:
       contents: write
       packages: write
+      actions: write
     steps:
       - uses: actions/checkout@v6
         with:
@@ -1807,6 +1829,17 @@ jobs:
           TAG="web-v${{ needs.release-bump.outputs.web_version }}"
           multicz release-notes --tag "$TAG" \
             | gh release create "$TAG" --title "$TAG" --notes-file - /tmp/shomer-web_*.deb
+      # Also drop the web-frontend-dist (consumed only by web-* jobs
+      # which are now done) — no separate release-web-frontend job
+      # exists since web-frontend ships through the web image/.deb.
+      - name: Delete consumed CI artifacts
+        uses: geekyeggo/delete-artifact@v5
+        with:
+          name: |
+            web-image
+            web-deb
+            web-frontend-dist
+          failOnError: false
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
@@ -1815,6 +1848,7 @@ jobs:
           body: |
             Pushed `ghcr.io/${{ needs.release-bump.outputs.owner }}/${{ needs.release-bump.outputs.repo }}-web:${{ needs.release-bump.outputs.web_version }}` (+ `latest`),
             built `shomer-web_${{ needs.release-bump.outputs.web_version }}-1_all.deb`, cut GitHub Release `web-v${{ needs.release-bump.outputs.web_version }}` with the .deb attached.
+            CI artifacts (`web-image`, `web-deb`, `web-frontend-dist`) deleted post-publish.
 
   release-cli:
     # cli has no docker image and no helm chart — just a .deb + tag.
@@ -1823,6 +1857,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: write
     steps:
       - uses: actions/checkout@v6
         with:
@@ -1841,6 +1876,11 @@ jobs:
           TAG="cli-v${{ needs.release-bump.outputs.cli_version }}"
           multicz release-notes --tag "$TAG" \
             | gh release create "$TAG" --title "$TAG" --notes-file - /tmp/shomer-cli_*.deb
+      - name: Delete consumed CI artifact
+        uses: geekyeggo/delete-artifact@v5
+        with:
+          name: cli-deb
+          failOnError: false
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
@@ -1848,6 +1888,7 @@ jobs:
           title: release-cli
           body: |
             Built `shomer-cli_${{ needs.release-bump.outputs.cli_version }}-1_all.deb`, cut GitHub Release `cli-v${{ needs.release-bump.outputs.cli_version }}` with the .deb attached.
+            CI artifact (`cli-deb`) deleted post-publish.
 
   release-chart-api:
     needs: [release-bump]
@@ -1856,6 +1897,7 @@ jobs:
     permissions:
       contents: write
       packages: write
+      actions: write
     steps:
       - uses: actions/checkout@v6
         with:
@@ -1876,6 +1918,11 @@ jobs:
           TAG="chart-api-v${{ needs.release-bump.outputs.chart_api_version }}"
           multicz release-notes --tag "$TAG" \
             | gh release create "$TAG" --title "$TAG" --notes-file -
+      - name: Delete consumed CI artifact
+        uses: geekyeggo/delete-artifact@v5
+        with:
+          name: chart-api-tgz
+          failOnError: false
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
@@ -1884,6 +1931,7 @@ jobs:
           body: |
             Pushed `oci://ghcr.io/${{ needs.release-bump.outputs.owner }}/charts/${{ needs.release-bump.outputs.repo }}-api:${{ needs.release-bump.outputs.chart_api_version }}`,
             cut GitHub Release `chart-api-v${{ needs.release-bump.outputs.chart_api_version }}`.
+            CI artifact (`chart-api-tgz`) deleted post-publish.
 
   release-chart-worker:
     needs: [release-bump]
@@ -1892,6 +1940,7 @@ jobs:
     permissions:
       contents: write
       packages: write
+      actions: write
     steps:
       - uses: actions/checkout@v6
         with:
@@ -1912,6 +1961,11 @@ jobs:
           TAG="chart-worker-v${{ needs.release-bump.outputs.chart_worker_version }}"
           multicz release-notes --tag "$TAG" \
             | gh release create "$TAG" --title "$TAG" --notes-file -
+      - name: Delete consumed CI artifact
+        uses: geekyeggo/delete-artifact@v5
+        with:
+          name: chart-worker-tgz
+          failOnError: false
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
@@ -1920,6 +1974,7 @@ jobs:
           body: |
             Pushed `oci://ghcr.io/${{ needs.release-bump.outputs.owner }}/charts/${{ needs.release-bump.outputs.repo }}-worker:${{ needs.release-bump.outputs.chart_worker_version }}`,
             cut GitHub Release `chart-worker-v${{ needs.release-bump.outputs.chart_worker_version }}`.
+            CI artifact (`chart-worker-tgz`) deleted post-publish.
 
   release-chart-web:
     needs: [release-bump]
@@ -1928,6 +1983,7 @@ jobs:
     permissions:
       contents: write
       packages: write
+      actions: write
     steps:
       - uses: actions/checkout@v6
         with:
@@ -1948,6 +2004,11 @@ jobs:
           TAG="chart-web-v${{ needs.release-bump.outputs.chart_web_version }}"
           multicz release-notes --tag "$TAG" \
             | gh release create "$TAG" --title "$TAG" --notes-file -
+      - name: Delete consumed CI artifact
+        uses: geekyeggo/delete-artifact@v5
+        with:
+          name: chart-web-tgz
+          failOnError: false
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
@@ -1956,6 +2017,7 @@ jobs:
           body: |
             Pushed `oci://ghcr.io/${{ needs.release-bump.outputs.owner }}/charts/${{ needs.release-bump.outputs.repo }}-web:${{ needs.release-bump.outputs.chart_web_version }}`,
             cut GitHub Release `chart-web-v${{ needs.release-bump.outputs.chart_web_version }}`.
+            CI artifact (`chart-web-tgz`) deleted post-publish.
 
   release-docs:
     # Consume the already-built `docs-site` artifact (produced by
@@ -1969,6 +2031,7 @@ jobs:
       contents: write   # gh release create
       pages: write      # actions/deploy-pages
       id-token: write   # OIDC for upload-pages-artifact + deploy-pages
+      actions: write    # delete-artifact (cleanup after publish)
     concurrency:
       group: pages      # one in-flight Pages deploy per repo
       cancel-in-progress: true
@@ -2000,6 +2063,11 @@ jobs:
           TAG="docs-v${{ needs.release-bump.outputs.docs_version }}"
           multicz release-notes --tag "$TAG" \
             | gh release create "$TAG" --title "$TAG" --notes-file -
+      - name: Delete consumed CI artifact
+        uses: geekyeggo/delete-artifact@v5
+        with:
+          name: docs-site
+          failOnError: false
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
@@ -2008,3 +2076,4 @@ jobs:
           body: |
             Reused `docs-site` artifact from `docs-build`, deployed docs `${{ needs.release-bump.outputs.docs_version }}` to ${{ steps.deploy.outputs.page_url }},
             cut GitHub Release `docs-v${{ needs.release-bump.outputs.docs_version }}`.
+            CI artifact (`docs-site`) deleted post-publish.
