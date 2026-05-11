@@ -1203,140 +1203,53 @@ jobs:
           title: chart-web-checkov
           body: '`checkov --framework helm` static security scan on `packages/web/chart/`.'
 
-  # ─────────────────────── k8s integration (single cluster) ───────────────────────
+  # ─────────────────────── OWASP baseline (kind + ZAP, per HTTP service) ───────────────────────
 
-  charts-deploy:
-    # Single kind cluster, all 3 charts (api / worker / web) installed
-    # side-by-side from their respective CI image artifacts. Validates
-    # that the three services co-exist and reach Ready in one
-    # namespace — more meaningful than 3 isolated cluster smokes.
-    needs:
-      - api-container
-      - worker-container
-      - web-container
-      - chart-api-checkov
-      - chart-worker-checkov
-      - chart-web-checkov
+  owasp-api:
+    # Spin up an ephemeral kind cluster, helm install ONLY api from
+    # its CI image artifact, port-forward and ZAP-baseline scan it.
+    # Gated on grype (not just container build) so a known-vulnerable
+    # image never reaches the dynamic-scan stage.
+    needs: [api-grype, chart-api-checkov]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
-
-      - uses: actions/download-artifact@v8
-        with: { name: api-image, path: /tmp }
-      - uses: actions/download-artifact@v8
-        with: { name: worker-image, path: /tmp }
-      - uses: actions/download-artifact@v8
-        with: { name: web-image, path: /tmp }
-
-      - uses: helm/kind-action@v1.10.0
+      - uses: ./.github/actions/owasp-scan
         with:
-          cluster_name: shomer
-          wait: 60s
-
-      - name: Load all 3 images into kind
-        run: |
-          set -euo pipefail
-          for c in api worker web; do
-            kind load image-archive /tmp/${c}.tar --name shomer
-          done
-
-      - uses: azure/setup-helm@v5
-
-      - name: helm install api / worker / web (each --wait)
-        run: |
-          set -euo pipefail
-          for c in api worker web; do
-            helm install "$c" "packages/$c/chart" \
-              --set image.repository="$c" \
-              --set image.tag=ci \
-              --set image.pullPolicy=IfNotPresent \
-              --wait --timeout 2m
-          done
-
-      - name: Port-forward api svc → localhost:8000
-        run: |
-          set -euo pipefail
-          kubectl port-forward svc/api 8000:8000 >/tmp/pf-api.log 2>&1 &
-          # Wait until /healthz responds — port-forward is async.
-          for _ in 1 2 3 4 5 6 7 8 9 10; do
-            if curl -fsS --max-time 2 http://localhost:8000/healthz; then
-              echo
-              echo "api reachable on localhost:8000"
-              exit 0
-            fi
-            sleep 2
-          done
-          echo "api never became reachable" >&2
-          cat /tmp/pf-api.log >&2
-          exit 1
-
-      - name: OWASP ZAP baseline scan — api
-        # Passive scan against the freshly-installed api. `-I` makes
-        # the action ignore informational findings (it would fail on
-        # the default FastAPI/uvicorn missing-header warnings
-        # otherwise — those are tracked but not gating). The HTML +
-        # JSON report is uploaded as the `zap-api-baseline` artifact.
-        uses: zaproxy/action-baseline@v0.12.0
-        with:
-          target: http://localhost:8000
-          cmd_options: "-I -a"
-          allow_issue_writing: false
-          artifact_name: zap-api-baseline
-
-      - name: Port-forward web svc → localhost:8080
-        run: |
-          set -euo pipefail
-          kubectl port-forward svc/web 8080:8080 >/tmp/pf-web.log 2>&1 &
-          for _ in 1 2 3 4 5 6 7 8 9 10; do
-            if curl -fsS --max-time 2 http://localhost:8080/healthz; then
-              echo
-              echo "web reachable on localhost:8080"
-              exit 0
-            fi
-            sleep 2
-          done
-          echo "web never became reachable" >&2
-          cat /tmp/pf-web.log >&2
-          exit 1
-
-      - name: OWASP ZAP baseline scan — web
-        # Same passive scan against web (login form, home page —
-        # broader attack surface than api's two JSON endpoints).
-        uses: zaproxy/action-baseline@v0.12.0
-        with:
-          target: http://localhost:8080
-          cmd_options: "-I -a"
-          allow_issue_writing: false
-          artifact_name: zap-web-baseline
-
-      - name: Cluster state (always)
-        if: always()
-        run: kubectl get all -A
-
-      - name: Diagnostics on failure
-        if: failure()
-        run: |
-          for c in api worker web; do
-            echo "=== describe $c ==="
-            kubectl describe deployment "$c" || true
-            echo "=== logs $c ==="
-            kubectl logs -l app.kubernetes.io/name="$c" --tail=200 || true
-          done
-
+          component: api
+          port: "8000"
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
-          title: charts-deploy
-          body: |
-            Single `kind` cluster `shomer` with api / worker / web installed
-            side-by-side from CI image artifacts. Each `helm install --wait`
-            for pod readiness. OWASP ZAP baseline scan run against api +
-            web (reports attached as `zap-api-baseline` and
-            `zap-web-baseline` artifacts).
+          title: owasp-api
+          body: 'kind + `helm install api` + OWASP ZAP baseline scan (report: `zap-api-baseline`).'
+
+  owasp-web:
+    # Same shape as owasp-api but targeting the web frontend. The web
+    # image already has the bundled JS/CSS/templates baked in by
+    # `web-container` (which depends on `web-frontend-build`), so this
+    # job consumes only `web-image`.
+    needs: [web-grype, chart-web-checkov]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
+      - uses: ./.github/actions/owasp-scan
+        with:
+          component: web
+          port: "8080"
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: owasp-web
+          body: 'kind + `helm install web` + OWASP ZAP baseline scan (report: `zap-web-baseline`).'
 
   # ─────────────────────── web-frontend (Node) ───────────────────────
 

@@ -1,0 +1,89 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+name: owasp scan
+description: |
+  Spin up an ephemeral kind cluster, helm install the component's
+  chart from its CI image artifact, port-forward the service, and run
+  an OWASP ZAP baseline scan against it. Uploads the ZAP HTML + JSON
+  report as the `zap-<component>-baseline` artifact.
+
+  REQUIRES: the caller has already run `actions/checkout` and the
+  upstream `<component>-image` CI artifact exists (uploaded by the
+  matching `<X>-container` job).
+
+inputs:
+  component:
+    required: true
+    description: Component name — api / web. Drives chart path, image name, service name.
+  port:
+    required: true
+    description: Service port (and the local port we forward to). 8000 for api, 8080 for web.
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/download-artifact@v8
+      with:
+        name: ${{ inputs.component }}-image
+        path: /tmp
+
+    - uses: helm/kind-action@v1.10.0
+      with:
+        cluster_name: shomer-${{ inputs.component }}
+        wait: 60s
+
+    - name: Load image into kind
+      shell: bash
+      run: |
+        kind load image-archive /tmp/${{ inputs.component }}.tar \
+          --name shomer-${{ inputs.component }}
+
+    - uses: azure/setup-helm@v5
+
+    - name: helm install ${{ inputs.component }} --wait
+      shell: bash
+      run: |
+        helm install ${{ inputs.component }} packages/${{ inputs.component }}/chart \
+          --set image.repository=${{ inputs.component }} \
+          --set image.tag=ci \
+          --set image.pullPolicy=IfNotPresent \
+          --wait --timeout 2m
+
+    - name: Port-forward svc/${{ inputs.component }} → localhost:${{ inputs.port }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        kubectl port-forward svc/${{ inputs.component }} ${{ inputs.port }}:${{ inputs.port }} \
+          >/tmp/pf-${{ inputs.component }}.log 2>&1 &
+        for _ in 1 2 3 4 5 6 7 8 9 10; do
+          if curl -fsS --max-time 2 http://localhost:${{ inputs.port }}/healthz; then
+            echo
+            echo "${{ inputs.component }} reachable on localhost:${{ inputs.port }}"
+            exit 0
+          fi
+          sleep 2
+        done
+        echo "${{ inputs.component }} never became reachable" >&2
+        cat /tmp/pf-${{ inputs.component }}.log >&2
+        exit 1
+
+    - name: OWASP ZAP baseline scan — ${{ inputs.component }}
+      uses: zaproxy/action-baseline@v0.12.0
+      with:
+        target: http://localhost:${{ inputs.port }}
+        cmd_options: "-I -a"
+        allow_issue_writing: false
+        artifact_name: zap-${{ inputs.component }}-baseline
+
+    - name: Cluster state (always)
+      if: always()
+      shell: bash
+      run: kubectl get all -A
+
+    - name: Diagnostics on failure
+      if: failure()
+      shell: bash
+      run: |
+        kubectl describe deployment ${{ inputs.component }} || true
+        kubectl logs -l app.kubernetes.io/name=${{ inputs.component }} --tail=200 || true
