@@ -1,7 +1,7 @@
 image:
   repository: ghcr.io/goabonga/shomer-worker
   tag: ""
-  pullPolicy: IfNotPresent
+  pullPolicy: Always   # CI kind smoke overrides to IfNotPresent via --set
 
 replicaCount: 1
 
