@@ -724,14 +724,27 @@ jobs:
 
   web-test:
     needs: [web-lint, web-format, web-typecheck, web-frontend-build]
+    # Run if web changed (lint/format/typecheck succeeded) OR
+    # web-frontend changed (build succeeded). When only one side
+    # changes, the other's needs entry is `skipped` — the OR keeps
+    # us going.
+    if: >-
+      !failure() && !cancelled() && (
+        needs.web-lint.result == 'success' ||
+        needs.web-frontend-build.result == 'success'
+      )
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
-      - uses: actions/download-artifact@v8
-        with: { name: web-frontend-dist, path: . }   # restores packages/web/src/shomer_web/{static,templates}/
+      # Only overwrite the committed `static/` + `templates/` if the
+      # frontend was actually rebuilt this run; otherwise pytest uses
+      # whatever is on disk (= the committed dist on `main`).
+      - if: needs.web-frontend-build.result == 'success'
+        uses: actions/download-artifact@v8
+        with: { name: web-frontend-dist, path: . }
       - uses: astral-sh/setup-uv@v8.1.0
         with: { python-version: "3.12" }
       - run: uv sync --frozen --all-packages
@@ -766,13 +779,21 @@ jobs:
 
   web-container:
     needs: [web-bandit, audit, web-frontend-build]
+    # Run when the web image actually needs rebuilding — i.e. web's
+    # Python passed bandit AND audit succeeded. web-frontend-build
+    # being skipped is fine: we fall back to the committed dist.
+    if: >-
+      !failure() && !cancelled() &&
+      needs.web-bandit.result == 'success' &&
+      needs.audit.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
-      - uses: actions/download-artifact@v8
+      - if: needs.web-frontend-build.result == 'success'
+        uses: actions/download-artifact@v8
         with: { name: web-frontend-dist, path: . }
       - uses: docker/setup-buildx-action@v4
       - name: Build web image
@@ -835,13 +856,18 @@ jobs:
 
   web-deb:
     needs: [web-bandit, audit, web-frontend-build]
+    if: >-
+      !failure() && !cancelled() &&
+      needs.web-bandit.result == 'success' &&
+      needs.audit.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
-      - uses: actions/download-artifact@v8
+      - if: needs.web-frontend-build.result == 'success'
+        uses: actions/download-artifact@v8
         with: { name: web-frontend-dist, path: . }
       - name: Install debian build tooling
         run: |
