@@ -3,14 +3,26 @@
 
 name: dependabot-rewrite
 
-# `pull_request_target` so the workflow can read GPG_PRIVATE_KEY /
-# GPG_PASSPHRASE (regular `pull_request` runs without secrets on bot events).
-# The workflow body is loaded from `main`, not the PR branch, so no untrusted
-# code runs. The actor gate restricts it to genuine Dependabot PRs.
+# Re-author and GPG-sign Dependabot commits with Conventional-Commits
+# scopes that match the multicz components.
+#
+# Triggered by `workflow_run` (from dependabot-rewrite-signal.yml)
+# rather than `pull_request_target` so that a fork PR cannot directly
+# reach this code-execution surface — only the no-op signal workflow
+# can fire from a PR, and forks have no secrets access through it.
+# Plumber's ISSUE-802 is happy with this shape.
+#
+# Defence in depth: the rewrite script is checked out from `main` into
+# `trusted/`, while the PR's commits go into `pr/`. The rebase runs
+# inside `pr/` but execs the script from `trusted/`, so a malicious PR
+# cannot tamper with the script that processes its own commits — even
+# if the PR diff happens to touch `scripts/rewrite-dependabot-commit.sh`,
+# the version that runs is the one from main.
 
 on:
-  pull_request_target:
-    types: [opened, synchronize, reopened]
+  workflow_run:
+    workflows: [dependabot-rewrite-signal]
+    types: [completed]
 
 permissions:
   contents: write
@@ -19,10 +31,22 @@ permissions:
 jobs:
   rewrite:
     name: rewrite dependabot commits
-    if: github.actor == 'dependabot[bot]'
+    # Three gates: the upstream signal must have completed successfully
+    # (which already requires actor==dependabot per its own `if`),
+    # AND must have been triggered by a real pull_request event,
+    # AND the actor on the upstream run must still be dependabot. The
+    # last one is redundant with the signal's gate but cheap to check
+    # and useful as a tripwire if the signal workflow is ever edited.
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.actor.login == 'dependabot[bot]'
     runs-on: ubuntu-latest
     concurrency:
-      group: dependabot-rewrite-${{ github.event.pull_request.number }}
+      # Each Dependabot PR has its own branch name (e.g.
+      # dependabot/uv/uvicorn-standard--gte-0.48.0); one slot per branch
+      # so a second push to the same PR cancels the previous rewrite.
+      group: dependabot-rewrite-${{ github.event.workflow_run.head_branch }}
       cancel-in-progress: true
     steps:
       - name: Check GPG availability
@@ -42,16 +66,33 @@ jobs:
             echo "skip=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Checkout PR head branch
+      # Trusted code: scripts/rewrite-dependabot-commit.sh as it lives
+      # on main. We run the rebase script from THIS checkout, never from
+      # the PR — that's what makes the workflow_run pattern actually
+      # safer than gated pull_request_target.
+      - name: Checkout main into trusted/
         if: steps.gate.outputs.skip != 'true'
         uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
+          ref: main
+          path: trusted
+
+      # PR commits — pure data, never executed as code.
+      - name: Checkout PR head into pr/
+        if: steps.gate.outputs.skip != 'true'
+        uses: actions/checkout@v6
+        with:
+          # head_sha (not head_branch) pins the rewrite to the exact
+          # commits the signal observed — no race if Dependabot pushes
+          # again between signal and rewrite.
+          ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
           persist-credentials: true
+          path: pr
 
       - name: Configure GPG and git identity from the imported key
         if: steps.gate.outputs.skip != 'true'
+        working-directory: pr
         env:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
@@ -69,31 +110,33 @@ jobs:
           git config user.signingkey "$KEY_ID"
           git config commit.gpgsign true
 
-      # The PR branch name + base branch name come from the
-      # pull_request_target payload. Even though we gate the whole job on
-      # `github.actor == 'dependabot[bot]'`, Plumber's ISSUE-207 wants
-      # zero direct `${{ }}` -> shell flow — anything passed to a shell
-      # has to land in an `env:` first and then be expanded under quotes.
       - name: Rewrite commits with scope-aware messages
         if: steps.gate.outputs.skip != 'true'
+        working-directory: pr
         env:
-          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          BASE_REF: ${{ github.event.workflow_run.pull_requests[0].base.ref }}
         run: |
           set -euo pipefail
           BASE_SHA=$(git merge-base "origin/$BASE_REF" HEAD)
-          git rebase "$BASE_SHA" --exec "scripts/rewrite-dependabot-commit.sh"
+          # `--exec` uses the trusted script from main, not the version
+          # of the same script that may live in the PR. The absolute
+          # path via $GITHUB_WORKSPACE guards against any chdir games
+          # the rebase machinery might do.
+          git rebase "$BASE_SHA" --exec "$GITHUB_WORKSPACE/trusted/scripts/rewrite-dependabot-commit.sh"
 
       - name: Force-push rewritten branch
         if: steps.gate.outputs.skip != 'true'
+        working-directory: pr
         env:
-          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          HEAD_REF: ${{ github.event.workflow_run.head_branch }}
         run: |
           git push --force-with-lease origin "HEAD:$HEAD_REF"
 
       - name: Write step summary
         if: steps.gate.outputs.skip != 'true' && success()
+        working-directory: pr
         env:
-          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          HEAD_REF: ${{ github.event.workflow_run.head_branch }}
         run: |
           {
             echo "## Dependabot rewrite: applied"

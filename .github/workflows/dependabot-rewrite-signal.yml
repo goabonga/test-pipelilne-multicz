@@ -1,0 +1,40 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+name: dependabot-rewrite-signal
+
+# Tripwire workflow: runs on `pull_request` for dependabot PRs, does
+# nothing useful — its only purpose is to fire so that
+# dependabot-rewrite.yml (which listens via `workflow_run`) can pick up
+# the event.
+#
+# This indirection is what makes the rewrite path safe under Plumber's
+# ISSUE-802: a fork can only trigger THIS no-op workflow (no secrets,
+# read-only), never the downstream rewrite job (which has the GPG keys
+# and write access). The `workflow_run` trigger is not directly
+# reachable from a fork PR.
+#
+# The actor gate keeps the noise down — humans pushing PRs (we don't,
+# but just in case) and the rewrite's own force-push (which surfaces as
+# github-actions[bot]) both skip the signal, so the downstream `if`
+# never sees a `conclusion == 'success'` for those events.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  signal:
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Signal dependabot PR for rewrite
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          echo "Dependabot PR #${PR_NUMBER} on ${HEAD_REF}"
+          echo "downstream dependabot-rewrite workflow will pick this up via workflow_run."
