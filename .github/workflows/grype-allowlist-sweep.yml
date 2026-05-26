@@ -61,7 +61,7 @@ jobs:
         # grype shells out to the OCI distribution APIs and re-uses
         # ~/.docker/config.json credentials. The default GITHUB_TOKEN
         # carries `packages: read` for the same repo.
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9  # v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -110,7 +110,7 @@ jobs:
 
       - name: Open auto-sweep PR
         if: steps.sweep.outputs.to_remove != '0'
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676  # v7
         with:
           branch: ${{ env.PR_BRANCH }}
           delete-branch: true

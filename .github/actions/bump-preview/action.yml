@@ -19,7 +19,7 @@ description: |
 runs:
   using: composite
   steps:
-    - uses: goabonga/multicz-action@v1
+    - uses: goabonga/multicz-action@5f9b6e930fc6b26160b0b57e7c0c9f4276f86c59  # v1
     - name: Bump (write only — no commit / tag / push / hooks / CHANGELOG)
       shell: bash
       run: multicz bump --no-post-bump --no-changelog

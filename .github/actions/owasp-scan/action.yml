@@ -61,7 +61,7 @@ runs:
           kind load image-archive /tmp/${c}.tar --name shomer-${{ inputs.component }}
         done
 
-    - uses: azure/setup-helm@v5
+    - uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2  # v5
 
     - name: helm install api / job / ssr (each --wait)
       shell: bash
