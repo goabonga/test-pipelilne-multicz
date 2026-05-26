@@ -1,0 +1,65 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+name: plumber
+
+# Plumber (getplumber.io) audits .github/workflows/ and .github/actions/
+# for compliance and supply-chain issues: unpinned third-party actions,
+# unsafe triggers (`pull_request_target`, `workflow_run`), template-
+# injection sinks, over-broad GITHUB_TOKEN permissions, debug toggles
+# that leak secrets, Docker-in-Docker, and similar. Findings are
+# uploaded as SARIF to the repo's Code Scanning surface.
+#
+# Triggered on every change to workflows/actions AND weekly to catch
+# drift — a fresh CVE on an already-merged pinned action surfaces on
+# the next Monday sweep even without a code change.
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/**"
+      - ".github/actions/**"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/**"
+      - ".github/actions/**"
+  schedule:
+    - cron: "0 5 * * 1"   # Monday 06:00 Europe/Paris (DST: 07:00)
+  workflow_dispatch: {}
+
+# `security-events: write` is required for the action to push SARIF into
+# Code Scanning. `actions: read` lets Plumber introspect siblings of the
+# triggering workflow (it parses every yml under .github/, not just the
+# one that fired). Everything else stays read-only.
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+concurrency:
+  group: plumber-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+
+      # Pin by full commit SHA — Plumber's own ruleset flags tag-pinned
+      # third-party actions, so anything less than a SHA here would be
+      # the very first finding it reports against itself. Bump the SHA
+      # via Dependabot (covered by the ci-actions group; see
+      # .github/dependabot.yml).
+      - name: Run Plumber compliance audit
+        uses: getplumber/plumber@243ae46df3aa77aacd84e75590ac81bee261957c   # v0.3.25
+        with:
+          # Fail the job the moment any single control reports a
+          # finding. We pick the strict bar from day one so the audit
+          # genuinely gates merges; the first PR after this lands is
+          # expected to be red until the findings are addressed.
+          threshold: 100
+          # SARIF upload to Code Scanning is on by default — keep it
+          # explicit so the workflow's intent is self-documenting.
+          upload-sarif: true

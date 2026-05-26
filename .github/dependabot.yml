@@ -140,6 +140,7 @@ updates:
           - "compilerla/*"
           - "docker/*"
           - "geekyeggo/*"
+          - "getplumber/*"
           - "goabonga/*"
           - "google/*"
           - "hadolint/*"
