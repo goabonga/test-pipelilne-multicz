@@ -5,19 +5,25 @@
 # directory as CWD — see the `working-directory: packages/api` on the
 # api-grype step in .github/workflows/ci.yml).
 #
-# Every entry MUST carry an expiration date in `reason:` and pin
-# `package.name` + `package.version` so that the moment Chainguard ships a
-# patched python apk, the version mismatch makes the ignore a no-op and
-# the CVE is surfaced again.
+# Every entry MUST be preceded by a `# expires: YYYY-MM-DD` marker comment
+# AND pin `package.name` + `package.version`, so:
+#
+#   1. The marker is the single source of truth read by the weekly
+#      grype-allowlist-sweep workflow (scripts/grype-allowlist-sweep.py).
+#      Don't bury the date in prose — the script greps `# expires:`.
+#   2. The version pin auto-resolves the ignore the moment Chainguard
+#      ships a patched apk: version mismatch -> no match -> CVE surfaces
+#      again under --fail-on high.
 
 ignore:
   # CVE-2026-7210 (Critical) — upstream Chainguard python-3.14 3.14.5-r1
   # apk in cgr.dev/chainguard/python:latest. Tracked, no fix yet from
-  # Chainguard. Re-evaluate by 2026-06-02 (added 2026-05-26, +7 days):
-  # if Chainguard hasn't shipped a patched image by then, bump the
-  # expiration with a fresh justification rather than letting this rot.
+  # Chainguard. If they haven't shipped a patched image by the expiration
+  # below, the weekly sweep workflow will open an issue forcing a fresh
+  # justification rather than letting this rot.
+  # expires: 2026-06-02
   - vulnerability: CVE-2026-7210
-    reason: "Upstream Chainguard python:latest apk; awaiting patched base image. Expires 2026-06-02."
+    reason: "Upstream Chainguard python:latest apk; awaiting patched base image."
     package:
       name: python-3.14
       version: 3.14.5-r1

@@ -143,6 +143,7 @@ updates:
           - "goabonga/*"
           - "google/*"
           - "hadolint/*"
+          - "peter-evans/*"
           - "pre-commit/*"
           - "pypa/*"
           - "softprops/*"
