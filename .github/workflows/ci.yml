@@ -54,6 +54,14 @@ on:
   push:
     branches: [main]
 
+# Read-only by default for every job — anything that needs to write
+# (push commits/tags, create GitHub Releases, push to GHCR, deploy
+# Pages, sign with OIDC) declares an override in its own `permissions:`
+# block. Plumber's ISSUE-801 wants explicit permissions everywhere; the
+# workflow-level default satisfies it for jobs that don't override.
+permissions:
+  contents: read
+
 jobs:
   # ─────────────────────── graph entry: validate ─ detect ─ headers + docs-build ───────────────────────
 
