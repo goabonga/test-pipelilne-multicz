@@ -347,6 +347,7 @@ jobs:
       - name: Install grype
         run: curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
       - name: Scan SBOM (--fail-on high)
+        working-directory: packages/api
         run: grype sbom:/tmp/api.sbom.spdx.json --fail-on high
       - name: Summary
         if: always()
@@ -595,6 +596,7 @@ jobs:
       - name: Install grype
         run: curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
       - name: Scan SBOM (--fail-on high)
+        working-directory: packages/job
         run: grype sbom:/tmp/job.sbom.spdx.json --fail-on high
       - name: Summary
         if: always()
@@ -862,6 +864,7 @@ jobs:
       - name: Install grype
         run: curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
       - name: Scan SBOM (--fail-on high)
+        working-directory: packages/ssr
         run: grype sbom:/tmp/ssr.sbom.spdx.json --fail-on high
       - name: Summary
         if: always()

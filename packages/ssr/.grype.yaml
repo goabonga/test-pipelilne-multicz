@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Per-component grype allowlist (auto-discovered when grype runs with this
+# directory as CWD — see the `working-directory: packages/ssr` on the
+# ssr-grype step in .github/workflows/ci.yml).
+#
+# Every entry MUST carry an expiration date in `reason:` and pin
+# `package.name` + `package.version` so that the moment Chainguard ships a
+# patched python apk, the version mismatch makes the ignore a no-op and
+# the CVE is surfaced again.
+
+ignore:
+  # CVE-2026-7210 (Critical) — upstream Chainguard python-3.14 3.14.5-r1
+  # apk in cgr.dev/chainguard/python:latest. Tracked, no fix yet from
+  # Chainguard. Re-evaluate by 2026-06-02 (added 2026-05-26, +7 days):
+  # if Chainguard hasn't shipped a patched image by then, bump the
+  # expiration with a fresh justification rather than letting this rot.
+  - vulnerability: CVE-2026-7210
+    reason: "Upstream Chainguard python:latest apk; awaiting patched base image. Expires 2026-06-02."
+    package:
+      name: python-3.14
+      version: 3.14.5-r1
+      type: apk
