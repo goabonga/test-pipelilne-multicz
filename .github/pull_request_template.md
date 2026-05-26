@@ -19,11 +19,11 @@
 <!-- Tick every component touched (matches multicz.toml scopes): -->
 
 - [ ] `api` (`packages/api`)
-- [ ] `worker` (`packages/worker`)
+- [ ] `job` (`packages/job`)
+- [ ] `ssr` (`packages/ssr`)
 - [ ] `web` (`packages/web`)
-- [ ] `web-frontend` (`packages/web-frontend`)
 - [ ] `cli` (`packages/cli`)
-- [ ] `chart-api` / `chart-worker` / `chart-web`
+- [ ] `chart-api` / `chart-job` / `chart-ssr`
 - [ ] `docs`
 
 ## Changes

@@ -35,7 +35,7 @@ help:
 	@echo "  make release-plan     Full bump plan with reasons"
 	@echo "  make release-validate Sanity-check multicz.toml against the repo"
 	@echo "  make release-config   Print the effective multicz config"
-	@echo "  make release-graph    Render the cascade DAG (api/worker -> charts)"
+	@echo "  make release-graph    Render the cascade DAG (api/job -> charts)"
 	@echo "  make release-dry-run  Compute the bump but write nothing"
 	@echo "  make release          Apply versions, commit and tag (no push)"
 	@echo ""

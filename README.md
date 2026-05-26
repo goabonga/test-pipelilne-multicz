@@ -20,7 +20,7 @@ uv workspace shipping three independently-versioned packages:
 | package        | role                          | distribution                         |
 |----------------|-------------------------------|--------------------------------------|
 | `shomer-api`   | FastAPI authorization server  | Docker image, Helm chart, `.deb`     |
-| `shomer-worker`| background polling jobs       | Docker image, Helm chart, `.deb`     |
+| `shomer-job`| background polling jobs       | Docker image, Helm chart, `.deb`     |
 | `shomer-cli`   | operator CLI                  | wheel / sdist (PyPI)                 |
 
 ## Quickstart
@@ -36,13 +36,13 @@ uv run shomer health http://127.0.0.1:8000
 ```
 packages/
 ├── api/      Python source + Dockerfile + chart/ + debian/
-├── worker/   Python source + Dockerfile + chart/ + debian/
+├── job/   Python source + Dockerfile + chart/ + debian/
 └── cli/      Python source only (no chart, no .deb)
 ```
 
 Releases are managed by [`multicz`](https://github.com/goabonga/multicz)
 — independent tags, independent `CHANGELOG.md`, independent `debian/changelog`
-stanzas, mirror cascade from `api` / `worker` versions into the matching
+stanzas, mirror cascade from `api` / `job` versions into the matching
 `Chart.yaml#appVersion`. See `multicz.toml`.
 
 ## License

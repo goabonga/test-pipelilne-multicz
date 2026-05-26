@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>{% block title %}Shomer{% endblock %}</title>
+  <link rel="stylesheet" href="/static/main.css" />
+</head>
+<body>
+  {% block content %}{% endblock %}
+  <footer>shomer-ssr {{ version }}</footer>
+  <script src="/static/main.js" defer></script>
+</body>
+</html>

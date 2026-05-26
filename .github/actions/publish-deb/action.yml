@@ -15,7 +15,7 @@ description: |
 inputs:
   component:
     required: true
-    description: Component name — api / worker / web / cli.
+    description: Component name — api / job / ssr / cli.
 
 runs:
   using: composite

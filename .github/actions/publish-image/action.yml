@@ -16,7 +16,7 @@ description: |
 inputs:
   component:
     required: true
-    description: Component name — api / worker / web.
+    description: Component name — api / job / ssr.
   version:
     required: true
     description: Version to tag (also publishes `latest`).

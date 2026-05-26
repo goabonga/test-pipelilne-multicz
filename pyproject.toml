@@ -1,21 +1,21 @@
 [project]
 name = "shomer-workspace"
 version = "0.0.0"
-description = "Shomer monorepo (api, worker, cli) — uv workspace root."
+description = "Shomer monorepo (api, job, cli) — uv workspace root."
 requires-python = ">=3.11"
 
 [tool.uv.workspace]
 members = ["packages/*"]
-# `web-frontend` is a Node project (TS / CSS / Jinja templates that
-# build into packages/web/src/shomer_web/{static,templates}/). uv
+# `web` is a Node project (TS / CSS / Jinja templates that
+# build into packages/ssr/src/shomer_ssr/{static,templates}/). uv
 # should ignore it — it has no pyproject.toml.
-exclude = ["packages/web-frontend"]
+exclude = ["packages/web"]
 
 [tool.uv.sources]
 shomer-api = { workspace = true }
-shomer-worker = { workspace = true }
+shomer-job = { workspace = true }
 shomer-cli = { workspace = true }
-shomer-web = { workspace = true }
+shomer-ssr = { workspace = true }
 
 [dependency-groups]
 dev = [
@@ -34,8 +34,8 @@ favicon = [
 [tool.pytest.ini_options]
 testpaths = [
     "packages/api/tests",
-    "packages/worker/tests",
+    "packages/job/tests",
     "packages/cli/tests",
-    "packages/web/tests",
+    "packages/ssr/tests",
 ]
 addopts = "-q"

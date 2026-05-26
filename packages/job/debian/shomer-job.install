@@ -1,0 +1,3 @@
+debian/shomer-job.service usr/lib/systemd/system/
+debian/shomer-job.metainfo.xml usr/share/metainfo/
+data/shomer-job.svg usr/share/icons/hicolor/scalable/apps/

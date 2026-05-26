@@ -7,10 +7,10 @@
 # Conventional Commits with a type/scope that reflects what the bump touches:
 #
 #   - changes only under .github/workflows/ or .github/actions/ -> ci
-#   - changes only under packages/web-frontend/                 -> chore(web-frontend)
+#   - changes only under packages/web/                 -> chore(web)
 #   - changes only under packages/api/ (incl. Dockerfile)       -> fix(api)
-#   - changes only under packages/worker/                       -> fix(worker)
-#   - changes only under packages/web/                          -> fix(web)
+#   - changes only under packages/job/                       -> fix(job)
+#   - changes only under packages/ssr/                          -> fix(ssr)
 #   - changes only under packages/cli/                          -> fix(cli)
 #   - Python uv runtime bump touching a single packages/<pkg>/pyproject.toml
 #                                                               -> fix(<pkg>)
@@ -80,14 +80,14 @@ prefix=""
 
 if only_in ".github/workflows/" ".github/actions/"; then
     prefix="ci"
-elif only_in "packages/web-frontend/"; then
-    prefix="chore(web-frontend)"
+elif only_in "packages/web/"; then
+    prefix="chore(web)"
 else
     # Single-package scope detection: only one packages/<pkg>/ touched
     # (uv.lock at root is allowed alongside it for Python bumps).
     pkg_scope=""
     multi=0
-    for p in api worker web cli; do
+    for p in api job ssr cli; do
         if any_in "packages/$p/"; then
             if [ -z "$pkg_scope" ]; then
                 pkg_scope="$p"

@@ -21,14 +21,14 @@ body:
       multiple: true
       options:
         - shomer-api
-        - shomer-worker
+        - shomer-job
+        - shomer-ssr
         - shomer-web
-        - shomer-web-frontend
         - shomer-cli
         - chart-api
-        - chart-worker
-        - chart-web
-        - docs / website
+        - chart-job
+        - chart-ssr
+        - docs / ssrsite
         - release / CI tooling
     validations:
       required: true
@@ -80,7 +80,7 @@ body:
         - "3.11"
         - "3.12"
         - "3.13"
-        - "N/A (chart / web-frontend / docs)"
+        - "N/A (chart / web / docs)"
     validations:
       required: true
 

@@ -1,0 +1,3 @@
+debian/shomer-ssr.service usr/lib/systemd/system/
+debian/shomer-ssr.metainfo.xml usr/share/metainfo/
+data/shomer-ssr.svg usr/share/icons/hicolor/scalable/apps/

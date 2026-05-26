@@ -4,9 +4,9 @@
 name: owasp scan
 description: |
   Spin up an ephemeral kind cluster, helm install ALL three charts
-  (api + worker + web) from their CI image artifacts so the scan
-  target sees its real neighbours (web reaches api, api reaches
-  worker, etc.), then port-forward the target service and run an
+  (api + job + ssr) from their CI image artifacts so the scan
+  target sees its real neighbours (ssr reaches api, api reaches
+  job, etc.), then port-forward the target service and run an
   OWASP ZAP baseline scan against it. Uploads the ZAP HTML + JSON
   report as the `zap-<component>-baseline` artifact.
 
@@ -18,12 +18,12 @@ inputs:
   component:
     required: true
     description: |
-      Component to ZAP-scan — api or web. The cluster deploys ALL 3
+      Component to ZAP-scan — api or ssr. The cluster deploys ALL 3
       services regardless; this just selects which one gets the
       port-forward + scan.
   port:
     required: true
-    description: Service port (and local forward port). 8000 for api, 8080 for web.
+    description: Service port (and local forward port). 8000 for api, 8080 for ssr.
   token:
     required: true
     description: Token with `packages:read` on ghcr (passed to `load-image` for the pull fallback).
@@ -33,7 +33,7 @@ runs:
   steps:
     # Each component image: fresh artifact if its container rebuilt
     # this run, else `:latest` pulled from ghcr. Means owasp-* can
-    # run on a partial-change PR (e.g. only api changed → worker/web
+    # run on a partial-change PR (e.g. only api changed → job/ssr
     # served from their last released images).
     - uses: ./.github/actions/load-image
       with:
@@ -41,11 +41,11 @@ runs:
         token: ${{ inputs.token }}
     - uses: ./.github/actions/load-image
       with:
-        component: worker
+        component: job
         token: ${{ inputs.token }}
     - uses: ./.github/actions/load-image
       with:
-        component: web
+        component: ssr
         token: ${{ inputs.token }}
 
     - uses: helm/kind-action@v1.10.0
@@ -57,17 +57,17 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
-        for c in api worker web; do
+        for c in api job ssr; do
           kind load image-archive /tmp/${c}.tar --name shomer-${{ inputs.component }}
         done
 
     - uses: azure/setup-helm@v5
 
-    - name: helm install api / worker / web (each --wait)
+    - name: helm install api / job / ssr (each --wait)
       shell: bash
       run: |
         set -euo pipefail
-        for c in api worker web; do
+        for c in api job ssr; do
           helm install "$c" "packages/$c/chart" \
             --set image.repository="$c" \
             --set image.tag=ci \
@@ -110,7 +110,7 @@ runs:
       if: failure()
       shell: bash
       run: |
-        for c in api worker web; do
+        for c in api job ssr; do
           echo "=== describe $c ==="
           kubectl describe deployment "$c" || true
           echo "=== logs $c ==="

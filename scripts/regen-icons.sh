@@ -6,7 +6,7 @@
 # SVG at `assets/shomer.svg`. Re-run after editing the master SVG.
 #
 # Per-package SVG copies use the binary name (shomer / shomer-api /
-# shomer-worker / shomer-web) so AppStream's `<icon type="stock">`
+# shomer-job / shomer-ssr) so AppStream's `<icon type="stock">`
 # resolves under each package's hicolor entry.
 #
 # Favicon generation delegates to `scripts/generate_favicon.py`
@@ -24,16 +24,16 @@ fi
 
 mkdir -p "$ROOT/packages/cli/data" \
          "$ROOT/packages/api/data" \
-         "$ROOT/packages/worker/data" \
-         "$ROOT/packages/web/data"
+         "$ROOT/packages/job/data" \
+         "$ROOT/packages/ssr/data"
 
 # Per-package copies — named to match the installed binary so each
 # .deb's metainfo.xml can reference `<icon type="stock">shomer-X</icon>`
 # without colliding with siblings under /usr/share/icons/hicolor/.
 cp "$SRC" "$ROOT/packages/cli/data/shomer.svg"
 cp "$SRC" "$ROOT/packages/api/data/shomer-api.svg"
-cp "$SRC" "$ROOT/packages/worker/data/shomer-worker.svg"
-cp "$SRC" "$ROOT/packages/web/data/shomer-web.svg"
+cp "$SRC" "$ROOT/packages/job/data/shomer-job.svg"
+cp "$SRC" "$ROOT/packages/ssr/data/shomer-ssr.svg"
 
 # Docs site logo (zensical reads `docs/shomer.svg`).
 cp "$SRC" "$ROOT/docs/shomer.svg"

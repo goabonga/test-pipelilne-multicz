@@ -1,18 +1,18 @@
-# multicz config: shomer monorepo (api / worker / cli + 2 helm charts).
+# multicz config: shomer monorepo (api / job / cli + 2 helm charts).
 #
 # Five components:
 #
-#   api / worker  — Python + Docker + Helm chart + Debian package.
+#   api / job  — Python + Docker + Helm chart + Debian package.
 #                   bump_files is the source of truth (pyproject.toml);
 #                   a debian-changelog writer prepends a stanza on every
 #                   bump; a mirror writes the new version into the
 #                   matching chart's appVersion (cascading a patch onto
-#                   chart-api / chart-worker).
+#                   chart-api / chart-job).
 #
 #   cli           — Python wheel only (PyPI).
 #
-#   chart-api / chart-worker — Helm charts. Bump on their own template
-#                   changes AND when their parent component (api / worker)
+#   chart-api / chart-job — Helm charts. Bump on their own template
+#                   changes AND when their parent component (api / job)
 #                   ships a new image via the appVersion mirror cascade.
 
 [project]
@@ -55,101 +55,101 @@ ref  = "ghcr.io/goabonga/shomer-api:{version}"
 type = "debian"
 ref  = "shomer-api_{version}-1_all.deb"
 
-[components.worker]
+[components.job]
 paths      = [
-    "packages/worker/src/**",
-    "packages/worker/pyproject.toml",
-    "packages/worker/Dockerfile",
-    "packages/worker/debian/**",
+    "packages/job/src/**",
+    "packages/job/pyproject.toml",
+    "packages/job/Dockerfile",
+    "packages/job/debian/**",
 ]
 bump_files = [
-    { file = "packages/worker/pyproject.toml", key = "project.version" },
-    { file = "packages/worker/src/shomer_worker/__init__.py", key = 'regex:^__version__\s*=\s*"([^"]+)"' },
-    { file = "VERSION", key = 'regex:^worker=(.+)$' },
+    { file = "packages/job/pyproject.toml", key = "project.version" },
+    { file = "packages/job/src/shomer_job/__init__.py", key = 'regex:^__version__\s*=\s*"([^"]+)"' },
+    { file = "VERSION", key = 'regex:^job=(.+)$' },
 ]
 mirrors    = [
-    { file = "packages/worker/chart/Chart.yaml", key = "appVersion" },
+    { file = "packages/job/chart/Chart.yaml", key = "appVersion" },
 ]
-changelog  = "packages/worker/CHANGELOG.md"
+changelog  = "packages/job/CHANGELOG.md"
 post_bump  = ["uv lock"]
 
-[[components.worker.writers]]
+[[components.job.writers]]
 type            = "debian-changelog"
-file            = "packages/worker/debian/changelog"
-package         = "shomer-worker"
+file            = "packages/job/debian/changelog"
+package         = "shomer-job"
 distribution    = "unstable"
 maintainer      = "Chris <goabonga@pm.me>"
 debian_revision = 1
 
-[[components.worker.artifacts]]
+[[components.job.artifacts]]
 type = "docker"
-ref  = "ghcr.io/goabonga/shomer-worker:{version}"
+ref  = "ghcr.io/goabonga/shomer-job:{version}"
 
-[[components.worker.artifacts]]
+[[components.job.artifacts]]
 type = "debian"
-ref  = "shomer-worker_{version}-1_all.deb"
+ref  = "shomer-job_{version}-1_all.deb"
 
-[components.web]
+[components.ssr]
 # `static/**` and `templates/**` are NOT in paths — they're build
-# outputs of `web-frontend`. Cascade flows in via `depends_on` below.
+# outputs of `web`. Cascade flows in via `depends_on` below.
 paths      = [
-    "packages/web/src/shomer_web/*.py",
-    "packages/web/pyproject.toml",
-    "packages/web/Dockerfile",
-    "packages/web/debian/**",
+    "packages/ssr/src/shomer_ssr/*.py",
+    "packages/ssr/pyproject.toml",
+    "packages/ssr/Dockerfile",
+    "packages/ssr/debian/**",
 ]
 bump_files = [
-    { file = "packages/web/pyproject.toml", key = "project.version" },
-    { file = "packages/web/src/shomer_web/__init__.py", key = 'regex:^__version__\s*=\s*"([^"]+)"' },
+    { file = "packages/ssr/pyproject.toml", key = "project.version" },
+    { file = "packages/ssr/src/shomer_ssr/__init__.py", key = 'regex:^__version__\s*=\s*"([^"]+)"' },
+    { file = "VERSION", key = 'regex:^ssr=(.+)$' },
+]
+mirrors    = [
+    { file = "packages/ssr/chart/Chart.yaml", key = "appVersion" },
+]
+changelog  = "packages/ssr/CHANGELOG.md"
+# Bumping web (TS/CSS/templates) auto-bumps ssr because the
+# regenerated assets land under packages/ssr/ and need a fresh
+# wheel + Docker image + .deb.
+depends_on = ["web"]
+post_bump  = ["uv lock"]
+
+[[components.ssr.writers]]
+type            = "debian-changelog"
+file            = "packages/ssr/debian/changelog"
+package         = "shomer-ssr"
+distribution    = "unstable"
+maintainer      = "Chris <goabonga@pm.me>"
+debian_revision = 1
+
+[[components.ssr.artifacts]]
+type = "docker"
+ref  = "ghcr.io/goabonga/shomer-ssr:{version}"
+
+[[components.ssr.artifacts]]
+type = "debian"
+ref  = "shomer-ssr_{version}-1_all.deb"
+
+# `web` is the Node project that builds shomer-ssr's TS/CSS
+# bundle and copies the Jinja templates into packages/ssr/. It has
+# its own tag stream (web-vX.Y.Z) and changelog. The
+# post_bump runs the build, which writes into packages/ssr/src/
+# shomer_ssr/{static,templates}/ — those files are detected by hash
+# diff and added to the release commit. `ssr` cascades a patch
+# through depends_on, so a fresh image / chart / .deb is produced.
+[components.web]
+paths      = [
+    "packages/web/src/**",
+    "packages/web/scripts/**",
+    "packages/web/package.json",
+    "packages/web/tsconfig.json",
+    "packages/web/biome.json",
+]
+bump_files = [
+    { file = "packages/web/package.json", key = "version" },
     { file = "VERSION", key = 'regex:^web=(.+)$' },
 ]
-mirrors    = [
-    { file = "packages/web/chart/Chart.yaml", key = "appVersion" },
-]
 changelog  = "packages/web/CHANGELOG.md"
-# Bumping web-frontend (TS/CSS/templates) auto-bumps web because the
-# regenerated assets land under packages/web/ and need a fresh
-# wheel + Docker image + .deb.
-depends_on = ["web-frontend"]
-post_bump  = ["uv lock"]
-
-[[components.web.writers]]
-type            = "debian-changelog"
-file            = "packages/web/debian/changelog"
-package         = "shomer-web"
-distribution    = "unstable"
-maintainer      = "Chris <goabonga@pm.me>"
-debian_revision = 1
-
-[[components.web.artifacts]]
-type = "docker"
-ref  = "ghcr.io/goabonga/shomer-web:{version}"
-
-[[components.web.artifacts]]
-type = "debian"
-ref  = "shomer-web_{version}-1_all.deb"
-
-# `web-frontend` is the Node project that builds shomer-web's TS/CSS
-# bundle and copies the Jinja templates into packages/web/. It has
-# its own tag stream (web-frontend-vX.Y.Z) and changelog. The
-# post_bump runs the build, which writes into packages/web/src/
-# shomer_web/{static,templates}/ — those files are detected by hash
-# diff and added to the release commit. `web` cascades a patch
-# through depends_on, so a fresh image / chart / .deb is produced.
-[components.web-frontend]
-paths      = [
-    "packages/web-frontend/src/**",
-    "packages/web-frontend/scripts/**",
-    "packages/web-frontend/package.json",
-    "packages/web-frontend/tsconfig.json",
-    "packages/web-frontend/biome.json",
-]
-bump_files = [
-    { file = "packages/web-frontend/package.json", key = "version" },
-    { file = "VERSION", key = 'regex:^web-frontend=(.+)$' },
-]
-changelog  = "packages/web-frontend/CHANGELOG.md"
-post_bump  = ["npm --prefix packages/web-frontend run build"]
+post_bump  = ["npm --prefix packages/web run build"]
 
 [components.cli]
 paths      = ["packages/cli/**"]
@@ -189,36 +189,36 @@ changelog  = "packages/api/chart/CHANGELOG.md"
 type = "helm"
 ref  = "shomer-api-{version}.tgz"
 
-[components.chart-worker]
-paths      = ["packages/worker/chart/**"]
+[components.chart-job]
+paths      = ["packages/job/chart/**"]
 bump_files = [
-    { file = "packages/worker/chart/Chart.yaml", key = "version" },
-    { file = "VERSION", key = 'regex:^chart-worker=(.+)$' },
+    { file = "packages/job/chart/Chart.yaml", key = "version" },
+    { file = "VERSION", key = 'regex:^chart-job=(.+)$' },
 ]
-changelog  = "packages/worker/chart/CHANGELOG.md"
+changelog  = "packages/job/chart/CHANGELOG.md"
 
-[[components.chart-worker.artifacts]]
+[[components.chart-job.artifacts]]
 type = "helm"
-ref  = "shomer-worker-{version}.tgz"
+ref  = "shomer-job-{version}.tgz"
 
-[components.chart-web]
-paths      = ["packages/web/chart/**"]
+[components.chart-ssr]
+paths      = ["packages/ssr/chart/**"]
 bump_files = [
-    { file = "packages/web/chart/Chart.yaml", key = "version" },
-    { file = "VERSION", key = 'regex:^chart-web=(.+)$' },
+    { file = "packages/ssr/chart/Chart.yaml", key = "version" },
+    { file = "VERSION", key = 'regex:^chart-ssr=(.+)$' },
 ]
-changelog  = "packages/web/chart/CHANGELOG.md"
+changelog  = "packages/ssr/chart/CHANGELOG.md"
 
-[[components.chart-web.artifacts]]
+[[components.chart-ssr.artifacts]]
 type = "helm"
-ref  = "shomer-web-{version}.tgz"
+ref  = "shomer-ssr-{version}.tgz"
 
 # `docs` is a release-tracked component for the zensical site. Only
 # scoped here so `multicz changed` picks up doc-only commits and
 # `multicz status` / `plan` show the doc release stream alongside the
 # code components. The bump_rules override adds `docs = "patch"` to
 # the project defaults — `docs:` commits bump THIS component, but
-# stay non-bumping for api / worker / cli (which inherit the default
+# stay non-bumping for api / job / cli (which inherit the default
 # rules where `docs` is absent / treated as no-op).
 [components.docs]
 paths      = ["docs/**", "zensical.toml"]

@@ -15,7 +15,7 @@ description: |
 inputs:
   component:
     required: true
-    description: Component name — api / worker / web.
+    description: Component name — api / job / ssr.
   owner:
     required: true
     description: Lowercase ghcr namespace.

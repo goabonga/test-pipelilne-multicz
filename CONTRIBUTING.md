@@ -7,7 +7,7 @@ Thanks for your interest in Shomer.
 ```bash
 uv sync                          # installs all workspace members
 uv run shomer-api                # FastAPI on :8000
-uv run shomer-worker             # background loop
+uv run shomer-job             # background loop
 uv run shomer health http://127.0.0.1:8000
 ```
 
@@ -16,7 +16,7 @@ uv run shomer health http://127.0.0.1:8000
 ```
 packages/
 ├── api/      shomer-api      FastAPI service + Helm chart + .deb
-├── worker/   shomer-worker   polling worker + Helm chart + .deb
+├── job/   shomer-job   polling job + Helm chart + .deb
 └── cli/      shomer-cli      operator CLI (no chart, no deb)
 ```
 
@@ -31,7 +31,7 @@ Conventional Commits, scoped to the affected package(s):
 
 ```
 feat(api): add token introspection endpoint
-fix(worker): handle SIGHUP without restarting
+fix(job): handle SIGHUP without restarting
 docs(cli): document `shomer health` flags
 ```
 

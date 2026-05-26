@@ -22,7 +22,7 @@ of three independently-versioned packages:
 | package         | role                          | distribution                     |
 |-----------------|-------------------------------|----------------------------------|
 | `shomer-api`    | FastAPI authorization server  | Docker image, Helm chart, `.deb` |
-| `shomer-worker` | background polling jobs       | Docker image, Helm chart, `.deb` |
+| `shomer-job` | background polling jobs       | Docker image, Helm chart, `.deb` |
 | `shomer-cli`    | operator CLI                  | wheel / sdist (PyPI)             |
 
 Each package is released independently — its own git tag, its own
@@ -46,7 +46,7 @@ uv run shomer health http://127.0.0.1:8000
 - `GET /healthz` — liveness probe (Helm + systemd target).
 - `GET /.well-known/openid-configuration` — OIDC discovery stub.
 - `shomer health <url>` — operator probe via the CLI.
-- `shomer-worker` — minimal polling loop with signal-based shutdown.
+- `shomer-job` — minimal polling loop with signal-based shutdown.
 
 The OAuth2 / OIDC flows themselves are intentionally **not**
 implemented in this skeleton — Shomer ships the packaging, deployment
@@ -57,9 +57,9 @@ follow-up work.
 
 | target        | path                                   |
 |---------------|----------------------------------------|
-| **Docker**    | `packages/{api,worker}/Dockerfile`     |
-| **Helm**      | `packages/{api,worker}/chart/`         |
-| **Debian**    | `packages/{api,worker}/debian/` + systemd unit |
+| **Docker**    | `packages/{api,job}/Dockerfile`     |
+| **Helm**      | `packages/{api,job}/chart/`         |
+| **Debian**    | `packages/{api,job}/debian/` + systemd unit |
 | **Wheel**     | `uv build -p packages/cli`             |
 
 ## Releasing

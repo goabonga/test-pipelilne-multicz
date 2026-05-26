@@ -1,9 +1,9 @@
 api=0.0.0
-worker=0.0.0
+job=0.0.0
 cli=0.0.0
+ssr=0.0.0
 web=0.0.0
-web-frontend=0.0.0
 chart-api=0.0.0
-chart-worker=0.0.0
-chart-web=0.0.0
+chart-job=0.0.0
+chart-ssr=0.0.0
 docs=0.0.0

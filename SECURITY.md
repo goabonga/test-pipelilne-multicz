@@ -13,7 +13,7 @@ blast radius. **Do not open a public GitHub issue.**
 
 Email **goabonga@pm.me** with:
 
-- the affected component (api, worker, cli) and version
+- the affected component (api, job, cli) and version
 - a reproduction recipe (smallest config / request / token sequence)
 - your assessment of the impact (scope escalation, token leak, …)
 
@@ -27,7 +27,7 @@ two-week window before public discussion.
 In scope:
 
 - the `shomer-api` HTTP surface (OAuth2/OIDC endpoints, admin API)
-- the `shomer-worker` background jobs and their input data
+- the `shomer-job` background jobs and their input data
 - the `shomer-cli` (credential handling, host verification)
 - the published Docker images and `.deb` packages
 - the bundled Helm chart defaults

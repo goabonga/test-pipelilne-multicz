@@ -1,0 +1,7 @@
+apiVersion: v2
+name: shomer-job
+description: Shomer background job.
+type: application
+version: 0.0.0
+appVersion: "0.0.0"
+icon: https://raw.githubusercontent.com/goabonga/shomer/main/assets/shomer.svg

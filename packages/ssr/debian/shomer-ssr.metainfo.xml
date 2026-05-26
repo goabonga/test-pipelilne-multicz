@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="console-application">
+  <id>io.github.goabonga.shomer-ssr</id>
+  <name>Shomer SSR</name>
+  <summary>Shomer authorization ssr frontend (login pages, account UI)</summary>
+  <description>
+    <p>
+      FastAPI + Jinja2 ssr frontend serving the user-facing login,
+      consent and account-management screens that drive the
+      shomer-api OAuth2 flows. Ships a hardened systemd unit and
+      bundled JS/CSS/templates built by the upstream
+      `web` Node package.
+    </p>
+  </description>
+  <icon type="stock">shomer-ssr</icon>
+  <metadata_license>MIT</metadata_license>
+  <project_license>MIT</project_license>
+  <url type="homepage">https://github.com/goabonga/shomer</url>
+  <developer id="io.github.goabonga">
+    <name>Chris</name>
+  </developer>
+  <provides>
+    <binary>shomer-ssr</binary>
+  </provides>
+  <categories>
+    <category>System</category>
+    <category>Network</category>
+    <category>Security</category>
+  </categories>
+</component>

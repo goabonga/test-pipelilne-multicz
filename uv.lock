@@ -6,8 +6,8 @@ requires-python = ">=3.11"
 members = [
     "shomer-api",
     "shomer-cli",
-    "shomer-web",
-    "shomer-worker",
+    "shomer-job",
+    "shomer-ssr",
     "shomer-workspace",
 ]
 
@@ -844,9 +844,14 @@ requires-dist = [
 ]
 
 [[package]]
-name = "shomer-web"
+name = "shomer-job"
 version = "0.0.0"
-source = { editable = "packages/web" }
+source = { editable = "packages/job" }
+
+[[package]]
+name = "shomer-ssr"
+version = "0.0.0"
+source = { editable = "packages/ssr" }
 dependencies = [
     { name = "fastapi" },
     { name = "jinja2" },
@@ -861,11 +866,6 @@ requires-dist = [
     { name = "python-multipart", specifier = ">=0.0.9" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.32" },
 ]
-
-[[package]]
-name = "shomer-worker"
-version = "0.0.0"
-source = { editable = "packages/worker" }
 
 [[package]]
 name = "shomer-workspace"

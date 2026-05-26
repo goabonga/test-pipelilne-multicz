@@ -10,16 +10,16 @@
 #   validate ── detect ── headers ──> per-component chains
 #                                     docs-build
 #
-# ─── Per-component chain (python/buildable — api / worker / web):
+# ─── Per-component chain (python/buildable — api / job / ssr):
 #
 #                    ┌─ X-lint     ─┐                            ┌─ X-container ─ X-sbom ─ X-grype ─┐
-#   detect, headers ─┼─ X-format   ─┼─ X-test ─ X-bandit ─ audit ┤                                  ├─ owasp-X (kind+ZAP, web/api only)
+#   detect, headers ─┼─ X-format   ─┼─ X-test ─ X-bandit ─ audit ┤                                  ├─ owasp-X (kind+ZAP, ssr/api only)
 #                    └─ X-typecheck┘                             └─ X-deb ─ X-deb-validate ────────┘
 #
 # - cli has the same lint/test/bandit/deb chain, no container/sbom/grype/owasp.
-# - charts (chart-{api,worker,web}) have chart-X-lint → chart-X-checkov.
-# - web-frontend has its own JS chain that feeds web-frontend-build,
-#   consumed by web-{test,container,deb} via `web-frontend-dist` artifact.
+# - charts (chart-{api,job,ssr}) have chart-X-lint → chart-X-checkov.
+# - web has its own JS chain that feeds web-build,
+#   consumed by ssr-{test,container,deb} via `web-dist` artifact.
 #
 # Per-component change-gating uses
 #   `if: contains(fromJson(needs.detect.outputs.changed).changed, '<name>')`
@@ -31,15 +31,15 @@
 # ─── Release fan-out (main only, !chore(release), all upstream green):
 #
 #   owasp-api ─┐
-#   owasp-web ─┤
+#   owasp-ssr ─┤
 #   *-deb-validate (4) ─┤
 #   docs-build         ─┼─> release-bump  ┬─> release-api          (docker + .deb + gh release)
-#   validate           ─┘                 ├─> release-worker       (idem)
-#                                         ├─> release-web          (idem)
+#   validate           ─┘                 ├─> release-job       (idem)
+#                                         ├─> release-ssr          (idem)
 #                                         ├─> release-cli          (.deb + gh release, no docker)
 #                                         ├─> release-chart-api    (helm OCI push + gh release)
-#                                         ├─> release-chart-worker (idem)
-#                                         ├─> release-chart-web    (idem)
+#                                         ├─> release-chart-job (idem)
+#                                         ├─> release-chart-ssr    (idem)
 #                                         └─> release-docs         (zensical build + Pages + gh release)
 #
 # release-bump runs `multicz bump --commit --tag --push` for ALL
@@ -413,11 +413,11 @@ jobs:
           title: api-deb-validate
           body: 'lintian + `tests/install/test_api.py` + `systemd-analyze security` (display score ≤ 1.0).'
 
-  # ─────────────────────── worker ───────────────────────
+  # ─────────────────────── job ───────────────────────
 
-  worker-lint:
+  job-lint:
     needs: [detect, headers]
-    if: contains(fromJson(needs.detect.outputs.changed).changed, 'worker')
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'job')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -427,18 +427,18 @@ jobs:
       - uses: astral-sh/setup-uv@v8.1.0
         with: { python-version: "3.12" }
       - run: uv sync --frozen --all-packages
-      - name: Ruff lint — worker
-        run: uv run ruff check packages/worker
+      - name: Ruff lint — job
+        run: uv run ruff check packages/job
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
-          title: worker-lint
-          body: '`ruff check` on `packages/worker/`.'
+          title: job-lint
+          body: '`ruff check` on `packages/job/`.'
 
-  worker-format:
+  job-format:
     needs: [detect, headers]
-    if: contains(fromJson(needs.detect.outputs.changed).changed, 'worker')
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'job')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -448,18 +448,18 @@ jobs:
       - uses: astral-sh/setup-uv@v8.1.0
         with: { python-version: "3.12" }
       - run: uv sync --frozen --all-packages
-      - name: Ruff format check — worker
-        run: uv run ruff format --check packages/worker
+      - name: Ruff format check — job
+        run: uv run ruff format --check packages/job
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
-          title: worker-format
-          body: '`ruff format --check` on `packages/worker/`.'
+          title: job-format
+          body: '`ruff format --check` on `packages/job/`.'
 
-  worker-typecheck:
+  job-typecheck:
     needs: [detect, headers]
-    if: contains(fromJson(needs.detect.outputs.changed).changed, 'worker')
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'job')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -469,17 +469,17 @@ jobs:
       - uses: astral-sh/setup-uv@v8.1.0
         with: { python-version: "3.12" }
       - run: uv sync --frozen --all-packages
-      - name: Mypy --strict — worker
-        run: uv run --with mypy mypy --strict packages/worker/src
+      - name: Mypy --strict — job
+        run: uv run --with mypy mypy --strict packages/job/src
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
-          title: worker-typecheck
-          body: '`mypy --strict` on `packages/worker/src/`.'
+          title: job-typecheck
+          body: '`mypy --strict` on `packages/job/src/`.'
 
-  worker-test:
-    needs: [worker-lint, worker-format, worker-typecheck]
+  job-test:
+    needs: [job-lint, job-format, job-typecheck]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -489,17 +489,17 @@ jobs:
       - uses: astral-sh/setup-uv@v8.1.0
         with: { python-version: "3.12" }
       - run: uv sync --frozen --all-packages
-      - name: Pytest — worker
-        run: uv run pytest packages/worker/tests -q
+      - name: Pytest — job
+        run: uv run pytest packages/job/tests -q
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
-          title: worker-test
-          body: '`pytest` on `packages/worker/tests/`.'
+          title: job-test
+          body: '`pytest` on `packages/job/tests/`.'
 
-  worker-bandit:
-    needs: [worker-test]
+  job-bandit:
+    needs: [job-test]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -509,34 +509,34 @@ jobs:
       - uses: astral-sh/setup-uv@v8.1.0
         with: { python-version: "3.12" }
       - run: uv tool install bandit
-      - name: Bandit — worker
-        run: bandit -r packages/worker/src
+      - name: Bandit — job
+        run: bandit -r packages/job/src
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
-          title: worker-bandit
-          body: '`bandit -r` on `packages/worker/src/`.'
+          title: job-bandit
+          body: '`bandit -r` on `packages/job/src/`.'
 
-  worker-hadolint:
+  job-hadolint:
     needs: [detect, headers]
-    if: contains(fromJson(needs.detect.outputs.changed).changed, 'worker')
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'job')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: hadolint/hadolint-action@v3.1.0
         with:
-          dockerfile: packages/worker/Dockerfile
+          dockerfile: packages/job/Dockerfile
           format: tty
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
-          title: worker-hadolint
-          body: '`hadolint` on `packages/worker/Dockerfile`.'
+          title: job-hadolint
+          body: '`hadolint` on `packages/job/Dockerfile`.'
 
-  worker-container:
-    needs: [worker-bandit, audit, worker-hadolint]
+  job-container:
+    needs: [job-bandit, audit, job-hadolint]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -544,67 +544,67 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
       - uses: docker/setup-buildx-action@v4
-      - name: Build worker image
+      - name: Build job image
         id: build
         uses: docker/build-push-action@v7
         with:
-          context: packages/worker
+          context: packages/job
           load: true
           # See api-container: attestations done via cosign post-push.
-          tags: worker:ci
-          cache-from: type=gha,scope=worker
-          cache-to: type=gha,mode=max,scope=worker
+          tags: job:ci
+          cache-from: type=gha,scope=job
+          cache-to: type=gha,mode=max,scope=job
       - name: Save image tarball
-        run: docker save worker:ci -o /tmp/worker.tar
+        run: docker save job:ci -o /tmp/job.tar
       - uses: actions/upload-artifact@v7
-        with: { name: worker-image, path: /tmp/worker.tar, retention-days: 1 }
+        with: { name: job-image, path: /tmp/job.tar, retention-days: 1 }
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
-          title: worker-container
-          body: 'Built `worker:ci` (saved to artifact `worker-image`).'
+          title: job-container
+          body: 'Built `job:ci` (saved to artifact `job-image`).'
 
-  worker-sbom:
-    needs: [worker-container]
+  job-sbom:
+    needs: [job-container]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: actions/download-artifact@v8
-        with: { name: worker-image, path: /tmp }
+        with: { name: job-image, path: /tmp }
       - name: Install syft
         run: curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
       - name: Generate SBOM (SPDX JSON)
-        run: syft docker-archive:/tmp/worker.tar -o spdx-json=/tmp/worker.sbom.spdx.json
+        run: syft docker-archive:/tmp/job.tar -o spdx-json=/tmp/job.sbom.spdx.json
       - uses: actions/upload-artifact@v7
-        with: { name: worker-sbom, path: /tmp/worker.sbom.spdx.json, retention-days: 1 }
+        with: { name: job-sbom, path: /tmp/job.sbom.spdx.json, retention-days: 1 }
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
-          title: worker-sbom
-          body: 'SPDX SBOM via `syft` (artifact `worker-sbom`).'
+          title: job-sbom
+          body: 'SPDX SBOM via `syft` (artifact `job-sbom`).'
 
-  worker-grype:
-    needs: [worker-sbom]
+  job-grype:
+    needs: [job-sbom]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: actions/download-artifact@v8
-        with: { name: worker-sbom, path: /tmp }
+        with: { name: job-sbom, path: /tmp }
       - name: Install grype
         run: curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
       - name: Scan SBOM (--fail-on high)
-        run: grype sbom:/tmp/worker.sbom.spdx.json --fail-on high
+        run: grype sbom:/tmp/job.sbom.spdx.json --fail-on high
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
-          title: worker-grype
-          body: '`grype --fail-on high` on the worker SBOM.'
+          title: job-grype
+          body: '`grype --fail-on high` on the job SBOM.'
 
-  worker-deb:
-    needs: [worker-bandit, audit]
+  job-deb:
+    needs: [job-bandit, audit]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -617,26 +617,26 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             build-essential debhelper dh-python python3-all \
             python3-hatchling pybuild-plugin-pyproject dpkg-dev
-      - name: Build worker .deb
+      - name: Build job .deb
         run: |
           set -euo pipefail
-          WORK=/tmp/build-worker
+          WORK=/tmp/build-job
           rm -rf "$WORK" && mkdir -p "$WORK"
-          cp -r packages/worker "$WORK/shomer-worker"
-          cd "$WORK/shomer-worker"
+          cp -r packages/job "$WORK/shomer-job"
+          cd "$WORK/shomer-job"
           dpkg-buildpackage -us -uc -b
-          mv "$WORK"/shomer-worker_*.deb "$WORK"/shomer-worker_*.buildinfo "$WORK"/shomer-worker_*.changes /tmp/
+          mv "$WORK"/shomer-job_*.deb "$WORK"/shomer-job_*.buildinfo "$WORK"/shomer-job_*.changes /tmp/
       - uses: actions/upload-artifact@v7
-        with: { name: worker-deb, path: /tmp/shomer-worker_*.deb, retention-days: 1 }
+        with: { name: job-deb, path: /tmp/shomer-job_*.deb, retention-days: 1 }
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
-          title: worker-deb
-          body: 'Built `shomer-worker_*.deb` (artifact `worker-deb`).'
+          title: job-deb
+          body: 'Built `shomer-job_*.deb` (artifact `job-deb`).'
 
-  worker-deb-validate:
-    needs: [worker-deb]
+  job-deb-validate:
+    needs: [job-deb]
     runs-on: ubuntu-latest
     permissions:
       actions: write
@@ -647,19 +647,19 @@ jobs:
       - uses: ./.github/actions/bump-preview
       - uses: ./.github/actions/validate-deb
         with:
-          component: worker
+          component: job
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
-          title: worker-deb-validate
-          body: 'lintian + `tests/install/test_worker.py` + `systemd-analyze security` (display score ≤ 1.0).'
+          title: job-deb-validate
+          body: 'lintian + `tests/install/test_job.py` + `systemd-analyze security` (display score ≤ 1.0).'
 
-  # ─────────────────────── web ───────────────────────
+  # ─────────────────────── ssr ───────────────────────
 
-  web-lint:
+  ssr-lint:
     needs: [detect, headers]
-    if: contains(fromJson(needs.detect.outputs.changed).changed, 'web')
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'ssr')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -669,18 +669,18 @@ jobs:
       - uses: astral-sh/setup-uv@v8.1.0
         with: { python-version: "3.12" }
       - run: uv sync --frozen --all-packages
-      - name: Ruff lint — web
-        run: uv run ruff check packages/web
+      - name: Ruff lint — ssr
+        run: uv run ruff check packages/ssr
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
-          title: web-lint
-          body: '`ruff check` on `packages/web/`.'
+          title: ssr-lint
+          body: '`ruff check` on `packages/ssr/`.'
 
-  web-format:
+  ssr-format:
     needs: [detect, headers]
-    if: contains(fromJson(needs.detect.outputs.changed).changed, 'web')
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'ssr')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -690,18 +690,18 @@ jobs:
       - uses: astral-sh/setup-uv@v8.1.0
         with: { python-version: "3.12" }
       - run: uv sync --frozen --all-packages
-      - name: Ruff format check — web
-        run: uv run ruff format --check packages/web
+      - name: Ruff format check — ssr
+        run: uv run ruff format --check packages/ssr
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
-          title: web-format
-          body: '`ruff format --check` on `packages/web/`.'
+          title: ssr-format
+          body: '`ruff format --check` on `packages/ssr/`.'
 
-  web-typecheck:
+  ssr-typecheck:
     needs: [detect, headers]
-    if: contains(fromJson(needs.detect.outputs.changed).changed, 'web')
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'ssr')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -711,25 +711,25 @@ jobs:
       - uses: astral-sh/setup-uv@v8.1.0
         with: { python-version: "3.12" }
       - run: uv sync --frozen --all-packages
-      - name: Mypy --strict — web
-        run: uv run --with mypy mypy --strict packages/web/src
+      - name: Mypy --strict — ssr
+        run: uv run --with mypy mypy --strict packages/ssr/src
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
-          title: web-typecheck
-          body: '`mypy --strict` on `packages/web/src/`.'
+          title: ssr-typecheck
+          body: '`mypy --strict` on `packages/ssr/src/`.'
 
-  web-test:
-    needs: [web-lint, web-format, web-typecheck, web-frontend-build]
-    # Run if web changed (lint/format/typecheck succeeded) OR
-    # web-frontend changed (build succeeded). When only one side
+  ssr-test:
+    needs: [ssr-lint, ssr-format, ssr-typecheck, web-build]
+    # Run if ssr changed (lint/format/typecheck succeeded) OR
+    # web changed (build succeeded). When only one side
     # changes, the other's needs entry is `skipped` — the OR keeps
     # us going.
     if: >-
       !failure() && !cancelled() && (
-        needs.web-lint.result == 'success' ||
-        needs.web-frontend-build.result == 'success'
+        needs.ssr-lint.result == 'success' ||
+        needs.web-build.result == 'success'
       )
     runs-on: ubuntu-latest
     steps:
@@ -740,23 +740,23 @@ jobs:
       # Only overwrite the committed `static/` + `templates/` if the
       # frontend was actually rebuilt this run; otherwise pytest uses
       # whatever is on disk (= the committed dist on `main`).
-      - if: needs.web-frontend-build.result == 'success'
+      - if: needs.web-build.result == 'success'
         uses: actions/download-artifact@v8
-        with: { name: web-frontend-dist, path: . }
+        with: { name: web-dist, path: . }
       - uses: astral-sh/setup-uv@v8.1.0
         with: { python-version: "3.12" }
       - run: uv sync --frozen --all-packages
-      - name: Pytest — web
-        run: uv run pytest packages/web/tests -q
+      - name: Pytest — ssr
+        run: uv run pytest packages/ssr/tests -q
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
-          title: web-test
-          body: '`pytest` on `packages/web/tests/`.'
+          title: ssr-test
+          body: '`pytest` on `packages/ssr/tests/`.'
 
-  web-bandit:
-    needs: [web-test]
+  ssr-bandit:
+    needs: [ssr-test]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -766,40 +766,40 @@ jobs:
       - uses: astral-sh/setup-uv@v8.1.0
         with: { python-version: "3.12" }
       - run: uv tool install bandit
-      - name: Bandit — web
-        run: bandit -r packages/web/src
+      - name: Bandit — ssr
+        run: bandit -r packages/ssr/src
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
-          title: web-bandit
-          body: '`bandit -r` on `packages/web/src/`.'
+          title: ssr-bandit
+          body: '`bandit -r` on `packages/ssr/src/`.'
 
-  web-hadolint:
+  ssr-hadolint:
     needs: [detect, headers]
-    if: contains(fromJson(needs.detect.outputs.changed).changed, 'web')
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'ssr')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: hadolint/hadolint-action@v3.1.0
         with:
-          dockerfile: packages/web/Dockerfile
+          dockerfile: packages/ssr/Dockerfile
           format: tty
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
-          title: web-hadolint
-          body: '`hadolint` on `packages/web/Dockerfile`.'
+          title: ssr-hadolint
+          body: '`hadolint` on `packages/ssr/Dockerfile`.'
 
-  web-container:
-    needs: [web-bandit, audit, web-frontend-build, web-hadolint]
-    # Run when the web image actually needs rebuilding — i.e. web's
-    # Python passed bandit AND audit succeeded. web-frontend-build
+  ssr-container:
+    needs: [ssr-bandit, audit, web-build, ssr-hadolint]
+    # Run when the ssr image actually needs rebuilding — i.e. ssr's
+    # Python passed bandit AND audit succeeded. web-build
     # being skipped is fine: we fall back to the committed dist.
     if: >-
       !failure() && !cancelled() &&
-      needs.web-bandit.result == 'success' &&
+      needs.ssr-bandit.result == 'success' &&
       needs.audit.result == 'success'
     runs-on: ubuntu-latest
     steps:
@@ -807,74 +807,74 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
-      - if: needs.web-frontend-build.result == 'success'
+      - if: needs.web-build.result == 'success'
         uses: actions/download-artifact@v8
-        with: { name: web-frontend-dist, path: . }
+        with: { name: web-dist, path: . }
       - uses: docker/setup-buildx-action@v4
-      - name: Build web image
+      - name: Build ssr image
         id: build
         uses: docker/build-push-action@v7
         with:
-          context: packages/web
+          context: packages/ssr
           load: true
           # See api-container: attestations done via cosign post-push.
-          tags: web:ci
-          cache-from: type=gha,scope=web
-          cache-to: type=gha,mode=max,scope=web
+          tags: ssr:ci
+          cache-from: type=gha,scope=ssr
+          cache-to: type=gha,mode=max,scope=ssr
       - name: Save image tarball
-        run: docker save web:ci -o /tmp/web.tar
+        run: docker save ssr:ci -o /tmp/ssr.tar
       - uses: actions/upload-artifact@v7
-        with: { name: web-image, path: /tmp/web.tar, retention-days: 1 }
+        with: { name: ssr-image, path: /tmp/ssr.tar, retention-days: 1 }
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
-          title: web-container
-          body: 'Built `web:ci` (saved to artifact `web-image`).'
+          title: ssr-container
+          body: 'Built `ssr:ci` (saved to artifact `ssr-image`).'
 
-  web-sbom:
-    needs: [web-container]
+  ssr-sbom:
+    needs: [ssr-container]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: actions/download-artifact@v8
-        with: { name: web-image, path: /tmp }
+        with: { name: ssr-image, path: /tmp }
       - name: Install syft
         run: curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
       - name: Generate SBOM (SPDX JSON)
-        run: syft docker-archive:/tmp/web.tar -o spdx-json=/tmp/web.sbom.spdx.json
+        run: syft docker-archive:/tmp/ssr.tar -o spdx-json=/tmp/ssr.sbom.spdx.json
       - uses: actions/upload-artifact@v7
-        with: { name: web-sbom, path: /tmp/web.sbom.spdx.json, retention-days: 1 }
+        with: { name: ssr-sbom, path: /tmp/ssr.sbom.spdx.json, retention-days: 1 }
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
-          title: web-sbom
-          body: 'SPDX SBOM via `syft` (artifact `web-sbom`).'
+          title: ssr-sbom
+          body: 'SPDX SBOM via `syft` (artifact `ssr-sbom`).'
 
-  web-grype:
-    needs: [web-sbom]
+  ssr-grype:
+    needs: [ssr-sbom]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: actions/download-artifact@v8
-        with: { name: web-sbom, path: /tmp }
+        with: { name: ssr-sbom, path: /tmp }
       - name: Install grype
         run: curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
       - name: Scan SBOM (--fail-on high)
-        run: grype sbom:/tmp/web.sbom.spdx.json --fail-on high
+        run: grype sbom:/tmp/ssr.sbom.spdx.json --fail-on high
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
-          title: web-grype
-          body: '`grype --fail-on high` on the web SBOM.'
+          title: ssr-grype
+          body: '`grype --fail-on high` on the ssr SBOM.'
 
-  web-deb:
-    needs: [web-bandit, audit, web-frontend-build]
+  ssr-deb:
+    needs: [ssr-bandit, audit, web-build]
     if: >-
       !failure() && !cancelled() &&
-      needs.web-bandit.result == 'success' &&
+      needs.ssr-bandit.result == 'success' &&
       needs.audit.result == 'success'
     runs-on: ubuntu-latest
     steps:
@@ -882,35 +882,35 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
-      - if: needs.web-frontend-build.result == 'success'
+      - if: needs.web-build.result == 'success'
         uses: actions/download-artifact@v8
-        with: { name: web-frontend-dist, path: . }
+        with: { name: web-dist, path: . }
       - name: Install debian build tooling
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
             build-essential debhelper dh-python python3-all \
             python3-hatchling pybuild-plugin-pyproject dpkg-dev
-      - name: Build web .deb
+      - name: Build ssr .deb
         run: |
           set -euo pipefail
-          WORK=/tmp/build-web
+          WORK=/tmp/build-ssr
           rm -rf "$WORK" && mkdir -p "$WORK"
-          cp -r packages/web "$WORK/shomer-web"
-          cd "$WORK/shomer-web"
+          cp -r packages/ssr "$WORK/shomer-ssr"
+          cd "$WORK/shomer-ssr"
           dpkg-buildpackage -us -uc -b
-          mv "$WORK"/shomer-web_*.deb "$WORK"/shomer-web_*.buildinfo "$WORK"/shomer-web_*.changes /tmp/
+          mv "$WORK"/shomer-ssr_*.deb "$WORK"/shomer-ssr_*.buildinfo "$WORK"/shomer-ssr_*.changes /tmp/
       - uses: actions/upload-artifact@v7
-        with: { name: web-deb, path: /tmp/shomer-web_*.deb, retention-days: 1 }
+        with: { name: ssr-deb, path: /tmp/shomer-ssr_*.deb, retention-days: 1 }
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
-          title: web-deb
-          body: 'Built `shomer-web_*.deb` (artifact `web-deb`).'
+          title: ssr-deb
+          body: 'Built `shomer-ssr_*.deb` (artifact `ssr-deb`).'
 
-  web-deb-validate:
-    needs: [web-deb]
+  ssr-deb-validate:
+    needs: [ssr-deb]
     runs-on: ubuntu-latest
     permissions:
       actions: write
@@ -921,13 +921,13 @@ jobs:
       - uses: ./.github/actions/bump-preview
       - uses: ./.github/actions/validate-deb
         with:
-          component: web
+          component: ssr
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
-          title: web-deb-validate
-          body: 'lintian + `tests/install/test_web.py` + `systemd-analyze security` (display score ≤ 1.0).'
+          title: ssr-deb-validate
+          body: 'lintian + `tests/install/test_ssr.py` + `systemd-analyze security` (display score ≤ 1.0).'
 
   # ─────────────────────── cli (no container) ───────────────────────
 
@@ -1098,7 +1098,7 @@ jobs:
     # failed or been cancelled. Without this, a partial-change PR
     # (e.g. only api changed → cli-test skipped) would skip audit
     # → skip every container → no fresh image artifact for owasp.
-    needs: [api-test, worker-test, web-test, cli-test]
+    needs: [api-test, job-test, ssr-test, cli-test]
     if: '!failure() && !cancelled()'
     runs-on: ubuntu-latest
     steps:
@@ -1203,9 +1203,9 @@ jobs:
           title: chart-api-package
           body: '`helm package` (bump-previewed version + rewritten name) → `chart-api-tgz` artifact.'
 
-  chart-worker-lint:
+  chart-job-lint:
     needs: [detect, headers]
-    if: contains(fromJson(needs.detect.outputs.changed).changed, 'chart-worker')
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'chart-job')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -1213,19 +1213,19 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
       - uses: azure/setup-helm@v5
-      - name: helm lint — chart-worker
-        run: helm lint packages/worker/chart
-      - name: helm template smoke — chart-worker
-        run: helm template ci packages/worker/chart > /tmp/chart-worker.yaml
+      - name: helm lint — chart-job
+        run: helm lint packages/job/chart
+      - name: helm template smoke — chart-job
+        run: helm template ci packages/job/chart > /tmp/chart-job.yaml
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
-          title: chart-worker-lint
-          body: '`helm lint` + `helm template` smoke on `packages/worker/chart/`.'
+          title: chart-job-lint
+          body: '`helm lint` + `helm template` smoke on `packages/job/chart/`.'
 
-  chart-worker-checkov:
-    needs: [chart-worker-lint]
+  chart-job-checkov:
+    needs: [chart-job-lint]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -1234,12 +1234,12 @@ jobs:
       - uses: ./.github/actions/bump-preview
       - uses: bridgecrewio/checkov-action@v12
         with:
-          directory: packages/worker/chart
+          directory: packages/job/chart
           framework: helm
           quiet: true
           output_format: cli
           soft_fail: false
-          # Plus CKV_K8S_8 / CKV_K8S_9: worker is a polling loop with
+          # Plus CKV_K8S_8 / CKV_K8S_9: job is a polling loop with
           # no HTTP server (no /healthz). Chainguard distroless ships
           # no shell, so an `exec` probe isn't feasible either.
           skip_check: CKV_K8S_21,CKV_K8S_43,CKV_K8S_8,CKV_K8S_9
@@ -1247,11 +1247,11 @@ jobs:
         if: always()
         uses: ./.github/actions/summary
         with:
-          title: chart-worker-checkov
-          body: '`checkov --framework helm` static security scan on `packages/worker/chart/`.'
+          title: chart-job-checkov
+          body: '`checkov --framework helm` static security scan on `packages/job/chart/`.'
 
-  chart-worker-package:
-    needs: [chart-worker-checkov]
+  chart-job-package:
+    needs: [chart-job-checkov]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -1262,26 +1262,26 @@ jobs:
       - name: Rewrite Chart.yaml name for this repo's namespace
         run: |
           REPO='${{ github.event.repository.name }}'
-          sed -i "s/^name: shomer-worker$/name: ${REPO}-worker/" packages/worker/chart/Chart.yaml
+          sed -i "s/^name: shomer-job$/name: ${REPO}-job/" packages/job/chart/Chart.yaml
       - name: helm package
         run: |
-          mkdir -p /tmp/chart-worker
-          helm package packages/worker/chart --destination /tmp/chart-worker
+          mkdir -p /tmp/chart-job
+          helm package packages/job/chart --destination /tmp/chart-job
       - uses: actions/upload-artifact@v7
         with:
-          name: chart-worker-tgz
-          path: /tmp/chart-worker/
+          name: chart-job-tgz
+          path: /tmp/chart-job/
           retention-days: 1
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
-          title: chart-worker-package
-          body: '`helm package` (bump-previewed version + rewritten name) → `chart-worker-tgz` artifact.'
+          title: chart-job-package
+          body: '`helm package` (bump-previewed version + rewritten name) → `chart-job-tgz` artifact.'
 
-  chart-web-lint:
+  chart-ssr-lint:
     needs: [detect, headers]
-    if: contains(fromJson(needs.detect.outputs.changed).changed, 'chart-web')
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'chart-ssr')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -1289,19 +1289,19 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
       - uses: azure/setup-helm@v5
-      - name: helm lint — chart-web
-        run: helm lint packages/web/chart
-      - name: helm template smoke — chart-web
-        run: helm template ci packages/web/chart > /tmp/chart-web.yaml
+      - name: helm lint — chart-ssr
+        run: helm lint packages/ssr/chart
+      - name: helm template smoke — chart-ssr
+        run: helm template ci packages/ssr/chart > /tmp/chart-ssr.yaml
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
-          title: chart-web-lint
-          body: '`helm lint` + `helm template` smoke on `packages/web/chart/`.'
+          title: chart-ssr-lint
+          body: '`helm lint` + `helm template` smoke on `packages/ssr/chart/`.'
 
-  chart-web-checkov:
-    needs: [chart-web-lint]
+  chart-ssr-checkov:
+    needs: [chart-ssr-lint]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -1310,7 +1310,7 @@ jobs:
       - uses: ./.github/actions/bump-preview
       - uses: bridgecrewio/checkov-action@v12
         with:
-          directory: packages/web/chart
+          directory: packages/ssr/chart
           framework: helm
           quiet: true
           output_format: cli
@@ -1320,11 +1320,11 @@ jobs:
         if: always()
         uses: ./.github/actions/summary
         with:
-          title: chart-web-checkov
-          body: '`checkov --framework helm` static security scan on `packages/web/chart/`.'
+          title: chart-ssr-checkov
+          body: '`checkov --framework helm` static security scan on `packages/ssr/chart/`.'
 
-  chart-web-package:
-    needs: [chart-web-checkov]
+  chart-ssr-package:
+    needs: [chart-ssr-checkov]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -1335,28 +1335,28 @@ jobs:
       - name: Rewrite Chart.yaml name for this repo's namespace
         run: |
           REPO='${{ github.event.repository.name }}'
-          sed -i "s/^name: shomer-web$/name: ${REPO}-web/" packages/web/chart/Chart.yaml
+          sed -i "s/^name: shomer-ssr$/name: ${REPO}-ssr/" packages/ssr/chart/Chart.yaml
       - name: helm package
         run: |
-          mkdir -p /tmp/chart-web
-          helm package packages/web/chart --destination /tmp/chart-web
+          mkdir -p /tmp/chart-ssr
+          helm package packages/ssr/chart --destination /tmp/chart-ssr
       - uses: actions/upload-artifact@v7
         with:
-          name: chart-web-tgz
-          path: /tmp/chart-web/
+          name: chart-ssr-tgz
+          path: /tmp/chart-ssr/
           retention-days: 1
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
-          title: chart-web-package
-          body: '`helm package` (bump-previewed version + rewritten name) → `chart-web-tgz` artifact.'
+          title: chart-ssr-package
+          body: '`helm package` (bump-previewed version + rewritten name) → `chart-ssr-tgz` artifact.'
 
   # ─────────────────────── OWASP baseline (kind + ZAP, per HTTP service) ───────────────────────
 
   owasp-api:
     # Spin up an ephemeral kind cluster, deploy the FULL stack
-    # (api + worker + web) so the scan target has its real
+    # (api + job + ssr) so the scan target has its real
     # neighbours, then port-forward api and run an OWASP ZAP baseline.
     # Images come from CI artifacts when their component changed this
     # run, else are pulled from `ghcr.io/.../<X>:latest` (the load-image
@@ -1364,19 +1364,19 @@ jobs:
     # upstream succeeded — a single api/chart change is enough.
     needs:
       - api-grype
-      - worker-grype
-      - web-grype
+      - job-grype
+      - ssr-grype
       - chart-api-checkov
-      - chart-worker-checkov
-      - chart-web-checkov
+      - chart-job-checkov
+      - chart-ssr-checkov
     if: >-
       !failure() && !cancelled() && (
         needs.api-grype.result == 'success' ||
-        needs.worker-grype.result == 'success' ||
-        needs.web-grype.result == 'success' ||
+        needs.job-grype.result == 'success' ||
+        needs.ssr-grype.result == 'success' ||
         needs.chart-api-checkov.result == 'success' ||
-        needs.chart-worker-checkov.result == 'success' ||
-        needs.chart-web-checkov.result == 'success'
+        needs.chart-job-checkov.result == 'success' ||
+        needs.chart-ssr-checkov.result == 'success'
       )
     runs-on: ubuntu-latest
     permissions:
@@ -1396,26 +1396,26 @@ jobs:
         uses: ./.github/actions/summary
         with:
           title: owasp-api
-          body: 'kind + helm install api/worker/web (fresh artifact when changed, ghcr `:latest` otherwise) + OWASP ZAP baseline on api (`zap-api-baseline`).'
+          body: 'kind + helm install api/job/ssr (fresh artifact when changed, ghcr `:latest` otherwise) + OWASP ZAP baseline on api (`zap-api-baseline`).'
 
-  owasp-web:
-    # Same shape as owasp-api but targeting web. Both jobs install
+  owasp-ssr:
+    # Same shape as owasp-api but targeting ssr. Both jobs install
     # the same 3 charts; only the ZAP-scan target differs.
     needs:
       - api-grype
-      - worker-grype
-      - web-grype
+      - job-grype
+      - ssr-grype
       - chart-api-checkov
-      - chart-worker-checkov
-      - chart-web-checkov
+      - chart-job-checkov
+      - chart-ssr-checkov
     if: >-
       !failure() && !cancelled() && (
         needs.api-grype.result == 'success' ||
-        needs.worker-grype.result == 'success' ||
-        needs.web-grype.result == 'success' ||
+        needs.job-grype.result == 'success' ||
+        needs.ssr-grype.result == 'success' ||
         needs.chart-api-checkov.result == 'success' ||
-        needs.chart-worker-checkov.result == 'success' ||
-        needs.chart-web-checkov.result == 'success'
+        needs.chart-job-checkov.result == 'success' ||
+        needs.chart-ssr-checkov.result == 'success'
       )
     runs-on: ubuntu-latest
     permissions:
@@ -1427,21 +1427,21 @@ jobs:
       - uses: ./.github/actions/bump-preview
       - uses: ./.github/actions/owasp-scan
         with:
-          component: web
+          component: ssr
           port: "8080"
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
-          title: owasp-web
-          body: 'kind + helm install api/worker/web (fresh artifact when changed, ghcr `:latest` otherwise) + OWASP ZAP baseline on web (`zap-web-baseline`).'
+          title: owasp-ssr
+          body: 'kind + helm install api/job/ssr (fresh artifact when changed, ghcr `:latest` otherwise) + OWASP ZAP baseline on ssr (`zap-ssr-baseline`).'
 
-  # ─────────────────────── web-frontend (Node) ───────────────────────
+  # ─────────────────────── web (Node) ───────────────────────
 
-  web-frontend-lint:
+  web-lint:
     needs: [detect, headers]
-    if: contains(fromJson(needs.detect.outputs.changed).changed, 'web-frontend')
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'web')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -1452,22 +1452,22 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: packages/web-frontend/package-lock.json
+          cache-dependency-path: packages/web/package-lock.json
       - run: npm ci
-        working-directory: packages/web-frontend
-      - name: Biome lint — web-frontend
+        working-directory: packages/web
+      - name: Biome lint — web
         run: npm run lint
-        working-directory: packages/web-frontend
+        working-directory: packages/web
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
-          title: web-frontend-lint
-          body: '`biome lint` (via `npm run lint`) on `packages/web-frontend/`.'
+          title: web-lint
+          body: '`biome lint` (via `npm run lint`) on `packages/web/`.'
 
-  web-frontend-format:
+  web-format:
     needs: [detect, headers]
-    if: contains(fromJson(needs.detect.outputs.changed).changed, 'web-frontend')
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'web')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -1478,22 +1478,22 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: packages/web-frontend/package-lock.json
+          cache-dependency-path: packages/web/package-lock.json
       - run: npm ci
-        working-directory: packages/web-frontend
-      - name: Biome format check — web-frontend
+        working-directory: packages/web
+      - name: Biome format check — web
         run: npm run format:check
-        working-directory: packages/web-frontend
+        working-directory: packages/web
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
-          title: web-frontend-format
-          body: '`biome format --check` (via `npm run format:check`) on `packages/web-frontend/`.'
+          title: web-format
+          body: '`biome format --check` (via `npm run format:check`) on `packages/web/`.'
 
-  web-frontend-typecheck:
+  web-typecheck:
     needs: [detect, headers]
-    if: contains(fromJson(needs.detect.outputs.changed).changed, 'web-frontend')
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'web')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -1504,21 +1504,21 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: packages/web-frontend/package-lock.json
+          cache-dependency-path: packages/web/package-lock.json
       - run: npm ci
-        working-directory: packages/web-frontend
-      - name: tsc --noEmit — web-frontend
+        working-directory: packages/web
+      - name: tsc --noEmit — web
         run: npm run typecheck
-        working-directory: packages/web-frontend
+        working-directory: packages/web
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
-          title: web-frontend-typecheck
-          body: '`tsc --noEmit` (via `npm run typecheck`) on `packages/web-frontend/`.'
+          title: web-typecheck
+          body: '`tsc --noEmit` (via `npm run typecheck`) on `packages/web/`.'
 
-  web-frontend-test:
-    needs: [web-frontend-lint, web-frontend-format, web-frontend-typecheck]
+  web-test:
+    needs: [web-lint, web-format, web-typecheck]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -1529,26 +1529,26 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: packages/web-frontend/package-lock.json
+          cache-dependency-path: packages/web/package-lock.json
       - run: npm ci
-        working-directory: packages/web-frontend
-      - name: Vitest — web-frontend
+        working-directory: packages/web
+      - name: Vitest — web
         run: npm test
-        working-directory: packages/web-frontend
+        working-directory: packages/web
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
-          title: web-frontend-test
-          body: '`vitest` (via `npm test`) on `packages/web-frontend/`.'
+          title: web-test
+          body: '`vitest` (via `npm test`) on `packages/web/`.'
 
-  web-frontend-build:
+  web-build:
     # Build the JS/CSS bundle + Jinja templates and publish them as
-    # the `web-frontend-dist` artifact. The downstream Python web
-    # package consumes the artifact (web-test / web-container /
-    # web-deb) so a stale committed dist on a contributor's branch
+    # the `web-dist` artifact. The downstream Python ssr
+    # package consumes the artifact (ssr-test / ssr-container /
+    # ssr-deb) so a stale committed dist on a contributor's branch
     # never sneaks into a release — CI always rebuilds.
-    needs: [web-frontend-typecheck, web-frontend-test]
+    needs: [web-typecheck, web-test]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -1559,25 +1559,25 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: packages/web-frontend/package-lock.json
+          cache-dependency-path: packages/web/package-lock.json
       - run: npm ci
-        working-directory: packages/web-frontend
-      - name: Build → packages/web/src/shomer_web/{static,templates}/
+        working-directory: packages/web
+      - name: Build → packages/ssr/src/shomer_ssr/{static,templates}/
         run: npm run build
-        working-directory: packages/web-frontend
+        working-directory: packages/web
       - uses: actions/upload-artifact@v7
         with:
-          name: web-frontend-dist
+          name: web-dist
           path: |
-            packages/web/src/shomer_web/static/
-            packages/web/src/shomer_web/templates/
+            packages/ssr/src/shomer_ssr/static/
+            packages/ssr/src/shomer_ssr/templates/
           retention-days: 1
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
-          title: web-frontend-build
-          body: '`npm run build` → `static/{main.js, main.css}` + `templates/*.html`, uploaded as `web-frontend-dist`.'
+          title: web-build
+          body: '`npm run build` → `static/{main.js, main.css}` + `templates/*.html`, uploaded as `web-dist`.'
 
   # ─────────────────────── release (main only, full graph green) ───────────────────────
 
@@ -1598,14 +1598,14 @@ jobs:
     needs:
       - validate
       - owasp-api
-      - owasp-web
+      - owasp-ssr
       - api-deb-validate
-      - worker-deb-validate
-      - web-deb-validate
+      - job-deb-validate
+      - ssr-deb-validate
       - cli-deb-validate
       - chart-api-package
-      - chart-worker-package
-      - chart-web-package
+      - chart-job-package
+      - chart-ssr-package
       - docs-build
     if: >-
       !failure() &&
@@ -1617,12 +1617,12 @@ jobs:
       contents: write   # push release commit + tags
     outputs:
       api_version: ${{ steps.bump.outputs.api_version }}
-      worker_version: ${{ steps.bump.outputs.worker_version }}
+      job_version: ${{ steps.bump.outputs.job_version }}
       cli_version: ${{ steps.bump.outputs.cli_version }}
-      web_version: ${{ steps.bump.outputs.web_version }}
+      ssr_version: ${{ steps.bump.outputs.ssr_version }}
       chart_api_version: ${{ steps.bump.outputs.chart_api_version }}
-      chart_worker_version: ${{ steps.bump.outputs.chart_worker_version }}
-      chart_web_version: ${{ steps.bump.outputs.chart_web_version }}
+      chart_job_version: ${{ steps.bump.outputs.chart_job_version }}
+      chart_ssr_version: ${{ steps.bump.outputs.chart_ssr_version }}
       docs_version: ${{ steps.bump.outputs.docs_version }}
       owner: ${{ steps.owner.outputs.value }}
       repo: ${{ steps.names.outputs.repo }}
@@ -1641,17 +1641,17 @@ jobs:
       - name: Install workspace (post_bump hooks need uv lock)
         run: uv sync --frozen --all-packages
 
-      # Node is required for web-frontend's post_bump hook
-      # (`npm run build` regenerates packages/web/src/shomer_web/{static,templates}/).
+      # Node is required for web's post_bump hook
+      # (`npm run build` regenerates packages/ssr/src/shomer_ssr/{static,templates}/).
       - uses: actions/setup-node@v5
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: packages/web-frontend/package-lock.json
+          cache-dependency-path: packages/web/package-lock.json
 
-      - name: Install web-frontend deps
+      - name: Install web deps
         run: npm ci
-        working-directory: packages/web-frontend
+        working-directory: packages/web
 
       - uses: goabonga/multicz-action@v1
 
@@ -1721,20 +1721,20 @@ jobs:
         run: |
           set -euo pipefail
           API=$(jq -r          '.bumps.api.next_version           // empty' /tmp/release.json)
-          WORKER=$(jq -r       '.bumps.worker.next_version        // empty' /tmp/release.json)
+          JOB=$(jq -r       '.bumps.job.next_version        // empty' /tmp/release.json)
           CLI=$(jq -r          '.bumps.cli.next_version           // empty' /tmp/release.json)
-          WEB=$(jq -r          '.bumps.web.next_version           // empty' /tmp/release.json)
+          SSR=$(jq -r          '.bumps.ssr.next_version           // empty' /tmp/release.json)
           CHART_API=$(jq -r    '.bumps["chart-api"].next_version    // empty' /tmp/release.json)
-          CHART_WORKER=$(jq -r '.bumps["chart-worker"].next_version // empty' /tmp/release.json)
-          CHART_WEB=$(jq -r    '.bumps["chart-web"].next_version    // empty' /tmp/release.json)
+          CHART_JOB=$(jq -r '.bumps["chart-job"].next_version // empty' /tmp/release.json)
+          CHART_SSR=$(jq -r    '.bumps["chart-ssr"].next_version    // empty' /tmp/release.json)
           DOCS=$(jq -r         '.bumps.docs.next_version          // empty' /tmp/release.json)
           echo "api_version=$API"                   >> "$GITHUB_OUTPUT"
-          echo "worker_version=$WORKER"             >> "$GITHUB_OUTPUT"
+          echo "job_version=$JOB"             >> "$GITHUB_OUTPUT"
           echo "cli_version=$CLI"                   >> "$GITHUB_OUTPUT"
-          echo "web_version=$WEB"                   >> "$GITHUB_OUTPUT"
+          echo "ssr_version=$SSR"                   >> "$GITHUB_OUTPUT"
           echo "chart_api_version=$CHART_API"       >> "$GITHUB_OUTPUT"
-          echo "chart_worker_version=$CHART_WORKER" >> "$GITHUB_OUTPUT"
-          echo "chart_web_version=$CHART_WEB"       >> "$GITHUB_OUTPUT"
+          echo "chart_job_version=$CHART_JOB" >> "$GITHUB_OUTPUT"
+          echo "chart_ssr_version=$CHART_SSR"       >> "$GITHUB_OUTPUT"
           echo "docs_version=$DOCS"                 >> "$GITHUB_OUTPUT"
 
       - name: Compute lowercase owner
@@ -1817,9 +1817,9 @@ jobs:
             built `shomer-api_${{ needs.release-bump.outputs.api_version }}-1_all.deb`, cut GitHub Release `api-v${{ needs.release-bump.outputs.api_version }}` with the .deb attached.
             CI artifacts (`api-image`, `api-deb`) deleted post-publish.
 
-  release-worker:
+  release-job:
     needs: [release-bump]
-    if: needs.release-bump.outputs.worker_version != ''
+    if: needs.release-bump.outputs.job_version != ''
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -1835,42 +1835,42 @@ jobs:
       - uses: goabonga/multicz-action@v1
       - uses: ./.github/actions/publish-image
         with:
-          component: worker
-          version: ${{ needs.release-bump.outputs.worker_version }}
+          component: job
+          version: ${{ needs.release-bump.outputs.job_version }}
           owner: ${{ needs.release-bump.outputs.owner }}
           repo: ${{ needs.release-bump.outputs.repo }}
           token: ${{ secrets.GITHUB_TOKEN }}
       - uses: ./.github/actions/publish-deb
         with:
-          component: worker
-      - name: gh release create worker-v${{ needs.release-bump.outputs.worker_version }}
+          component: job
+      - name: gh release create job-v${{ needs.release-bump.outputs.job_version }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          TAG="worker-v${{ needs.release-bump.outputs.worker_version }}"
+          TAG="job-v${{ needs.release-bump.outputs.job_version }}"
           multicz release-notes --tag "$TAG" \
-            | gh release create "$TAG" --title "$TAG" --notes-file - /tmp/shomer-worker_*.deb
+            | gh release create "$TAG" --title "$TAG" --notes-file - /tmp/shomer-job_*.deb
       - name: Delete consumed CI artifacts
         uses: geekyeggo/delete-artifact@v5
         with:
           name: |
-            worker-image
-            worker-deb
+            job-image
+            job-deb
           failOnError: false
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
-          title: release-worker
+          title: release-job
           body: |
-            Pushed `ghcr.io/${{ needs.release-bump.outputs.owner }}/${{ needs.release-bump.outputs.repo }}-worker:${{ needs.release-bump.outputs.worker_version }}` (+ `latest`),
-            built `shomer-worker_${{ needs.release-bump.outputs.worker_version }}-1_all.deb`, cut GitHub Release `worker-v${{ needs.release-bump.outputs.worker_version }}` with the .deb attached.
-            CI artifacts (`worker-image`, `worker-deb`) deleted post-publish.
+            Pushed `ghcr.io/${{ needs.release-bump.outputs.owner }}/${{ needs.release-bump.outputs.repo }}-job:${{ needs.release-bump.outputs.job_version }}` (+ `latest`),
+            built `shomer-job_${{ needs.release-bump.outputs.job_version }}-1_all.deb`, cut GitHub Release `job-v${{ needs.release-bump.outputs.job_version }}` with the .deb attached.
+            CI artifacts (`job-image`, `job-deb`) deleted post-publish.
 
-  release-web:
+  release-ssr:
     needs: [release-bump]
-    if: needs.release-bump.outputs.web_version != ''
+    if: needs.release-bump.outputs.ssr_version != ''
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -1886,42 +1886,42 @@ jobs:
       - uses: goabonga/multicz-action@v1
       - uses: ./.github/actions/publish-image
         with:
-          component: web
-          version: ${{ needs.release-bump.outputs.web_version }}
+          component: ssr
+          version: ${{ needs.release-bump.outputs.ssr_version }}
           owner: ${{ needs.release-bump.outputs.owner }}
           repo: ${{ needs.release-bump.outputs.repo }}
           token: ${{ secrets.GITHUB_TOKEN }}
       - uses: ./.github/actions/publish-deb
         with:
-          component: web
-      - name: gh release create web-v${{ needs.release-bump.outputs.web_version }}
+          component: ssr
+      - name: gh release create ssr-v${{ needs.release-bump.outputs.ssr_version }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          TAG="web-v${{ needs.release-bump.outputs.web_version }}"
+          TAG="ssr-v${{ needs.release-bump.outputs.ssr_version }}"
           multicz release-notes --tag "$TAG" \
-            | gh release create "$TAG" --title "$TAG" --notes-file - /tmp/shomer-web_*.deb
-      # Also drop the web-frontend-dist (consumed only by web-* jobs
-      # which are now done) — no separate release-web-frontend job
-      # exists since web-frontend ships through the web image/.deb.
+            | gh release create "$TAG" --title "$TAG" --notes-file - /tmp/shomer-ssr_*.deb
+      # Also drop the web-dist (consumed only by ssr-* jobs
+      # which are now done) — no separate release-web job
+      # exists since web ships through the ssr image/.deb.
       - name: Delete consumed CI artifacts
         uses: geekyeggo/delete-artifact@v5
         with:
           name: |
-            web-image
-            web-deb
-            web-frontend-dist
+            ssr-image
+            ssr-deb
+            web-dist
           failOnError: false
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
-          title: release-web
+          title: release-ssr
           body: |
-            Pushed `ghcr.io/${{ needs.release-bump.outputs.owner }}/${{ needs.release-bump.outputs.repo }}-web:${{ needs.release-bump.outputs.web_version }}` (+ `latest`),
-            built `shomer-web_${{ needs.release-bump.outputs.web_version }}-1_all.deb`, cut GitHub Release `web-v${{ needs.release-bump.outputs.web_version }}` with the .deb attached.
-            CI artifacts (`web-image`, `web-deb`, `web-frontend-dist`) deleted post-publish.
+            Pushed `ghcr.io/${{ needs.release-bump.outputs.owner }}/${{ needs.release-bump.outputs.repo }}-ssr:${{ needs.release-bump.outputs.ssr_version }}` (+ `latest`),
+            built `shomer-ssr_${{ needs.release-bump.outputs.ssr_version }}-1_all.deb`, cut GitHub Release `ssr-v${{ needs.release-bump.outputs.ssr_version }}` with the .deb attached.
+            CI artifacts (`ssr-image`, `ssr-deb`, `web-dist`) deleted post-publish.
 
   release-cli:
     # cli has no docker image and no helm chart — just a .deb + tag.
@@ -2006,9 +2006,9 @@ jobs:
             cut GitHub Release `chart-api-v${{ needs.release-bump.outputs.chart_api_version }}`.
             CI artifact (`chart-api-tgz`) deleted post-publish.
 
-  release-chart-worker:
+  release-chart-job:
     needs: [release-bump]
-    if: needs.release-bump.outputs.chart_worker_version != ''
+    if: needs.release-bump.outputs.chart_job_version != ''
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -2023,35 +2023,35 @@ jobs:
       - uses: goabonga/multicz-action@v1
       - uses: ./.github/actions/publish-chart
         with:
-          component: worker
+          component: job
           owner: ${{ needs.release-bump.outputs.owner }}
           token: ${{ secrets.GITHUB_TOKEN }}
-      - name: gh release create chart-worker-v${{ needs.release-bump.outputs.chart_worker_version }}
+      - name: gh release create chart-job-v${{ needs.release-bump.outputs.chart_job_version }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          TAG="chart-worker-v${{ needs.release-bump.outputs.chart_worker_version }}"
+          TAG="chart-job-v${{ needs.release-bump.outputs.chart_job_version }}"
           multicz release-notes --tag "$TAG" \
             | gh release create "$TAG" --title "$TAG" --notes-file -
       - name: Delete consumed CI artifact
         uses: geekyeggo/delete-artifact@v5
         with:
-          name: chart-worker-tgz
+          name: chart-job-tgz
           failOnError: false
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
-          title: release-chart-worker
+          title: release-chart-job
           body: |
-            Pushed `oci://ghcr.io/${{ needs.release-bump.outputs.owner }}/charts/${{ needs.release-bump.outputs.repo }}-worker:${{ needs.release-bump.outputs.chart_worker_version }}`,
-            cut GitHub Release `chart-worker-v${{ needs.release-bump.outputs.chart_worker_version }}`.
-            CI artifact (`chart-worker-tgz`) deleted post-publish.
+            Pushed `oci://ghcr.io/${{ needs.release-bump.outputs.owner }}/charts/${{ needs.release-bump.outputs.repo }}-job:${{ needs.release-bump.outputs.chart_job_version }}`,
+            cut GitHub Release `chart-job-v${{ needs.release-bump.outputs.chart_job_version }}`.
+            CI artifact (`chart-job-tgz`) deleted post-publish.
 
-  release-chart-web:
+  release-chart-ssr:
     needs: [release-bump]
-    if: needs.release-bump.outputs.chart_web_version != ''
+    if: needs.release-bump.outputs.chart_ssr_version != ''
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -2066,31 +2066,31 @@ jobs:
       - uses: goabonga/multicz-action@v1
       - uses: ./.github/actions/publish-chart
         with:
-          component: web
+          component: ssr
           owner: ${{ needs.release-bump.outputs.owner }}
           token: ${{ secrets.GITHUB_TOKEN }}
-      - name: gh release create chart-web-v${{ needs.release-bump.outputs.chart_web_version }}
+      - name: gh release create chart-ssr-v${{ needs.release-bump.outputs.chart_ssr_version }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          TAG="chart-web-v${{ needs.release-bump.outputs.chart_web_version }}"
+          TAG="chart-ssr-v${{ needs.release-bump.outputs.chart_ssr_version }}"
           multicz release-notes --tag "$TAG" \
             | gh release create "$TAG" --title "$TAG" --notes-file -
       - name: Delete consumed CI artifact
         uses: geekyeggo/delete-artifact@v5
         with:
-          name: chart-web-tgz
+          name: chart-ssr-tgz
           failOnError: false
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
-          title: release-chart-web
+          title: release-chart-ssr
           body: |
-            Pushed `oci://ghcr.io/${{ needs.release-bump.outputs.owner }}/charts/${{ needs.release-bump.outputs.repo }}-web:${{ needs.release-bump.outputs.chart_web_version }}`,
-            cut GitHub Release `chart-web-v${{ needs.release-bump.outputs.chart_web_version }}`.
-            CI artifact (`chart-web-tgz`) deleted post-publish.
+            Pushed `oci://ghcr.io/${{ needs.release-bump.outputs.owner }}/charts/${{ needs.release-bump.outputs.repo }}-ssr:${{ needs.release-bump.outputs.chart_ssr_version }}`,
+            cut GitHub Release `chart-ssr-v${{ needs.release-bump.outputs.chart_ssr_version }}`.
+            CI artifact (`chart-ssr-tgz`) deleted post-publish.
 
   release-docs:
     # Consume the already-built `docs-site` artifact (produced by

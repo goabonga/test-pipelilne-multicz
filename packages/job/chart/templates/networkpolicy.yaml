@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Chart.Name }}
+  policyTypes:
+    - Ingress
+    - Egress
+  # Permissive baseline — see chart-api/networkpolicy.yaml for
+  # the rationale. The job is a polling loop (no inbound), so
+  # production would tighten ingress to deny everything and egress
+  # to its DB / Redis / SIEM peers only.
+  ingress:
+    - {}
+  egress:
+    - {}

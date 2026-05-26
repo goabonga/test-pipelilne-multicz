@@ -18,14 +18,14 @@ body:
       multiple: true
       options:
         - shomer-api
-        - shomer-worker
+        - shomer-job
+        - shomer-ssr
         - shomer-web
-        - shomer-web-frontend
         - shomer-cli
         - chart-api
-        - chart-worker
-        - chart-web
-        - docs / website
+        - chart-job
+        - chart-ssr
+        - docs / ssrsite
         - release / CI tooling
     validations:
       required: true
