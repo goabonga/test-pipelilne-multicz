@@ -273,7 +273,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: hadolint/hadolint-action@v3.1.0
+      - uses: hadolint/hadolint-action@v3.3.0
         with:
           dockerfile: packages/api/Dockerfile
           format: tty
@@ -524,7 +524,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: hadolint/hadolint-action@v3.1.0
+      - uses: hadolint/hadolint-action@v3.3.0
         with:
           dockerfile: packages/job/Dockerfile
           format: tty
@@ -781,7 +781,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: hadolint/hadolint-action@v3.1.0
+      - uses: hadolint/hadolint-action@v3.3.0
         with:
           dockerfile: packages/ssr/Dockerfile
           format: tty
@@ -1448,7 +1448,7 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v6
         with:
           node-version: "22"
           cache: npm
@@ -1474,7 +1474,7 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v6
         with:
           node-version: "22"
           cache: npm
@@ -1500,7 +1500,7 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v6
         with:
           node-version: "22"
           cache: npm
@@ -1525,7 +1525,7 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v6
         with:
           node-version: "22"
           cache: npm
@@ -1555,7 +1555,7 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v6
         with:
           node-version: "22"
           cache: npm
@@ -1643,7 +1643,7 @@ jobs:
 
       # Node is required for web's post_bump hook
       # (`npm run build` regenerates packages/ssr/src/shomer_ssr/{static,templates}/).
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v6
         with:
           node-version: "22"
           cache: npm
@@ -1801,7 +1801,7 @@ jobs:
       # ghcr, .deb is a release asset). Drop them so the workflow
       # run page doesn't carry duplicates after retention.
       - name: Delete consumed CI artifacts
-        uses: geekyeggo/delete-artifact@v5
+        uses: geekyeggo/delete-artifact@v6
         with:
           name: |
             api-image
@@ -1852,7 +1852,7 @@ jobs:
           multicz release-notes --tag "$TAG" \
             | gh release create "$TAG" --title "$TAG" --notes-file - /tmp/shomer-job_*.deb
       - name: Delete consumed CI artifacts
-        uses: geekyeggo/delete-artifact@v5
+        uses: geekyeggo/delete-artifact@v6
         with:
           name: |
             job-image
@@ -1906,7 +1906,7 @@ jobs:
       # which are now done) — no separate release-web job
       # exists since web ships through the ssr image/.deb.
       - name: Delete consumed CI artifacts
-        uses: geekyeggo/delete-artifact@v5
+        uses: geekyeggo/delete-artifact@v6
         with:
           name: |
             ssr-image
@@ -1950,7 +1950,7 @@ jobs:
           multicz release-notes --tag "$TAG" \
             | gh release create "$TAG" --title "$TAG" --notes-file - /tmp/shomer-cli_*.deb
       - name: Delete consumed CI artifact
-        uses: geekyeggo/delete-artifact@v5
+        uses: geekyeggo/delete-artifact@v6
         with:
           name: cli-deb
           failOnError: false
@@ -1992,7 +1992,7 @@ jobs:
           multicz release-notes --tag "$TAG" \
             | gh release create "$TAG" --title "$TAG" --notes-file -
       - name: Delete consumed CI artifact
-        uses: geekyeggo/delete-artifact@v5
+        uses: geekyeggo/delete-artifact@v6
         with:
           name: chart-api-tgz
           failOnError: false
@@ -2035,7 +2035,7 @@ jobs:
           multicz release-notes --tag "$TAG" \
             | gh release create "$TAG" --title "$TAG" --notes-file -
       - name: Delete consumed CI artifact
-        uses: geekyeggo/delete-artifact@v5
+        uses: geekyeggo/delete-artifact@v6
         with:
           name: chart-job-tgz
           failOnError: false
@@ -2078,7 +2078,7 @@ jobs:
           multicz release-notes --tag "$TAG" \
             | gh release create "$TAG" --title "$TAG" --notes-file -
       - name: Delete consumed CI artifact
-        uses: geekyeggo/delete-artifact@v5
+        uses: geekyeggo/delete-artifact@v6
         with:
           name: chart-ssr-tgz
           failOnError: false
@@ -2122,12 +2122,12 @@ jobs:
         with:
           name: docs-site
           path: site
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: site
       - name: Deploy to GitHub Pages
         id: deploy
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
       - name: gh release create docs-v${{ needs.release-bump.outputs.docs_version }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -2137,7 +2137,7 @@ jobs:
           multicz release-notes --tag "$TAG" \
             | gh release create "$TAG" --title "$TAG" --notes-file -
       - name: Delete consumed CI artifact
-        uses: geekyeggo/delete-artifact@v5
+        uses: geekyeggo/delete-artifact@v6
         with:
           name: docs-site
           failOnError: false
