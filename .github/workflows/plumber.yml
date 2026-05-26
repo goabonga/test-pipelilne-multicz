@@ -63,3 +63,23 @@ jobs:
           # SARIF upload to Code Scanning is on by default — keep it
           # explicit so the workflow's intent is self-documenting.
           upload-sarif: true
+          # workflowMustNotUseDangerousTriggers (ISSUE-802) is suppressed
+          # for the single justifiable case in this repo:
+          # .github/workflows/dependabot-rewrite.yml, which has to
+          # check out Dependabot's PR commits in order to GPG-sign-and-
+          # rewrite them with multicz-aware Conventional-Commits scopes.
+          # The control is structurally incompatible with that workload
+          # (any "rewrite + sign" path needs both secrets AND a checkout
+          # of the PR head); Plumber currently has no per-file scoping
+          # for this control. Defence in depth we already apply on the
+          # rewrite job: signal-then-workflow_run two-step (fork-PR
+          # reachable only via the no-op signal workflow with no
+          # secrets), `trusted/` vs `pr/` checkout split so the rebase
+          # exec runs the script from main and never from the PR,
+          # head_sha pin so the rewritten commits are the exact ones
+          # the signal observed, triple `if:` gate (conclusion + event
+          # + actor.login == 'dependabot[bot]'), and contents:write +
+          # pull-requests:write as the only elevated permissions.
+          # Re-enable this skip the moment Plumber ships per-file
+          # suppression (`exclude-files` or equivalent).
+          skip-controls: workflowMustNotUseDangerousTriggers
