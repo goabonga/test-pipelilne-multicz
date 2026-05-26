@@ -7,15 +7,15 @@
 # Conventional Commits with a type/scope that reflects what the bump touches:
 #
 #   - changes only under .github/workflows/ or .github/actions/ -> ci
-#   - changes only under packages/web/                 -> chore(web)
-#   - changes only under packages/api/ (incl. Dockerfile)       -> fix(api)
-#   - changes only under packages/job/                       -> fix(job)
-#   - changes only under packages/ssr/                          -> fix(ssr)
-#   - changes only under packages/cli/                          -> fix(cli)
-#   - Python uv runtime bump touching a single packages/<pkg>/pyproject.toml
-#                                                               -> fix(<pkg>)
-#   - dev-tools group / [dependency-groups].dev member          -> chore(deps)
-#   - other runtime Python dep                                  -> fix(deps)
+#   - changes only under packages/web/ (npm / Node build)        -> chore(web)
+#   - changes only under packages/api/                           -> fix(api)
+#   - changes only under packages/job/                           -> fix(job)
+#   - changes only under packages/ssr/                           -> fix(ssr)
+#   - changes only under packages/cli/                           -> fix(cli)
+#   - Python uv runtime bump touching one packages/<pkg>/pyproject.toml
+#                                                                -> fix(<pkg>)
+#   - dev-tools group / [dependency-groups].dev member           -> chore(deps)
+#   - other runtime Python dep                                   -> fix(deps)
 #
 # Multicz then matches the changed files against each component's `paths`
 # and bumps accordingly; the scope above is for humans reading the log.
