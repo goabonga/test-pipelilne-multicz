@@ -1,0 +1,153 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Dependabot v2 configuration for the Shomer monorepo.
+#
+# The signed dependabot-rewrite workflow re-authors every Dependabot commit
+# with a Conventional-Commits subject that reflects what the bump touches:
+# runtime deps -> fix(deps), dev tooling -> chore(deps), GitHub Actions -> ci.
+# The prefixes below match what the rewrite would emit, so PRs read sensibly
+# even before the rewrite runs (e.g. on a fresh fork without GPG secrets).
+
+version: 2
+
+updates:
+  # Python deps via uv (root uv.lock spans every workspace member).
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Paris"
+    open-pull-requests-limit: 5
+    ignore:
+      # `hatchling` lives in [build-system].requires; Dependabot's uv
+      # FileUpdater cannot write that table. Bump it by hand; pip-audit and
+      # osv-scanner still flag any CVEs.
+      - dependency-name: "hatchling"
+    groups:
+      # Bundle routine dev-tooling bumps into a single weekly PR. The
+      # signed-rewrite script keys "dev-tools group" -> chore(deps).
+      dev-tools:
+        applies-to: version-updates
+        patterns:
+          - "ruff"
+          - "mypy"
+          - "pytest*"
+          - "pre-commit"
+    commit-message:
+      prefix: "fix(deps)"
+      prefix-development: "chore(deps)"
+    labels:
+      - "dependencies"
+      - "python"
+
+  # web-frontend (TS / build tooling). Everything in this package.json is
+  # devDependencies, so all bumps land as chore(deps); the rewrite confirms.
+  - package-ecosystem: "npm"
+    directory: "/packages/web-frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Paris"
+    open-pull-requests-limit: 5
+    groups:
+      web-frontend-dev-tools:
+        applies-to: version-updates
+        patterns:
+          - "@biomejs/*"
+          - "@types/*"
+          - "esbuild"
+          - "jsdom"
+          - "typescript"
+          - "vitest"
+    commit-message:
+      prefix: "chore(deps)"
+      prefix-development: "chore(deps)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "web-frontend"
+
+  # Container base images for the three runtime services. Base-image bumps
+  # ship in production, so the rewrite classifies them as fix(deps).
+  - package-ecosystem: "docker"
+    directory: "/packages/api"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Paris"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "fix(deps)"
+    labels:
+      - "dependencies"
+      - "docker"
+      - "api"
+
+  - package-ecosystem: "docker"
+    directory: "/packages/worker"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Paris"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "fix(deps)"
+    labels:
+      - "dependencies"
+      - "docker"
+      - "worker"
+
+  - package-ecosystem: "docker"
+    directory: "/packages/web"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Paris"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "fix(deps)"
+    labels:
+      - "dependencies"
+      - "docker"
+      - "web"
+
+  # Pinned versions of GitHub Actions in `.github/workflows/*.yml` and
+  # `.github/actions/*/action.yml`.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Paris"
+    open-pull-requests-limit: 5
+    groups:
+      ci-actions:
+        applies-to: version-updates
+        patterns:
+          - "actions/*"
+          - "astral-sh/*"
+          - "azure/*"
+          - "bridgecrewio/*"
+          - "codecov/*"
+          - "compilerla/*"
+          - "docker/*"
+          - "geekyeggo/*"
+          - "goabonga/*"
+          - "google/*"
+          - "hadolint/*"
+          - "pre-commit/*"
+          - "pypa/*"
+          - "softprops/*"
+    commit-message:
+      prefix: "ci"
+    labels:
+      - "dependencies"
+      - "github-actions"
