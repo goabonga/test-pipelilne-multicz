@@ -1667,11 +1667,19 @@ jobs:
       - uses: goabonga/multicz-action@5f9b6e930fc6b26160b0b57e7c0c9f4276f86c59  # v1
 
       - name: Configure git
+        # Author name + email come from the head commit's metadata, which
+        # is controllable by anyone who can land a commit on this branch.
+        # Plumber's ISSUE-207 catches the previous form where these flowed
+        # directly into the `run:` block — a crafted commit message with
+        # a bash sequence in the author field would execute. Funnelling
+        # through `env:` makes the values plain shell variables that bash
+        # interpolates safely under quoted expansion.
+        env:
+          AUTHOR_NAME: ${{ github.event.head_commit.author.name }}
+          AUTHOR_EMAIL: ${{ github.event.head_commit.author.email }}
         run: |
-          NAME="${{ github.event.head_commit.author.name }}"
-          EMAIL="${{ github.event.head_commit.author.email }}"
-          git config user.name  "${NAME:-github-actions[bot]}"
-          git config user.email "${EMAIL:-41898282+github-actions[bot]@users.noreply.github.com}"
+          git config user.name  "${AUTHOR_NAME:-github-actions[bot]}"
+          git config user.email "${AUTHOR_EMAIL:-41898282+github-actions[bot]@users.noreply.github.com}"
 
       - name: Detect GPG availability
         id: gpg
