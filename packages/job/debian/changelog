@@ -1,3 +1,9 @@
+shomer-job (1.0.0-1) unstable; urgency=medium
+
+  * refactor!: Rename components (worker->job, web->ssr, web-frontend->web)
+
+ -- Chris <goabonga@pm.me>  Wed, 27 May 2026 08:59:04 +0000
+
 shomer-job (0.0.0-1) unstable; urgency=medium
 
   * Initial packaging.

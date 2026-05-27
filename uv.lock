@@ -815,7 +815,7 @@ wheels = [
 
 [[package]]
 name = "shomer-api"
-version = "0.0.0"
+version = "0.1.0"
 source = { editable = "packages/api" }
 dependencies = [
     { name = "fastapi" },
@@ -824,13 +824,13 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fastapi", specifier = ">=0.136.3" },
+    { name = "fastapi", specifier = ">=0.115" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.48.0" },
 ]
 
 [[package]]
 name = "shomer-cli"
-version = "0.0.0"
+version = "0.1.0"
 source = { editable = "packages/cli" }
 dependencies = [
     { name = "httpx" },
@@ -845,12 +845,12 @@ requires-dist = [
 
 [[package]]
 name = "shomer-job"
-version = "0.0.0"
+version = "1.0.0"
 source = { editable = "packages/job" }
 
 [[package]]
 name = "shomer-ssr"
-version = "0.0.0"
+version = "1.0.0"
 source = { editable = "packages/ssr" }
 dependencies = [
     { name = "fastapi" },
@@ -861,7 +861,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fastapi", specifier = ">=0.136.3" },
+    { name = "fastapi", specifier = ">=0.115" },
     { name = "jinja2", specifier = ">=3.1" },
     { name = "python-multipart", specifier = ">=0.0.9" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.48.0" },

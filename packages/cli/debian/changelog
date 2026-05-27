@@ -1,3 +1,13 @@
+shomer-cli (0.1.0-1) unstable; urgency=medium
+
+  * feat(cli): Scaffold typer cli with health probe
+  * feat(cli): Add debian packaging
+  * feat(debian): Mark all packages as 3.0 (native) source format
+  * fix(cli): Add debian/copyright (DEP-5, MIT) — clears lintian E:no-copyright-file
+  * feat(cli): Ship AppStream metainfo + hicolor icon so AppCenter shows the package
+
+ -- Chris <goabonga@pm.me>  Wed, 27 May 2026 08:59:07 +0000
+
 shomer-cli (0.0.0-1) unstable; urgency=medium
 
   * Initial packaging.
