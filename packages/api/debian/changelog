@@ -1,3 +1,21 @@
+shomer-api (0.1.0-1) unstable; urgency=medium
+
+  * feat(api): Scaffold fastapi service with healthz and oidc discovery
+  * feat(api): Add Dockerfile and helm chart
+  * feat(api): Add debian packaging with systemd unit
+  * feat(debian): Mark all packages as 3.0 (native) source format
+  * feat(api): Harden shomer-api systemd unit with full sandbox + syscall filter
+  * fix(api,worker,web): Install systemd unit to usr/lib/systemd/system (usrmerge-correct path)
+  * fix(api): Add debian/copyright (DEP-5, MIT) — clears lintian E:no-copyright-file
+  * fix(api): Add DevicePolicy=closed + IPAddressAllow=any (kills 0.3 badness)
+  * fix(api): Use explicit CIDR ranges in IPAddressAllow (systemd-analyze ignores 'any')
+  * fix(api): Add IPAddressDeny=any (sets deny_all flag systemd-analyze credits)
+  * fix(api): Suppress hadolint DL3007 (Chainguard images use rolling :latest by design)
+  * feat(api): Ship AppStream metainfo + hicolor icon so AppCenter shows the package
+  * fix(deps): Update uvicorn[standard] requirement from >=0.32 to >=0.48.0
+
+ -- Chris <goabonga@pm.me>  Wed, 27 May 2026 08:59:02 +0000
+
 shomer-api (0.0.0-1) unstable; urgency=medium
 
   * Initial packaging.

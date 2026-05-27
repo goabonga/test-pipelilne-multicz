@@ -1,3 +1,10 @@
+shomer-ssr (1.0.0-1) unstable; urgency=medium
+
+  * refactor!: Rename components (worker->job, web->ssr, web-frontend->web)
+  * fix(deps): Update uvicorn[standard] requirement from >=0.32 to >=0.48.0
+
+ -- Chris <goabonga@pm.me>  Wed, 27 May 2026 08:59:05 +0000
+
 shomer-ssr (0.0.0-1) unstable; urgency=medium
 
   * Initial packaging.
