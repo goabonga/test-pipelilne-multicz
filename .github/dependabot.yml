@@ -15,6 +15,22 @@ updates:
   # Python deps via uv (root uv.lock spans every workspace member).
   - package-ecosystem: "uv"
     directory: "/"
+    # `increase` forces Dependabot to bump the SPEC in pyproject.toml
+    # (not just the resolved version in uv.lock) on every update. The
+    # default `increase-if-necessary` keeps lower-bound specs like
+    # `fastapi>=0.115` untouched as long as they permit the new
+    # version — meaning a runtime bump only modifies uv.lock, which is
+    # NOT in any multicz component's `paths`, so detect/test/release
+    # all skip and the new dep version never gets exercised by CI nor
+    # shipped in a release.
+    #
+    # With `increase`, the spec rises to the freshly-installed version
+    # (e.g. `fastapi>=0.115` -> `fastapi>=0.136.3`), packages/<comp>/
+    # pyproject.toml is touched, multicz sees the path change, the
+    # per-component test + release fan-out fires. Dev-tools updates
+    # (root pyproject.toml's [dependency-groups].dev) still don't
+    # match any component path, so chore(deps) bumps stay non-release.
+    versioning-strategy: increase
     schedule:
       interval: "weekly"
       day: "monday"
