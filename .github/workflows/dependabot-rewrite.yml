@@ -88,6 +88,15 @@ jobs:
           ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
           persist-credentials: true
+          # RELEASE_PAT (when configured) makes the eventual force-push
+          # to the dependabot/* branch surface as the PAT-owning user
+          # rather than github-actions[bot]. The GPG key + commit author
+          # are already the maintainer's; the PAT keeps the pusher
+          # consistent so the audit log reads "goabonga pushed her own
+          # signed commit" rather than "bot pushed a commit signed by
+          # someone else". Falls back to GITHUB_TOKEN if the secret
+          # isn't set.
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
           path: pr
 
       - name: Configure GPG and git identity from the imported key

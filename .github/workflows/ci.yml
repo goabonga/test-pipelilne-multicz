@@ -1401,7 +1401,7 @@ jobs:
         with:
           component: api
           port: "8000"
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
@@ -1440,7 +1440,7 @@ jobs:
         with:
           component: ssr
           port: "8080"
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
@@ -1804,13 +1804,13 @@ jobs:
           version: ${{ needs.release-bump.outputs.api_version }}
           owner: ${{ needs.release-bump.outputs.owner }}
           repo: ${{ needs.release-bump.outputs.repo }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
       - uses: ./.github/actions/publish-deb
         with:
           component: api
       - name: gh release create api-v${{ needs.release-bump.outputs.api_version }}
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           TAG="api-v${{ needs.release-bump.outputs.api_version }}"
@@ -1858,13 +1858,13 @@ jobs:
           version: ${{ needs.release-bump.outputs.job_version }}
           owner: ${{ needs.release-bump.outputs.owner }}
           repo: ${{ needs.release-bump.outputs.repo }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
       - uses: ./.github/actions/publish-deb
         with:
           component: job
       - name: gh release create job-v${{ needs.release-bump.outputs.job_version }}
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           TAG="job-v${{ needs.release-bump.outputs.job_version }}"
@@ -1909,13 +1909,13 @@ jobs:
           version: ${{ needs.release-bump.outputs.ssr_version }}
           owner: ${{ needs.release-bump.outputs.owner }}
           repo: ${{ needs.release-bump.outputs.repo }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
       - uses: ./.github/actions/publish-deb
         with:
           component: ssr
       - name: gh release create ssr-v${{ needs.release-bump.outputs.ssr_version }}
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           TAG="ssr-v${{ needs.release-bump.outputs.ssr_version }}"
@@ -1962,7 +1962,7 @@ jobs:
           component: cli
       - name: gh release create cli-v${{ needs.release-bump.outputs.cli_version }}
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           TAG="cli-v${{ needs.release-bump.outputs.cli_version }}"
@@ -2001,10 +2001,10 @@ jobs:
         with:
           component: api
           owner: ${{ needs.release-bump.outputs.owner }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
       - name: gh release create chart-api-v${{ needs.release-bump.outputs.chart_api_version }}
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           TAG="chart-api-v${{ needs.release-bump.outputs.chart_api_version }}"
@@ -2044,10 +2044,10 @@ jobs:
         with:
           component: job
           owner: ${{ needs.release-bump.outputs.owner }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
       - name: gh release create chart-job-v${{ needs.release-bump.outputs.chart_job_version }}
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           TAG="chart-job-v${{ needs.release-bump.outputs.chart_job_version }}"
@@ -2087,10 +2087,10 @@ jobs:
         with:
           component: ssr
           owner: ${{ needs.release-bump.outputs.owner }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
       - name: gh release create chart-ssr-v${{ needs.release-bump.outputs.chart_ssr_version }}
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           TAG="chart-ssr-v${{ needs.release-bump.outputs.chart_ssr_version }}"
@@ -2149,7 +2149,7 @@ jobs:
         uses: actions/deploy-pages@v5
       - name: gh release create docs-v${{ needs.release-bump.outputs.docs_version }}
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           TAG="docs-v${{ needs.release-bump.outputs.docs_version }}"
