@@ -16,15 +16,17 @@
 #      again under --fail-on high.
 
 ignore:
-  # CVE-2026-7210 (Critical) — upstream Chainguard python-3.14 3.14.5-r1
-  # apk in cgr.dev/chainguard/python:latest. Tracked, no fix yet from
-  # Chainguard. If they haven't shipped a patched image by the expiration
-  # below, the weekly sweep workflow will open an issue forcing a fresh
-  # justification rather than letting this rot.
-  # expires: 2026-06-02
+  # CVE-2026-7210 (Critical) — upstream Chainguard python-3.14 in
+  # cgr.dev/chainguard/python:latest. Chainguard re-built the apk
+  # (3.14.5-r1 -> -r2 on 2026-05-27) but the CVE is still present in
+  # the grype DB, so the original version-pin expired on intent (good)
+  # but the underlying issue isn't resolved — bump the pin to -r2 and
+  # extend the expiry by a week. If Chainguard ships -r3 without a
+  # fix, the version mismatch will trip again and we re-evaluate.
+  # expires: 2026-06-09
   - vulnerability: CVE-2026-7210
     reason: "Upstream Chainguard python:latest apk; awaiting patched base image."
     package:
       name: python-3.14
-      version: 3.14.5-r1
+      version: 3.14.5-r2
       type: apk
