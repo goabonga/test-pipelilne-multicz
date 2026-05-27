@@ -1109,8 +1109,17 @@ jobs:
     # failed or been cancelled. Without this, a partial-change PR
     # (e.g. only api changed → cli-test skipped) would skip audit
     # → skip every container → no fresh image artifact for owasp.
-    needs: [api-test, job-test, ssr-test, cli-test]
-    if: '!failure() && !cancelled()'
+    #
+    # The `detect.changed != '[]'` gate filters out commits that
+    # touch only workflow files (`ci:` bumps) or docs — they leave
+    # the lockfile untouched, so re-running pip-audit on the same
+    # closure produces an identical result. The fresh-CVE catch is
+    # still covered weekly by grype-allowlist-sweep on each published
+    # image.
+    needs: [api-test, job-test, ssr-test, cli-test, detect]
+    if: >-
+      !failure() && !cancelled() &&
+      needs.detect.outputs.changed != '[]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
