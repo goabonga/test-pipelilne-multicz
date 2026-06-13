@@ -1873,14 +1873,31 @@ jobs:
       - name: Bump, commit, tag, push (signed)
         if: steps.plan.outputs.release == 'true' && steps.gpg.outputs.available == 'true'
         run: |
+          set -euo pipefail
           multicz bump --commit --tag --push --sign \
-            --summary "$GITHUB_STEP_SUMMARY" --output json | tee /tmp/release.json
+            --summary "$GITHUB_STEP_SUMMARY" --output json | tee /tmp/release.raw
+          # multicz interleaves `post_bump: ...` progress lines on
+          # stdout BEFORE the final JSON object, so the raw tee
+          # output isn't pure JSON. Strip everything before the
+          # first standalone `{` (the document's opening brace) so
+          # jq downstream sees parseable input, then validate to
+          # fail fast if anything's still off — otherwise the empty
+          # versions silently skip every release-<component> job
+          # (which is exactly the symptom that surfaced run 27469758939).
+          sed -n '/^{$/,$p' /tmp/release.raw > /tmp/release.json
+          jq . /tmp/release.json > /dev/null
 
       - name: Bump, commit, tag, push
         if: steps.plan.outputs.release == 'true' && steps.gpg.outputs.available != 'true'
         run: |
+          set -euo pipefail
           multicz bump --commit --tag --push \
-            --summary "$GITHUB_STEP_SUMMARY" --output json | tee /tmp/release.json
+            --summary "$GITHUB_STEP_SUMMARY" --output json | tee /tmp/release.raw
+          # Same noise-stripping + JSON sanity check as the signed
+          # variant above — both bump steps feed the same downstream
+          # Extract step.
+          sed -n '/^{$/,$p' /tmp/release.raw > /tmp/release.json
+          jq . /tmp/release.json > /dev/null
 
       - name: Extract bumped versions
         id: bump
@@ -1895,6 +1912,11 @@ jobs:
           CHART_JOB=$(jq -r '.bumps["chart-job"].next_version // empty' /tmp/release.json)
           CHART_SSR=$(jq -r    '.bumps["chart-ssr"].next_version    // empty' /tmp/release.json)
           DOCS=$(jq -r         '.bumps.docs.next_version          // empty' /tmp/release.json)
+          # Surface what we extracted so the workflow log makes the
+          # downstream skip/run decision auditable without having to
+          # re-resolve via gh api.
+          printf '[release-bump] extracted versions:\n  api=%s job=%s ssr=%s cli=%s\n  chart-api=%s chart-job=%s chart-ssr=%s docs=%s\n' \
+            "$API" "$JOB" "$SSR" "$CLI" "$CHART_API" "$CHART_JOB" "$CHART_SSR" "$DOCS"
           echo "api_version=$API"                   >> "$GITHUB_OUTPUT"
           echo "job_version=$JOB"             >> "$GITHUB_OUTPUT"
           echo "cli_version=$CLI"                   >> "$GITHUB_OUTPUT"
