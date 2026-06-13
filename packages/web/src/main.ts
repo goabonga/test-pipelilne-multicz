@@ -33,9 +33,9 @@ export function setupLoginForm(form: HTMLFormElement): void {
     const error = validateCredentials(creds);
     if (error !== null) {
       event.preventDefault();
-      const slot = form.querySelector<HTMLElement>(".error");
-      if (slot) {
-        slot.textContent = formatError(error);
+      const errorSlot = form.querySelector<HTMLElement>(".error");
+      if (errorSlot) {
+        errorSlot.textContent = formatError(error);
       }
     }
   });
