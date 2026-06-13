@@ -2,6 +2,12 @@
 
 All notable changes to this component are documented here.
 
+## [1.0.2] - 2026-06-13
+
+### Fixes
+
+- **ssr**: bump python-multipart from 0.0.29 to 0.0.32 (`f77b970`)
+
 ## [1.0.1] - 2026-06-13
 
 ### Fixes

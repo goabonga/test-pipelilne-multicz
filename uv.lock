@@ -837,7 +837,7 @@ requires-dist = [
 
 [[package]]
 name = "shomer-cli"
-version = "0.1.0"
+version = "0.1.1"
 source = { editable = "packages/cli" }
 dependencies = [
     { name = "httpx" },
@@ -857,7 +857,7 @@ source = { editable = "packages/job" }
 
 [[package]]
 name = "shomer-ssr"
-version = "1.0.1"
+version = "1.0.2"
 source = { editable = "packages/ssr" }
 dependencies = [
     { name = "fastapi" },

@@ -2,6 +2,12 @@
 
 All notable changes to this component are documented here.
 
+## [0.1.1] - 2026-06-13
+
+### Fixes
+
+- **cli**: bump typer from 0.26.4 to 0.26.7 (`d8d648b`)
+
 ## [0.1.0] - 2026-05-27
 
 ### Features
