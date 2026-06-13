@@ -22,7 +22,7 @@ from . import __version__
 # behave checks (which assert on `issuer`) stable.
 OIDC_ISSUER = "http://localhost:8000"
 
-app = FastAPI(title="Shomer", version=__version__)
+app = FastAPI(title="Shomer API", version=__version__)
 
 
 @app.get("/healthz")
