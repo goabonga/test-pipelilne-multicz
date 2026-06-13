@@ -1282,7 +1282,15 @@ jobs:
 
   chart-api-lint:
     needs: [detect, headers]
-    if: contains(fromJson(needs.detect.outputs.changed).changed, 'chart-api')
+    # Also fire when the parent component `api` is in changed: multicz
+    # cascade-bumps chart-api via the appVersion mirror at release-bump
+    # time, AFTER detect has already run. Without the parent-cascade
+    # gate, chart-api-{lint,checkov,package} skip on an api-only commit
+    # and release-chart-api then fails looking for a `chart-api-tgz`
+    # artifact that was never built. Run 27480232249 hit exactly this.
+    if: |
+      contains(fromJson(needs.detect.outputs.changed).changed, 'chart-api') ||
+      contains(fromJson(needs.detect.outputs.changed).changed, 'api')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -1362,7 +1370,10 @@ jobs:
 
   chart-job-lint:
     needs: [detect, headers]
-    if: contains(fromJson(needs.detect.outputs.changed).changed, 'chart-job')
+    # Parent-cascade gate — see chart-api-lint for the rationale.
+    if: |
+      contains(fromJson(needs.detect.outputs.changed).changed, 'chart-job') ||
+      contains(fromJson(needs.detect.outputs.changed).changed, 'job')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -1438,7 +1449,10 @@ jobs:
 
   chart-ssr-lint:
     needs: [detect, headers]
-    if: contains(fromJson(needs.detect.outputs.changed).changed, 'chart-ssr')
+    # Parent-cascade gate — see chart-api-lint for the rationale.
+    if: |
+      contains(fromJson(needs.detect.outputs.changed).changed, 'chart-ssr') ||
+      contains(fromJson(needs.detect.outputs.changed).changed, 'ssr')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
