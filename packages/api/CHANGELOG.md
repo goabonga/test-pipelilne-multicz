@@ -2,6 +2,12 @@
 
 All notable changes to this component are documented here.
 
+## [0.2.2] - 2026-06-13
+
+### Fixes
+
+- **api**: tag the healthz payload with the service identifier (`386848d`)
+
 ## [0.2.1] - 2026-06-13
 
 ### Fixes

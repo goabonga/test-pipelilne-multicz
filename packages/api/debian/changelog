@@ -1,3 +1,9 @@
+shomer-api (0.2.2-1) unstable; urgency=medium
+
+  * fix(api): Tag the healthz payload with the service identifier
+
+ -- Chris <goabonga@pm.me>  Sat, 13 Jun 2026 22:03:09 +0000
+
 shomer-api (0.2.1-1) unstable; urgency=medium
 
   * fix(api): Disambiguate the FastAPI title from the ssr surface
