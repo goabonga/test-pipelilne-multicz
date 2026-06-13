@@ -15,11 +15,14 @@ Three routes to keep the demo runnable:
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.responses import Response
+from starlette.types import Scope
 
 from . import __version__
 
@@ -30,8 +33,36 @@ TEMPLATES_DIR = Path(__file__).parent / "templates"
 STATIC_DIR = Path(__file__).parent / "static"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
-app = FastAPI(title="Shomer SSR", version=__version__)
-app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
+class DevAwareStaticFiles(StaticFiles):
+    """``StaticFiles`` subclass that publishes a sibling ``.map`` file
+    as a ``SourceMap`` response header when one exists on disk.
+
+    Why a header rather than the conventional
+    ``//# sourceMappingURL=`` trailing comment in the bundle: keeping
+    main.js / main.css byte-identical between dev and release means
+    a stray dev rebuild can't slip a dev-only marker into a release
+    commit. The web container's ``--watch`` build writes main.js.map
+    next to main.js (esbuild ``sourcemap: "external"`` — no comment
+    appended); release builds don't, so this branch silently no-ops
+    in prod.
+
+    Browser devtools (Chrome, Firefox, Safari) treat the ``SourceMap``
+    response header as equivalent to the in-bundle comment, so the
+    debug experience is identical.
+    """
+
+    async def get_response(self, path: str, scope: Scope) -> Response:
+        response = await super().get_response(path, scope)
+        if response.status_code == 200 and path.endswith((".js", ".css")):
+            map_path = Path(self.directory) / f"{path}.map"
+            if map_path.is_file():
+                response.headers["SourceMap"] = f"/static/{path}.map"
+        return response
+
+
+app: Any = FastAPI(title="Shomer SSR", version=__version__)
+app.mount("/static", DevAwareStaticFiles(directory=str(STATIC_DIR)), name="static")
 
 
 @app.get("/healthz")

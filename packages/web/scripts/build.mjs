@@ -52,23 +52,27 @@ function ensureDir(dir) {
 
 // Minify in every mode so the dev bundle matches what production
 // ships — same byte stream, same parser behaviour, fewer "works in
-// dev, breaks in prod" surprises. In watch mode we emit a linked
-// sourcemap: esbuild writes main.js.map next to main.js and appends a
-// single-line `//# sourceMappingURL=main.js.map` comment to the
-// bundle, so browser devtools recovers original-source debuggability
-// (TypeScript names, original line numbers, sane stack traces)
-// without inflating main.js itself with a base64 blob.
+// dev, breaks in prod" surprises.
+//
+// In watch mode we emit `sourcemap: "external"`: esbuild writes a
+// sibling main.js.map but does NOT append the
+// `//# sourceMappingURL=main.js.map` comment to the bundle. That
+// means main.js stays byte-identical between dev and prod — no
+// trailing dev artefact rides into the release commit by accident.
+// The ssr server (DevAwareStaticFiles in packages/ssr/src/shomer_ssr/
+// app.py) detects the .map at request time and answers with a
+// `SourceMap: /static/main.js.map` response header, which DevTools
+// honours exactly like the inline comment would.
 //
 // One-shot builds (CI, multicz release post_bump) keep
-// `sourcemap: false` so the shipped main.js / main.css stays small —
-// the .map would add ~30-50 % overhead with no real consumer (we don't
-// upload sources to Sentry / similar yet). The dev .map files are
-// gitignored so they don't slip into release commits.
+// `sourcemap: false` — no .map is written, so the SourceMap header
+// is silently omitted by the ssr server. .map files are gitignored
+// regardless.
 const jsConfig = {
   entryPoints: [join(SRC, "main.ts")],
   bundle: true,
   minify: true,
-  sourcemap: WATCH,
+  sourcemap: WATCH ? "external" : false,
   format: "iife",
   target: "es2022",
   outfile: join(OUT_STATIC, "main.js"),
@@ -79,7 +83,7 @@ const cssConfig = {
   entryPoints: [join(SRC, "styles.css")],
   bundle: true,
   minify: true,
-  sourcemap: WATCH,
+  sourcemap: WATCH ? "external" : false,
   outfile: join(OUT_STATIC, "main.css"),
   logLevel: "info",
 };
