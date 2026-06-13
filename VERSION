@@ -1,9 +1,9 @@
-api=0.1.0
+api=0.1.1
 job=1.0.0
 cli=0.1.0
-ssr=1.0.0
-web=1.0.0
-chart-api=1.0.0
+ssr=1.0.1
+web=1.0.1
+chart-api=1.0.1
 chart-job=1.0.0
-chart-ssr=1.0.0
+chart-ssr=1.0.1
 docs=1.0.0

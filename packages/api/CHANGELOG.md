@@ -2,6 +2,12 @@
 
 All notable changes to this component are documented here.
 
+## [0.1.1] - 2026-06-13
+
+### Fixes
+
+- **deps**: update uvicorn[standard] requirement from >=0.32 to >=0.48.0 (`1b6d0d4`)
+
 ## [0.1.0] - 2026-05-27
 
 ### Features

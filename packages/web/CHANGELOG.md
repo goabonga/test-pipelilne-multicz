@@ -2,6 +2,12 @@
 
 All notable changes to this component are documented here.
 
+## [1.0.1] - 2026-06-13
+
+### Fixes
+
+- **web**: migrate biome.json to v2.x schema and allow Jinja interpolation (`e643a20`)
+
 ## [1.0.0] - 2026-05-27
 
 ### Breaking changes

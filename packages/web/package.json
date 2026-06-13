@@ -1,6 +1,6 @@
 {
   "name": "shomer-web",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Source for shomer-ssr's TS / CSS / Jinja templates. Built outputs land in packages/ssr/src/shomer_ssr/{static,templates}/.",
   "private": true,
   "type": "module",

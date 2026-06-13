@@ -1,3 +1,9 @@
+shomer-api (0.1.1-1) unstable; urgency=medium
+
+  * fix(deps): Update uvicorn[standard] requirement from >=0.32 to >=0.48.0
+
+ -- Chris <goabonga@pm.me>  Sat, 13 Jun 2026 10:39:26 +0000
+
 shomer-api (0.1.0-1) unstable; urgency=medium
 
   * feat(api): Scaffold fastapi service with healthz and oidc discovery
