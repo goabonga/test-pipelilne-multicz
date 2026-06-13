@@ -103,7 +103,12 @@ def login_submit(
 
 
 def run() -> None:
-    """Console-script entrypoint (``shomer-ssr``)."""
+    """Console-script entrypoint (``shomer-ssr``).
+
+    Re-exported via ``[project.scripts] shomer-ssr`` in pyproject; the
+    Helm chart, the .deb systemd unit and the local
+    ``docker compose run ssr`` all converge here.
+    """
     import uvicorn
 
     # Container / systemd service must listen on all interfaces.
