@@ -13,7 +13,7 @@ def test_healthz_returns_status_and_version() -> None:
     response = client.get("/healthz")
     assert response.status_code == 200
     body = response.json()
-    assert body == {"status": "ok", "version": __version__}
+    assert body == {"service": "shomer-api", "status": "ok", "version": __version__}
 
 
 def test_openid_configuration_lists_required_metadata() -> None:

@@ -27,7 +27,12 @@ app = FastAPI(title="Shomer API", version=__version__)
 
 @app.get("/healthz")
 def healthz() -> dict[str, str]:
-    return {"status": "ok", "version": __version__}
+    # `service` lets observability scrapers (Prometheus relabel,
+    # Datadog tags, Grafana log filters) tell shomer-api apart from
+    # shomer-ssr's own /healthz without having to key on the
+    # listening port — useful when both ride behind the same
+    # ingress.
+    return {"service": "shomer-api", "status": "ok", "version": __version__}
 
 
 @app.get("/.well-known/openid-configuration")
