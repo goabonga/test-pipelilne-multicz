@@ -1457,6 +1457,111 @@ jobs:
           title: owasp-ssr
           body: 'kind + helm install api/job/ssr (fresh artifact when changed, ghcr `:latest` otherwise) + OWASP ZAP baseline on ssr (`zap-ssr-baseline`).'
 
+  e2e-api:
+    # Behave BDD smoke against a kind-deployed api. Runs in parallel
+    # with owasp-api on the same upstream gate so a green security
+    # scan and a green behavioural surface land together.
+    needs:
+      - api-grype
+      - job-grype
+      - ssr-grype
+      - chart-api-checkov
+      - chart-job-checkov
+      - chart-ssr-checkov
+    if: >-
+      !failure() && !cancelled() && (
+        needs.api-grype.result == 'success' ||
+        needs.job-grype.result == 'success' ||
+        needs.ssr-grype.result == 'success' ||
+        needs.chart-api-checkov.result == 'success' ||
+        needs.chart-job-checkov.result == 'success' ||
+        needs.chart-ssr-checkov.result == 'success'
+      )
+    runs-on: ubuntu-latest
+    permissions:
+      packages: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
+      - uses: ./.github/actions/e2e-stack
+        with:
+          component: api
+          port: "8000"
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b   # v8.1.0
+        with:
+          python-version: "3.12"
+      - name: Install e2e dependency-group
+        run: uv sync --frozen --group e2e --no-install-project
+      - name: behave packages/api/features
+        env:
+          SHOMER_API_URL: http://localhost:8000
+        run: uv run behave packages/api/features
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: e2e-api
+          body: 'kind + helm install api/job/ssr (fresh artifact when changed, ghcr `:latest` otherwise) + `behave packages/api/features` against the port-forwarded api on `localhost:8000`.'
+
+  e2e-ssr:
+    # Same shape as e2e-api but targeting ssr. Adds a Playwright
+    # chromium install so the ui.feature scenarios (login, home,
+    # form submit) can drive the rendered DOM through a real
+    # browser head instead of a TestClient.
+    needs:
+      - api-grype
+      - job-grype
+      - ssr-grype
+      - chart-api-checkov
+      - chart-job-checkov
+      - chart-ssr-checkov
+    if: >-
+      !failure() && !cancelled() && (
+        needs.api-grype.result == 'success' ||
+        needs.job-grype.result == 'success' ||
+        needs.ssr-grype.result == 'success' ||
+        needs.chart-api-checkov.result == 'success' ||
+        needs.chart-job-checkov.result == 'success' ||
+        needs.chart-ssr-checkov.result == 'success'
+      )
+    runs-on: ubuntu-latest
+    permissions:
+      packages: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
+      - uses: ./.github/actions/e2e-stack
+        with:
+          component: ssr
+          port: "8080"
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b   # v8.1.0
+        with:
+          python-version: "3.12"
+      - name: Install e2e dependency-group
+        run: uv sync --frozen --group e2e --no-install-project
+      # `--with-deps` installs the Linux libs Chromium needs (libnss3,
+      # libxkbcommon, etc.) — the ubuntu-latest runner doesn't ship
+      # them all. Without `--with-deps`, the headless Chromium fails
+      # to boot the first time a scenario calls page.goto().
+      - name: Install Playwright Chromium
+        run: uv run playwright install --with-deps chromium
+      - name: behave packages/ssr/features
+        env:
+          SHOMER_SSR_URL: http://localhost:8080
+        run: uv run behave packages/ssr/features
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: e2e-ssr
+          body: 'kind + helm install api/job/ssr + Playwright (headless Chromium) + `behave packages/ssr/features` against the port-forwarded ssr on `localhost:8080`.'
+
   # ─────────────────────── web (Node) ───────────────────────
 
   web-lint:
