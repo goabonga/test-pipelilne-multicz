@@ -1172,7 +1172,7 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
-      - uses: bridgecrewio/checkov-action@dfb51aed1b783289b0d3f255028e7a88d5e8caa1  # v12
+      - uses: bridgecrewio/checkov-action@fa9edf8f0a491c59a924ea6accd5bdcf07752cff  # v12
         with:
           directory: packages/api/chart
           framework: helm
@@ -1252,7 +1252,7 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
-      - uses: bridgecrewio/checkov-action@dfb51aed1b783289b0d3f255028e7a88d5e8caa1  # v12
+      - uses: bridgecrewio/checkov-action@fa9edf8f0a491c59a924ea6accd5bdcf07752cff  # v12
         with:
           directory: packages/job/chart
           framework: helm
@@ -1328,7 +1328,7 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
-      - uses: bridgecrewio/checkov-action@dfb51aed1b783289b0d3f255028e7a88d5e8caa1  # v12
+      - uses: bridgecrewio/checkov-action@fa9edf8f0a491c59a924ea6accd5bdcf07752cff  # v12
         with:
           directory: packages/ssr/chart
           framework: helm
