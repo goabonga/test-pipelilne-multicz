@@ -13,6 +13,13 @@ FROM python:3.12-slim AS dev
 
 ENV UV_LINK_MODE=copy \
     UV_COMPILE_BYTECODE=1 \
+    # uv stashes wheel + metadata caches in $HOME/.cache/uv by default,
+    # which is /root/.cache for the build but a non-existent (and
+    # unwritable) /.cache when compose runs the container as a non-root
+    # UID. Pin the cache to /tmp so it's always writable; we lose the
+    # cache between container restarts, which is fine in dev — the venv
+    # is already pre-populated at build time.
+    UV_CACHE_DIR=/tmp/uv-cache \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1

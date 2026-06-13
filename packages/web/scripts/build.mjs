@@ -79,9 +79,19 @@ function buildCss() {
 }
 
 function buildTemplates() {
-  // Wipe the destination so deleted source templates disappear too.
-  rmSync(OUT_TEMPLATES, { recursive: true, force: true });
+  // Wipe the *contents* of the destination so deleted source templates
+  // disappear too — but never the directory itself: when this script
+  // runs in the compose dev stack, OUT_TEMPLATES is a bind-mount
+  // mountpoint, and the kernel refuses to remove a mountpoint from
+  // inside the container regardless of UID. Iterating the entries and
+  // unlinking each .html file works on both the bind-mounted layout
+  // and a plain workspace checkout.
   ensureDir(OUT_TEMPLATES);
+  for (const entry of readdirSync(OUT_TEMPLATES, { withFileTypes: true })) {
+    if (entry.isFile() && entry.name.endsWith(".html")) {
+      rmSync(join(OUT_TEMPLATES, entry.name), { force: true });
+    }
+  }
 
   const srcDir = join(SRC, "templates");
   const entries = readdirSync(srcDir, { withFileTypes: true });
