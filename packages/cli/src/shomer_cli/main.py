@@ -5,8 +5,9 @@
 
 Two subcommands sketch the operator workflow:
 
-* ``shomer health <url>`` — hit a Shomer instance's ``/healthz``.
-* ``shomer version`` — print the CLI version.
+* ``shomer health <url>`` — probe a Shomer instance's ``/healthz``
+  and print the JSON body (or exit non-zero on a non-2xx response).
+* ``shomer version`` — print the installed CLI version.
 """
 
 from __future__ import annotations
