@@ -1382,6 +1382,13 @@ jobs:
     # run, else are pulled from `ghcr.io/.../<X>:latest` (the load-image
     # composite handles the fallback). Runs as long as SOMETHING
     # upstream succeeded — a single api/chart change is enough.
+    #
+    # `e2e-api` is on the needs list so a behave regression short-
+    # circuits the ZAP scan: ZAP is expensive (kind+helm+ZAP run is
+    # ~5-7 min) and gives misleading signal on a functionally broken
+    # build. !failure() && !cancelled() in the if clause lets owasp-
+    # api still run when e2e-api was skipped (component didn't
+    # change) so we don't lose coverage on partial-change PRs.
     needs:
       - api-grype
       - job-grype
@@ -1389,6 +1396,7 @@ jobs:
       - chart-api-checkov
       - chart-job-checkov
       - chart-ssr-checkov
+      - e2e-api
     if: >-
       !failure() && !cancelled() && (
         needs.api-grype.result == 'success' ||
@@ -1420,7 +1428,10 @@ jobs:
 
   owasp-ssr:
     # Same shape as owasp-api but targeting ssr. Both jobs install
-    # the same 3 charts; only the ZAP-scan target differs.
+    # the same 3 charts; only the ZAP-scan target differs. Gates on
+    # e2e-ssr for the same reason owasp-api gates on e2e-api: a
+    # browser-driven regression in ui.feature kills the ZAP scan
+    # early instead of letting it ramble against a broken page.
     needs:
       - api-grype
       - job-grype
@@ -1428,6 +1439,7 @@ jobs:
       - chart-api-checkov
       - chart-job-checkov
       - chart-ssr-checkov
+      - e2e-ssr
     if: >-
       !failure() && !cancelled() && (
         needs.api-grype.result == 'success' ||
