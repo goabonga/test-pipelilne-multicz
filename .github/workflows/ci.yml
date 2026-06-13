@@ -2106,7 +2106,9 @@ jobs:
 
   release-api:
     needs: [release-bump]
-    if: needs.release-bump.outputs.api_version != ''
+    if: |
+      !failure() && !cancelled() &&
+      needs.release-bump.outputs.api_version != ''
     runs-on: ubuntu-latest
     permissions:
       contents: write   # gh release create
@@ -2160,7 +2162,9 @@ jobs:
 
   release-job:
     needs: [release-bump]
-    if: needs.release-bump.outputs.job_version != ''
+    if: |
+      !failure() && !cancelled() &&
+      needs.release-bump.outputs.job_version != ''
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -2211,7 +2215,9 @@ jobs:
 
   release-ssr:
     needs: [release-bump]
-    if: needs.release-bump.outputs.ssr_version != ''
+    if: |
+      !failure() && !cancelled() &&
+      needs.release-bump.outputs.ssr_version != ''
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -2267,7 +2273,9 @@ jobs:
   release-cli:
     # cli has no docker image and no helm chart — just a .deb + tag.
     needs: [release-bump]
-    if: needs.release-bump.outputs.cli_version != ''
+    if: |
+      !failure() && !cancelled() &&
+      needs.release-bump.outputs.cli_version != ''
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -2306,7 +2314,9 @@ jobs:
 
   release-chart-api:
     needs: [release-bump]
-    if: needs.release-bump.outputs.chart_api_version != ''
+    if: |
+      !failure() && !cancelled() &&
+      needs.release-bump.outputs.chart_api_version != ''
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -2349,7 +2359,9 @@ jobs:
 
   release-chart-job:
     needs: [release-bump]
-    if: needs.release-bump.outputs.chart_job_version != ''
+    if: |
+      !failure() && !cancelled() &&
+      needs.release-bump.outputs.chart_job_version != ''
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -2392,7 +2404,9 @@ jobs:
 
   release-chart-ssr:
     needs: [release-bump]
-    if: needs.release-bump.outputs.chart_ssr_version != ''
+    if: |
+      !failure() && !cancelled() &&
+      needs.release-bump.outputs.chart_ssr_version != ''
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -2439,7 +2453,9 @@ jobs:
     # version that `release-bump` then committed) — no rebuild. Upload
     # to GitHub Pages, then cut the docs-vX.Y.Z GitHub Release.
     needs: [release-bump]
-    if: needs.release-bump.outputs.docs_version != ''
+    if: |
+      !failure() && !cancelled() &&
+      needs.release-bump.outputs.docs_version != ''
     runs-on: ubuntu-latest
     permissions:
       contents: write   # gh release create
