@@ -1427,6 +1427,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       packages: read   # load-image's ghcr.io fallback pull
+      actions: read   # gh api artifact-existence probe in load-image
     steps:
       - uses: actions/checkout@v6
         with:
@@ -1470,6 +1471,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       packages: read
+      actions: read   # gh api artifact-existence probe in load-image
     steps:
       - uses: actions/checkout@v6
         with:
@@ -1510,6 +1512,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       packages: read
+      actions: read   # gh api artifact-existence probe in load-image
     steps:
       - uses: actions/checkout@v6
         with:
@@ -1560,6 +1563,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       packages: read
+      actions: read   # gh api artifact-existence probe in load-image
     steps:
       - uses: actions/checkout@v6
         with:

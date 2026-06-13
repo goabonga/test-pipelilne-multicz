@@ -28,15 +28,45 @@ inputs:
 runs:
   using: composite
   steps:
-    - id: artifact
-      continue-on-error: true
+    # Pre-check whether this run actually uploaded the artifact. The
+    # `*-container` job is gated on detect.changed, so on a partial-
+    # change PR (e.g. only ssr touched) the api/job artifacts simply
+    # don't exist — calling actions/download-artifact in that case
+    # emits a workflow-level error annotation that survives even
+    # under continue-on-error. Asking the API first lets us skip the
+    # download cleanly and let the next step pull from ghcr instead.
+    #
+    # Needs `actions: read` on the calling job's permissions block
+    # to read the artifact index; the caller already passes a token
+    # with packages:read for the ghcr pull, and the same grant covers
+    # this call when RELEASE_PAT isn't set. If the probe itself fails
+    # (auth missing, API hiccup), we fall through to ghcr — same
+    # observable behaviour as before the probe was added.
+    - id: probe
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+      run: |
+        set -euo pipefail
+        if gh api \
+             "/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts?per_page=100" \
+             --jq '.artifacts[].name' 2>/dev/null \
+             | grep -qx "${{ inputs.component }}-image"; then
+          echo "[load-image] artifact ${{ inputs.component }}-image present"
+          echo "exists=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "[load-image] artifact ${{ inputs.component }}-image absent; will pull from ghcr"
+          echo "exists=false" >> "$GITHUB_OUTPUT"
+        fi
+
+    - if: steps.probe.outputs.exists == 'true'
       uses: actions/download-artifact@v8
       with:
         name: ${{ inputs.component }}-image
         path: /tmp
 
     - uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee  # v4
-      if: steps.artifact.outcome != 'success'
+      if: steps.probe.outputs.exists != 'true'
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
