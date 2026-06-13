@@ -48,6 +48,12 @@ def openid_configuration() -> dict[str, object]:
         "subject_types_supported": ["public"],
         "id_token_signing_alg_values_supported": ["RS256"],
         "code_challenge_methods_supported": ["S256"],
+        # `scopes_supported` is REQUIRED by RFC 8414 (OAuth 2.0
+        # authorization server metadata) and SHOULD be present per
+        # OIDC discovery 1.0 §3 — advertise the minimal set we plan
+        # to honour so codegen clients can wire `scope=` correctly
+        # against the discovery doc instead of guessing.
+        "scopes_supported": ["openid", "profile", "email"],
     }
 
 
