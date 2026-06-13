@@ -30,6 +30,18 @@ favicon = [
     "cairosvg>=2.7",
     "pillow>=10.0",
 ]
+# BDD end-to-end tests. Lives in its own group so CI's lint / unit
+# pipelines don't drag the playwright browser binaries in: only the
+# e2e-api / e2e-ssr jobs install this group (and call `playwright
+# install chromium` for the ssr browser-driven scenarios).
+e2e = [
+    "behave>=1.2.6",
+    "httpx>=0.27",
+    # Pinned for the ssr Playwright-driven feature suite. The Python
+    # client is shipped alongside the browser binaries (`playwright
+    # install chromium` in CI) — see .github/workflows/ci.yml e2e-ssr.
+    "playwright>=1.45",
+]
 
 [tool.pytest.ini_options]
 testpaths = [
