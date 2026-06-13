@@ -37,6 +37,11 @@ site/
 # Local compose env (real values go here; .env.example is committed)
 .env
 
+# Source maps emitted by `node scripts/build.mjs --watch` in dev. The
+# one-shot release build (called by web's multicz post_bump) doesn't
+# generate them, so this only catches stray dev artefacts.
+packages/ssr/src/shomer_ssr/static/*.map
+
 # Editor
 .vscode/
 .idea/

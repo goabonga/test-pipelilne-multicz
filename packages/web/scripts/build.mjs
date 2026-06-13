@@ -52,16 +52,23 @@ function ensureDir(dir) {
 
 // Minify in every mode so the dev bundle matches what production
 // ships — same byte stream, same parser behaviour, fewer "works in
-// dev, breaks in prod" surprises. In watch mode we attach an inline
-// sourcemap so browser devtools recovers original-source debuggability
-// (TypeScript names, original line numbers, sane stack traces). In a
-// one-shot build (CI, multicz release post_bump) sourcemaps are off so
-// the shipped main.js / main.css stays small.
+// dev, breaks in prod" surprises. In watch mode we emit a linked
+// sourcemap: esbuild writes main.js.map next to main.js and appends a
+// single-line `//# sourceMappingURL=main.js.map` comment to the
+// bundle, so browser devtools recovers original-source debuggability
+// (TypeScript names, original line numbers, sane stack traces)
+// without inflating main.js itself with a base64 blob.
+//
+// One-shot builds (CI, multicz release post_bump) keep
+// `sourcemap: false` so the shipped main.js / main.css stays small —
+// the .map would add ~30-50 % overhead with no real consumer (we don't
+// upload sources to Sentry / similar yet). The dev .map files are
+// gitignored so they don't slip into release commits.
 const jsConfig = {
   entryPoints: [join(SRC, "main.ts")],
   bundle: true,
   minify: true,
-  sourcemap: WATCH ? "inline" : false,
+  sourcemap: WATCH,
   format: "iife",
   target: "es2022",
   outfile: join(OUT_STATIC, "main.js"),
@@ -72,7 +79,7 @@ const cssConfig = {
   entryPoints: [join(SRC, "styles.css")],
   bundle: true,
   minify: true,
-  sourcemap: WATCH ? "inline" : false,
+  sourcemap: WATCH,
   outfile: join(OUT_STATIC, "main.css"),
   logLevel: "info",
 };
