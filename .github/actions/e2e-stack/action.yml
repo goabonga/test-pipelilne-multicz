@@ -14,8 +14,8 @@ description: |
   three upstream `<X>-image` artifacts exist (uploaded by the
   matching `*-container` jobs upstream in the grype-gated chain).
 
-  After the action finishes, ${{ inputs.component }} is reachable
-  on http://localhost:${{ inputs.port }}.
+  After the action finishes, the chosen `component` is reachable on
+  http://localhost:<port> (8000 for api, 8080 for ssr).
 
 inputs:
   component:
