@@ -2,12 +2,6 @@
 
 All notable changes to this component are documented here.
 
-## [0.2.1] - 2026-06-13
-
-### Fixes
-
-- **api**: disambiguate the FastAPI title from the ssr surface (`de18a83`)
-
 ## [0.2.0] - 2026-06-13
 
 ### Features

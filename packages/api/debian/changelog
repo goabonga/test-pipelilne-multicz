@@ -1,9 +1,3 @@
-shomer-api (0.2.1-1) unstable; urgency=medium
-
-  * fix(api): Disambiguate the FastAPI title from the ssr surface
-
- -- Chris <goabonga@pm.me>  Sat, 13 Jun 2026 16:02:02 +0000
-
 shomer-api (0.2.0-1) unstable; urgency=medium
 
   * feat(api): Advertise PKCE in the OIDC discovery document
