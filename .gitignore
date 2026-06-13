@@ -34,6 +34,9 @@ debian/shomer-*/
 # Docs build
 site/
 
+# Local compose env (real values go here; .env.example is committed)
+.env
+
 # Editor
 .vscode/
 .idea/

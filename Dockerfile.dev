@@ -1,0 +1,56 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# syntax=docker/dockerfile:1
+
+# Single dev image used by every Python workspace member (api, job,
+# ssr, cli) — same uv venv, different `command:` in compose.yaml.
+# Distinct from the production per-component Dockerfiles, which target
+# Chainguard distroless on minimal scope; here we want the full dev
+# toolchain available so `docker compose run cli ...` can do real work.
+
+FROM python:3.12-slim AS dev
+
+ENV UV_LINK_MODE=copy \
+    UV_COMPILE_BYTECODE=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+# uv binary from the official image (no curl-pipe-sh needed, no extra
+# apt packages). Pin a tag once you outgrow `latest`.
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
+
+WORKDIR /workspace
+
+# --- Layer 1: external dependency closure ---------------------------
+# Copy only the lockfile + per-package pyproject.toml so this layer is
+# cached unless the closure actually changes. `--no-install-project`
+# skips the root workspace itself; `--no-install-workspace` skips the
+# workspace members. We get the third-party deps in /workspace/.venv
+# without touching workspace source.
+COPY pyproject.toml uv.lock ./
+COPY packages/api/pyproject.toml packages/api/pyproject.toml
+COPY packages/job/pyproject.toml packages/job/pyproject.toml
+COPY packages/ssr/pyproject.toml packages/ssr/pyproject.toml
+COPY packages/cli/pyproject.toml packages/cli/pyproject.toml
+RUN uv sync --frozen --no-install-project --no-install-workspace
+
+# --- Layer 2: workspace members in editable mode --------------------
+# uv installs each member as an editable install pointing at
+# /workspace/packages/<pkg>/src. At runtime, compose bind-mounts the
+# host's src/ over that path, so source edits land in the container
+# instantly — Python imports pick them up on next reload.
+COPY packages/api/src packages/api/src
+COPY packages/job/src packages/job/src
+COPY packages/ssr/src packages/ssr/src
+COPY packages/cli/src packages/cli/src
+RUN uv sync --frozen --all-packages
+
+# Make the venv writable by any UID. compose runs containers as
+# `${USER_UID}:${USER_GID}` so bind mounts don't get root-owned on
+# Linux hosts; this matching write bit lets that non-root user use
+# the venv created at build time (which is owned by root).
+RUN chmod -R a+rwX /workspace/.venv
+
+ENV PATH=/workspace/.venv/bin:$PATH

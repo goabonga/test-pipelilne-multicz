@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# syntax=docker/dockerfile:1
+
+# Dev image for the `web` workspace member (TS / CSS / Jinja).
+# Production has no separate image — `web` only produces build outputs
+# that the `ssr` Docker image bundles. Dev runs esbuild in watch mode
+# so every edit under packages/web/src lands in
+# packages/ssr/src/shomer_ssr/{static,templates}/ within a second; the
+# ssr container's uvicorn re-serves the regenerated assets without
+# itself reloading (static files don't trigger Python reload — they
+# just get re-read on the next HTTP request).
+
+FROM node:22-slim AS dev
+
+WORKDIR /app
+
+# Layer cached unless package.json or the lockfile changes.
+COPY packages/web/package.json packages/web/package-lock.json ./
+RUN npm ci --no-audit --no-fund \
+    && chmod -R a+rwX node_modules
+
+# build.mjs reads OUTPUT_STATIC and OUTPUT_TEMPLATES from the env when
+# they're set, falling back to the in-repo paths otherwise. compose
+# mounts those targets onto the ssr container's bind-mounted source
+# dir so the two services see the same files on disk.
+ENV OUTPUT_STATIC=/output/static \
+    OUTPUT_TEMPLATES=/output/templates \
+    NODE_ENV=development

@@ -1,0 +1,155 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Local dev environment for the Shomer monorepo.
+#
+# Five workspace members run side-by-side with bind-mounted sources:
+#
+#   web   esbuild --watch loop. Writes the bundles into the host's
+#         packages/ssr/src/shomer_ssr/{static,templates}/ via a shared
+#         bind mount so the ssr container picks them up on the next
+#         HTTP request without restarting.
+#
+#   ssr   uvicorn --reload — restarts the Python process on any
+#         packages/ssr/src/**/*.py change, serves the regenerated
+#         assets/templates on the way back up.
+#
+#   api   same shape as ssr, on port 8000.
+#
+#   job   long-running worker, no native --reload. compose's
+#         develop.watch (sync+restart) catches src edits and restarts
+#         the container. sync is a no-op on top of the bind mount,
+#         but compose doesn't expose a restart-only action.
+#
+#   cli   long-lived `sleep infinity` container that lets a Windows /
+#         macOS dev run `docker compose exec cli shomer …` (or
+#         `compose run --rm cli shomer …`) inside a Linux env without
+#         shipping the full uv toolchain to the host.
+#
+# Bring it up:                docker compose up --build --watch
+# CLI one-off in container:   docker compose run --rm cli shomer health http://api:8000
+# Tear it down:               docker compose down -v
+#
+# Required env: copy .env.example → .env (gitignored) and adjust
+# USER_UID / USER_GID to match `id -u` / `id -g` on Linux so the bind
+# mounts don't end up root-owned. Defaults to 1000:1000 if .env is
+# absent, which works for the most common Linux setup.
+
+name: shomer-dev
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: packages/web/Dockerfile.dev
+    user: "${USER_UID:-1000}:${USER_GID:-1000}"
+    volumes:
+      # Sources read by esbuild + the template copier
+      - ./packages/web/src:/app/src
+      - ./packages/web/scripts:/app/scripts
+      - ./packages/web/tsconfig.json:/app/tsconfig.json:ro
+      - ./packages/web/biome.json:/app/biome.json:ro
+      # Build output target — shared with the ssr container
+      - ./packages/ssr/src/shomer_ssr/static:/output/static
+      - ./packages/ssr/src/shomer_ssr/templates:/output/templates
+    command: ["node", "scripts/build.mjs", "--watch"]
+
+  ssr:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    user: "${USER_UID:-1000}:${USER_GID:-1000}"
+    volumes:
+      # Only mount what changes; everything else is in the image.
+      - ./packages/ssr/src:/workspace/packages/ssr/src
+    ports:
+      - "${SSR_PORT:-8080}:8080"
+    env_file:
+      - path: .env
+        required: false
+    command:
+      - uv
+      - run
+      - --package
+      - shomer-ssr
+      - uvicorn
+      - shomer_ssr.app:app
+      - --reload
+      - --reload-dir
+      - /workspace/packages/ssr/src
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8080"
+    depends_on:
+      web:
+        # No healthcheck on web — it's "ready" the moment esbuild has
+        # finished its first build, which uvicorn doesn't need anyway
+        # because the static files only matter at request time.
+        condition: service_started
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    user: "${USER_UID:-1000}:${USER_GID:-1000}"
+    volumes:
+      - ./packages/api/src:/workspace/packages/api/src
+    ports:
+      - "${API_PORT:-8000}:8000"
+    env_file:
+      - path: .env
+        required: false
+    command:
+      - uv
+      - run
+      - --package
+      - shomer-api
+      - uvicorn
+      - shomer_api.app:app
+      - --reload
+      - --reload-dir
+      - /workspace/packages/api/src
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+
+  job:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    user: "${USER_UID:-1000}:${USER_GID:-1000}"
+    volumes:
+      - ./packages/job/src:/workspace/packages/job/src
+    env_file:
+      - path: .env
+        required: false
+    command: [uv, run, --package, shomer-job, shomer-job]
+    develop:
+      watch:
+        # sync is a no-op (bind mount already syncs), but compose
+        # doesn't expose a bare `restart` action — `sync+restart` is
+        # the closest thing.
+        - action: sync+restart
+          path: ./packages/job/src
+          target: /workspace/packages/job/src
+
+  cli:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    user: "${USER_UID:-1000}:${USER_GID:-1000}"
+    volumes:
+      - ./packages/cli/src:/workspace/packages/cli/src
+    env_file:
+      - path: .env
+        required: false
+    # Keep the container warm so `docker compose exec cli shomer …`
+    # works without rebooting the venv between commands. `tini` would
+    # be cleaner than sleep for signal handling, but sleep is in the
+    # base image and we're not piping signals here.
+    command: [sleep, infinity]
+    # Stop signal is sent to PID 1; sleep ignores SIGTERM, so request
+    # SIGINT (which sleep handles) to avoid a 10s timeout on `down`.
+    stop_signal: SIGINT
