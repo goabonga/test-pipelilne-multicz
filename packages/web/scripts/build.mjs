@@ -5,7 +5,9 @@
 // Build the shomer-ssr frontend assets and sync them into the
 // downstream Python package. Outputs land directly under
 // packages/ssr/src/shomer_ssr/{static,templates}/ — that's the only
-// place Python at runtime will read them from.
+// place Python at runtime will read them from. Run with `--watch`
+// (from compose) for an incremental esbuild loop; without the flag
+// for a one-shot release build called via multicz's post_bump.
 //
 //   src/main.ts           ──> esbuild bundle ──> static/main.js
 //   src/styles.css        ──> esbuild bundle ──> static/main.css
