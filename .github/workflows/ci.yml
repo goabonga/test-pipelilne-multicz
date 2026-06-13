@@ -68,20 +68,83 @@ jobs:
   detect:
     # Gate on validate so a broken multicz.toml fails loudly upfront
     # rather than cryptically inside the `changed` action below.
+    #
+    # Two paths:
+    #
+    # 1. `chore(release):` head commit — that's multicz's own
+    #    release commit looping back through CI. There's nothing
+    #    new to build (artefacts were already produced by the
+    #    upstream release-bump → release-<component> chain that
+    #    *created* this commit), so we short-circuit: write a
+    #    summary of what was published and emit `changed=[]`
+    #    explicitly. Every downstream job is gated on
+    #    `contains(fromJson(needs.detect.outputs.changed).changed,
+    #    '<comp>')` — an empty array cascades the skip across the
+    #    whole graph (per-component jobs skip directly; the
+    #    `!failure() && !cancelled() && needs.X.result == 'success'`
+    #    override jobs skip because their upstream becomes
+    #    'skipped' ≠ 'success'). The workflow run is still
+    #    auditable but reads as a one-page release notice.
+    # 2. Anything else — run `multicz changed` to compute the real
+    #    per-component diff.
     needs: [validate]
     runs-on: ubuntu-latest
     outputs:
-      changed: ${{ steps.changed.outputs.json }}
+      # `||` returns the first non-empty branch: the release-bypass
+      # output wins on `chore(release):` commits, the multicz-action
+      # output wins otherwise.
+      changed: ${{ steps.release-bypass.outputs.changed || steps.changed.outputs.json }}
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
+
+      - id: release-bypass
+        if: startsWith(github.event.head_commit.message, 'chore(release):')
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+          set -euo pipefail
+          # Parse the multicz commit body: the first line is shaped
+          # `chore(release): bump api 0.1.1 -> 0.1.2, job 1.0.0 ->
+          # 1.0.1, ssr 1.0.2 -> 1.0.3, ...`. Split on commas after
+          # the leading `bump ` literal to get one entry per
+          # component, then render each as a markdown bullet.
+          subject=$(printf '%s\n' "$COMMIT_MESSAGE" | head -n1)
+          bumps=${subject#chore(release): bump }
+          {
+            printf '## chore(release) — pipeline short-circuited\n\n'
+            printf 'This run targets multicz'"'"'s own release commit'
+            printf ' (`%s`). The Docker images, `.deb` packages,'    \
+                   "${GITHUB_SHA:0:7}"
+            printf ' Helm charts and GitHub releases were already'
+            printf ' produced by the upstream `release-bump → release-<comp>`'
+            printf ' chain that *created* this commit, so re-running'
+            printf ' the full CI graph would produce identical artifacts.\n\n'
+            printf '### Versions published\n\n'
+            printf '%s' "$bumps" | tr ',' '\n' | sed -E 's/^ *//; s/^/- /'
+            printf '\n### Skipped\n\n'
+            printf 'Every per-component lint/format/typecheck/test/'
+            printf 'container/sbom/grype/deb/e2e/owasp/release-* job'
+            printf ' skips on this commit via the empty `changed=[]`'
+            printf ' output below. `validate`, `detect` and `headers`'
+            printf ' still run as smoke checks.\n'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          # Empty `changed` array — every downstream `contains(...)`
+          # gate evaluates false and the cascade skips.
+          printf 'changed={"changed":[],"unchanged":[]}\n' >> "$GITHUB_OUTPUT"
+
       - id: changed
+        if: ${{ !startsWith(github.event.head_commit.message, 'chore(release):') }}
         uses: goabonga/multicz-action/changed@95e90628797bc7dec0d2ad7d9abc6278f3465ed2  # v1
         with:
           output: json
+
       - name: Summary
-        if: always()
+        # Skip on the release-bypass path — we already wrote a
+        # richer summary up there.
+        if: always() && !startsWith(github.event.head_commit.message, 'chore(release):')
         uses: ./.github/actions/summary
         with:
           title: detect
@@ -1135,9 +1198,22 @@ jobs:
     # still covered weekly by grype-allowlist-sweep on each published
     # image.
     needs: [api-test, job-test, ssr-test, cli-test, detect]
+    # The earlier `needs.detect.outputs.changed != '[]'` gate was a
+    # category error: `detect.outputs.changed` is the FULL multicz
+    # JSON object (`{"changed": [...], "unchanged": [...]}`), not
+    # the bare array, so the string comparison against '[]' was
+    # never true and audit ran on every commit — including pure
+    # `fix(ci):` / `chore(release):` ones that don't touch any
+    # resolved dependency. Use the same `length(fromJson(...).changed)`
+    # idiom the per-component gates already use, with the audit's
+    # actual scope (api / job / ssr / cli) baked in so doc-only or
+    # chart-only changes also skip cleanly.
     if: >-
       !failure() && !cancelled() &&
-      needs.detect.outputs.changed != '[]'
+      (contains(fromJson(needs.detect.outputs.changed).changed, 'api') ||
+       contains(fromJson(needs.detect.outputs.changed).changed, 'job') ||
+       contains(fromJson(needs.detect.outputs.changed).changed, 'ssr') ||
+       contains(fromJson(needs.detect.outputs.changed).changed, 'cli'))
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
