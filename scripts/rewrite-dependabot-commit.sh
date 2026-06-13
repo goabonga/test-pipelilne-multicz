@@ -126,6 +126,90 @@ else
     fi
 fi
 
+# For runtime bumps, sync packages/<pkg>/pyproject.toml's lower-bound
+# specifier to the freshly-installed version and re-lock so the
+# `requires-dist` mirror in uv.lock matches pyproject. This closes the
+# Dependabot uv FileUpdater gap that touches the lockfile mirror but
+# leaves pyproject.toml untouched on `>=X` specifiers, producing a
+# silent drift that uv lock undoes on the next run.
+#
+# We also use the dep -> package map to refine `fix(deps)` into
+# `fix(<pkg>)` when exactly one workspace member declares the dep,
+# so multicz's `detect` step sees `packages/<pkg>/pyproject.toml`
+# change and runs the right component's tests + release.
+if [[ "$prefix" == fix* ]]; then
+    bumped_dep=$(printf '%s' "$text" | sed -nE 's/^[Bb]ump ([A-Za-z0-9._-]+) from .* to ([0-9][0-9A-Za-z.+-]*).*/\1/p')
+    new_version=$(printf '%s' "$text" | sed -nE 's/^[Bb]ump ([A-Za-z0-9._-]+) from .* to ([0-9][0-9A-Za-z.+-]*).*/\2/p')
+
+    if [ -n "$bumped_dep" ] && [ -n "$new_version" ]; then
+        affected=()
+        for pyproject in packages/*/pyproject.toml; do
+            if python3 - "$pyproject" "$bumped_dep" >/dev/null 2>&1 <<'PY'
+import sys, tomllib
+
+path, want = sys.argv[1], sys.argv[2].strip().lower().replace("_", "-")
+data = tomllib.load(open(path, "rb"))
+deps = data.get("project", {}).get("dependencies", [])
+
+
+def normalize(spec: str) -> str:
+    for sep in ("[", ">", "<", "=", "~", "!", ";", " "):
+        spec = spec.split(sep)[0]
+    return spec.strip().lower().replace("_", "-")
+
+
+sys.exit(0 if want in {normalize(d) for d in deps if isinstance(d, str)} else 1)
+PY
+            then
+                affected+=("$(basename "$(dirname "$pyproject")")")
+            fi
+        done
+
+        if [ ${#affected[@]} -gt 0 ]; then
+            for pkg in "${affected[@]}"; do
+                python3 - "packages/$pkg/pyproject.toml" "$bumped_dep" "$new_version" <<'PY'
+import re, sys
+
+path, dep, new_version = sys.argv[1], sys.argv[2], sys.argv[3]
+text = open(path).read()
+# Match a single-quoted dependency entry, capturing optional [extras] and
+# any existing constraint (`>=`, `==`, `~=`, …). We rewrite the constraint
+# to a pure `>=<new_version>` lower bound, preserving extras and indent.
+pattern = re.compile(
+    r'(?P<indent>\s*)"(?P<name>' + re.escape(dep) + r')'
+    r'(?P<extras>\[[^\]]+\])?'
+    r'(?P<spec>[><=~!,][^"]*)?"',
+    re.IGNORECASE,
+)
+
+
+def repl(m: re.Match) -> str:
+    return f'{m["indent"]}"{m["name"]}{m["extras"] or ""}>={new_version}"'
+
+
+new_text = pattern.sub(repl, text, count=1)
+if new_text != text:
+    open(path, "w").write(new_text)
+PY
+            done
+
+            # Re-resolve so uv.lock's [package.metadata] mirror lines up
+            # with the new pyproject specifiers, and we land a single
+            # consistent commit instead of leaking a drift forwards.
+            uv lock --quiet
+
+            # Single-package match -> tighten the scope so multicz attributes
+            # the bump to the right component (fix(deps) is the fallback
+            # when several packages declare the same runtime dep).
+            if [ ${#affected[@]} -eq 1 ]; then
+                prefix="fix(${affected[0]})"
+            fi
+
+            git add packages/*/pyproject.toml uv.lock
+        fi
+    fi
+fi
+
 if [ -n "$body" ]; then
     new_msg=$(printf '%s: %s\n\n%s' "$prefix" "$text" "$body")
 else

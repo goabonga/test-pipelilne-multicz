@@ -15,22 +15,22 @@ updates:
   # Python deps via uv (root uv.lock spans every workspace member).
   - package-ecosystem: "uv"
     directory: "/"
-    # `increase` forces Dependabot to bump the SPEC in pyproject.toml
-    # (not just the resolved version in uv.lock) on every update. The
-    # default `increase-if-necessary` keeps lower-bound specs like
-    # `fastapi>=0.115` untouched as long as they permit the new
-    # version — meaning a runtime bump only modifies uv.lock, which is
-    # NOT in any multicz component's `paths`, so detect/test/release
-    # all skip and the new dep version never gets exercised by CI nor
-    # shipped in a release.
+    # Dependabot uv's FileUpdater can't reliably edit pyproject.toml
+    # when the existing specifier is a permissive lower-bound like
+    # `fastapi>=0.115`: `versioning-strategy: increase` ends up
+    # tightening only the `requires-dist` mirror inside uv.lock and
+    # leaves pyproject.toml untouched, which drifts the two files
+    # until the next `uv lock` silently undoes the mirror change.
     #
-    # With `increase`, the spec rises to the freshly-installed version
-    # (e.g. `fastapi>=0.115` -> `fastapi>=0.136.3`), packages/<comp>/
-    # pyproject.toml is touched, multicz sees the path change, the
-    # per-component test + release fan-out fires. Dev-tools updates
-    # (root pyproject.toml's [dependency-groups].dev) still don't
-    # match any component path, so chore(deps) bumps stay non-release.
-    versioning-strategy: increase
+    # `lockfile-only` is the honest setting given that limitation:
+    # Dependabot only updates the resolved version in uv.lock and
+    # never touches the mirror, so no drift is introduced. The
+    # signed dependabot-rewrite workflow then picks the bump up,
+    # rewrites the matching `packages/<pkg>/pyproject.toml` spec
+    # to `>=<new_version>`, and re-runs `uv lock` so the lockfile
+    # mirror lines up — landing pyproject + lock as one consistent
+    # commit that multicz's detect step can actually see.
+    versioning-strategy: lockfile-only
     schedule:
       interval: "weekly"
       day: "monday"

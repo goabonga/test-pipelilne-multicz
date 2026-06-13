@@ -99,6 +99,18 @@ jobs:
           token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
           path: pr
 
+      # uv is needed inside the rebase loop: the rewrite script bumps the
+      # affected `packages/<pkg>/pyproject.toml` to match the new resolved
+      # version, then runs `uv lock` so the lockfile's requires-dist mirror
+      # stays consistent with pyproject — Dependabot's uv FileUpdater only
+      # touches the lockfile mirror for `>=X` specifiers, so without this
+      # we'd ship a silent drift the next release commit would undo.
+      - name: Install uv
+        if: steps.gate.outputs.skip != 'true'
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
+        with:
+          python-version: "3.12"
+
       - name: Configure GPG and git identity from the imported key
         if: steps.gate.outputs.skip != 'true'
         working-directory: pr
