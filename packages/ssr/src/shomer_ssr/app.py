@@ -15,7 +15,6 @@ Three routes to keep the demo runnable:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -54,14 +53,23 @@ class DevAwareStaticFiles(StaticFiles):
 
     async def get_response(self, path: str, scope: Scope) -> Response:
         response = await super().get_response(path, scope)
-        if response.status_code == 200 and path.endswith((".js", ".css")):
+        # `self.directory` is typed `str | PathLike[str] | None` on the
+        # parent because StaticFiles also supports the `packages=`
+        # initialiser; in our case the constructor below always passes
+        # a real directory, so the None branch is unreachable in
+        # practice but kept to satisfy --strict mypy.
+        if (
+            response.status_code == 200
+            and path.endswith((".js", ".css"))
+            and self.directory is not None
+        ):
             map_path = Path(self.directory) / f"{path}.map"
             if map_path.is_file():
                 response.headers["SourceMap"] = f"/static/{path}.map"
         return response
 
 
-app: Any = FastAPI(title="Shomer SSR", version=__version__)
+app = FastAPI(title="Shomer SSR", version=__version__)
 app.mount("/static", DevAwareStaticFiles(directory=str(STATIC_DIR)), name="static")
 
 
