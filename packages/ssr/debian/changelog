@@ -1,3 +1,9 @@
+shomer-ssr (1.0.4-1) unstable; urgency=medium
+
+  * fix(ssr): Tighten the DevAwareStaticFiles docstring
+
+ -- Chris <goabonga@pm.me>  Sat, 13 Jun 2026 15:53:33 +0000
+
 shomer-ssr (1.0.3-1) unstable; urgency=medium
 
   * fix(ssr): Satisfy mypy --strict in app.py after the DevAwareStaticFiles refactor

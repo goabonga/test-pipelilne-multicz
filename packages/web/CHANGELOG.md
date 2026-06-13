@@ -2,6 +2,12 @@
 
 All notable changes to this component are documented here.
 
+## [1.1.1] - 2026-06-13
+
+### Fixes
+
+- **web**: rename the local DOM lookup from `slot` to `errorSlot` (`70379e7`)
+
 ## [1.1.0] - 2026-06-13
 
 ### Features

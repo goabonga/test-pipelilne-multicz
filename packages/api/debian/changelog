@@ -1,3 +1,10 @@
+shomer-api (0.2.0-1) unstable; urgency=medium
+
+  * feat(api): Advertise PKCE in the OIDC discovery document
+  * fix(api): Extract the OIDC issuer placeholder into a module constant
+
+ -- Chris <goabonga@pm.me>  Sat, 13 Jun 2026 15:53:33 +0000
+
 shomer-api (0.1.2-1) unstable; urgency=medium
 
   * fix(api): Pin Chainguard python base by digest and refresh the grype allowlist

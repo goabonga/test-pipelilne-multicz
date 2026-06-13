@@ -2,6 +2,12 @@
 
 All notable changes to this component are documented here.
 
+## [0.1.2] - 2026-06-13
+
+### Fixes
+
+- **cli**: clarify the operator workflow in the module docstring (`38f4e01`)
+
 ## [0.1.1] - 2026-06-13
 
 ### Fixes

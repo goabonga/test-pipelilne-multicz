@@ -2,6 +2,12 @@
 
 All notable changes to this component are documented here.
 
+## [1.0.2] - 2026-06-13
+
+### Fixes
+
+- **job**: log the iteration index from tick() (`0400c5e`)
+
 ## [1.0.1] - 2026-06-13
 
 ### Fixes

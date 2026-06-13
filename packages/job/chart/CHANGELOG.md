@@ -2,6 +2,16 @@
 
 All notable changes to this component are documented here.
 
+## [1.0.2] - 2026-06-13
+
+### Fixes
+
+- **chart-job**: describe what the chart actually deploys (`d2aeb4d`)
+
+### Dependencies
+
+- Track `job` `1.0.2`
+
 ## [1.0.1] - 2026-06-13
 
 ### Dependencies

@@ -2,6 +2,16 @@
 
 All notable changes to this component are documented here.
 
+## [1.0.4] - 2026-06-13
+
+### Fixes
+
+- **chart-ssr**: collapse the line-wrapped description into one line (`681ce23`)
+
+### Dependencies
+
+- Track `ssr` `1.0.4`
+
 ## [1.0.3] - 2026-06-13
 
 ### Dependencies

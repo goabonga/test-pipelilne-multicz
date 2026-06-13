@@ -2,6 +2,16 @@
 
 All notable changes to this component are documented here.
 
+## [1.0.4] - 2026-06-13
+
+### Fixes
+
+- **ssr**: tighten the DevAwareStaticFiles docstring (`5fcddb4`)
+
+### Dependencies
+
+- Track `web` `1.1.1`
+
 ## [1.0.3] - 2026-06-13
 
 ### Fixes

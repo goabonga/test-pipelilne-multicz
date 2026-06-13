@@ -2,6 +2,16 @@
 
 All notable changes to this component are documented here.
 
+## [0.2.0] - 2026-06-13
+
+### Features
+
+- **api**: advertise PKCE in the OIDC discovery document (`04de3e6`)
+
+### Fixes
+
+- **api**: extract the OIDC issuer placeholder into a module constant (`1cce667`)
+
 ## [0.1.2] - 2026-06-13
 
 ### Fixes

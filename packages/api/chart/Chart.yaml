@@ -1,7 +1,8 @@
 apiVersion: v2
 name: shomer-api
-description: Shomer authorization HTTP API (FastAPI + uvicorn, OIDC discovery + healthz).
+description: Shomer authorization HTTP API (FastAPI + uvicorn, OIDC discovery + 
+  healthz).
 type: application
-version: 1.0.2
-appVersion: "0.1.2"
+version: 1.0.3
+appVersion: "0.2.0"
 icon: https://raw.githubusercontent.com/goabonga/shomer/main/assets/shomer.svg
