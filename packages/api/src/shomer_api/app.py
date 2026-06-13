@@ -17,6 +17,11 @@ from fastapi import FastAPI
 
 from . import __version__
 
+# Placeholder issuer URL until the deployed listener URL is wired
+# through config — keeps the discovery JSON deterministic and the
+# behave checks (which assert on `issuer`) stable.
+OIDC_ISSUER = "http://localhost:8000"
+
 app = FastAPI(title="Shomer", version=__version__)
 
 
@@ -27,7 +32,7 @@ def healthz() -> dict[str, str]:
 
 @app.get("/.well-known/openid-configuration")
 def openid_configuration() -> dict[str, object]:
-    base = "http://localhost:8000"
+    base = OIDC_ISSUER
     return {
         "issuer": base,
         "authorization_endpoint": f"{base}/oauth2/authorize",
