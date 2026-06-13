@@ -28,8 +28,12 @@ changed=$(git show --name-only --pretty='' HEAD)
 subject=$(git log -1 --pretty=%s HEAD)
 body=$(git log -1 --pretty=%b HEAD | sed '/^[Cc]o-authored-by:/d')
 
-# Drop any leading conventional prefix Dependabot already added.
-text=$(printf '%s' "$subject" | sed -E 's/^[a-z]+(\([^)]+\))?!?:[[:space:]]*//')
+# Drop any leading conventional prefix Dependabot already added. The
+# `(\([^)]*\))*` quantifier matches zero or more paren groups, so the
+# non-standard double-scope Dependabot emits for grouped npm updates —
+# `chore(deps)(deps-dev): bump the web-dev-tools group …` — gets fully
+# stripped instead of leaving `(deps-dev): …` behind to be re-prefixed.
+text=$(printf '%s' "$subject" | sed -E 's/^[a-z]+(\([^)]*\))*!?:[[:space:]]*//')
 
 only_in() {
     # Exit 0 iff every changed file starts with one of the given path prefixes.
