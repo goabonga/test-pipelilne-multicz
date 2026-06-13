@@ -1849,6 +1849,7 @@ jobs:
     #      skipped). Any failure aborts the release.
     needs:
       - validate
+      - detect            # needed for the per-component if: gate below
       - owasp-api
       - owasp-ssr
       - api-deb-validate
@@ -1859,11 +1860,43 @@ jobs:
       - chart-job-package
       - chart-ssr-package
       - docs-build
+    # Per-component success-required gate. The earlier
+    # `!failure() && !cancelled() && main && !chore(release)` shape
+    # was too permissive: it accepted skipped upstreams as "fine",
+    # which covered the legitimate partial-change case (job not
+    # changed → owasp-job skipped, normal) but ALSO covered the
+    # dangerous "run was cancelled before the validations dispatched
+    # → all queued upstreams marked skipped" case (run 27471716895:
+    # release-bump fired anyway, multicz pushed `api-v0.2.1` /
+    # `chart-api-v1.0.4` tags before being cancelled, no Docker /
+    # .deb / GitHub release ever followed).
+    #
+    # The fix is structural: for each component, require either
+    # (a) it isn't in `detect.outputs.changed` so its validations
+    # don't apply, or (b) its final-stage validation actually
+    # SUCCEEDED. owasp-X covers the upstream container/sbom/grype
+    # transitively (owasp can't succeed without them); same for
+    # *-deb-validate and chart-X-package on their stacks.
     if: >-
-      !failure() &&
-      !cancelled() &&
+      !failure() && !cancelled() &&
       github.ref == 'refs/heads/main' &&
-      !startsWith(github.event.head_commit.message, 'chore(release)')
+      !startsWith(github.event.head_commit.message, 'chore(release):') &&
+      (!contains(fromJson(needs.detect.outputs.changed).changed, 'api') ||
+       (needs.owasp-api.result == 'success' && needs.api-deb-validate.result == 'success')) &&
+      (!contains(fromJson(needs.detect.outputs.changed).changed, 'ssr') ||
+       (needs.owasp-ssr.result == 'success' && needs.ssr-deb-validate.result == 'success')) &&
+      (!contains(fromJson(needs.detect.outputs.changed).changed, 'job') ||
+       needs.job-deb-validate.result == 'success') &&
+      (!contains(fromJson(needs.detect.outputs.changed).changed, 'cli') ||
+       needs.cli-deb-validate.result == 'success') &&
+      (!contains(fromJson(needs.detect.outputs.changed).changed, 'chart-api') ||
+       needs.chart-api-package.result == 'success') &&
+      (!contains(fromJson(needs.detect.outputs.changed).changed, 'chart-job') ||
+       needs.chart-job-package.result == 'success') &&
+      (!contains(fromJson(needs.detect.outputs.changed).changed, 'chart-ssr') ||
+       needs.chart-ssr-package.result == 'success') &&
+      (!contains(fromJson(needs.detect.outputs.changed).changed, 'docs') ||
+       needs.docs-build.result == 'success')
     runs-on: ubuntu-latest
     permissions:
       contents: write   # push release commit + tags
