@@ -373,7 +373,20 @@ jobs:
           body: '`hadolint` on `packages/api/Dockerfile`.'
 
   api-container:
-    needs: [api-bandit, audit, api-hadolint]
+    # Explicit per-component gate. Without it the job hits GitHub
+    # Actions' implicit transitive-skip cascade: `audit` runs (its
+    # own `!failure() && !cancelled() && contains(...)` if passes)
+    # but pulls `job-test` / `ssr-test` / `cli-test` as `skipped`
+    # needs on a partial-change run — that "skipped" status
+    # propagates downstream and quietly marks api-container as
+    # skipped even though its own direct needs (api-bandit, audit,
+    # api-hadolint) are all success. Same pattern as the explicit
+    # gates on api-sbom / api-grype / api-deb-validate; surfaced by
+    # run 27478713539 where api-only changes left api-container
+    # un-built and the whole release-api / e2e-with-fresh-image
+    # path silently dead.
+    needs: [api-bandit, audit, api-hadolint, detect]
+    if: '!failure() && !cancelled() && contains(fromJson(needs.detect.outputs.changed).changed, ''api'')'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -452,9 +465,15 @@ jobs:
           body: '`grype --fail-on high` on the api SBOM.'
 
   api-deb:
-    # Smoke-build the .deb on every change so packaging regressions
-    # surface in PR CI, not only when release.yml fires.
-    needs: [api-bandit, audit]
+    # Smoke-build the .deb on every api change so packaging
+    # regressions surface in PR CI, not only when release.yml fires.
+    # Explicit `contains(changed, 'api')` gate for the same reason
+    # api-container above carries one — `audit` has skipped needs on
+    # partial-change runs and the implicit transitive-skip cascade
+    # otherwise marks api-deb as skipped despite its own needs being
+    # green.
+    needs: [api-bandit, audit, detect]
+    if: '!failure() && !cancelled() && contains(fromJson(needs.detect.outputs.changed).changed, ''api'')'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -636,7 +655,10 @@ jobs:
           body: '`hadolint` on `packages/job/Dockerfile`.'
 
   job-container:
-    needs: [job-bandit, audit, job-hadolint]
+    # See api-container — same explicit gate to defeat the implicit
+    # transitive-skip cascade from audit's mixed-status needs.
+    needs: [job-bandit, audit, job-hadolint, detect]
+    if: '!failure() && !cancelled() && contains(fromJson(needs.detect.outputs.changed).changed, ''job'')'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -707,7 +729,9 @@ jobs:
           body: '`grype --fail-on high` on the job SBOM.'
 
   job-deb:
-    needs: [job-bandit, audit]
+    # See api-deb — same explicit gate.
+    needs: [job-bandit, audit, detect]
+    if: '!failure() && !cancelled() && contains(fromJson(needs.detect.outputs.changed).changed, ''job'')'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -1143,7 +1167,9 @@ jobs:
           body: '`bandit -r` on `packages/cli/src/`.'
 
   cli-deb:
-    needs: [cli-bandit, audit]
+    # See api-deb — same explicit gate.
+    needs: [cli-bandit, audit, detect]
+    if: '!failure() && !cancelled() && contains(fromJson(needs.detect.outputs.changed).changed, ''cli'')'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
