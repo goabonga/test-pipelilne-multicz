@@ -152,10 +152,27 @@ jobs:
             Changed components: `${{ steps.changed.outputs.json }}`
 
   headers:
-    # Same gate as `detect`: validate-first means a broken multicz
-    # config kills the run upstream, before headers (and everything
-    # downstream) bothers to start.
+    # Two gates:
+    #
+    # 1. `needs: [detect]` so a broken multicz config kills the run
+    #    upstream before headers (and everything downstream) starts.
+    # 2. `toJSON(... .changed) != '[]'` so headers only fires when
+    #    at least one tracked component actually moved — pure
+    #    `fix(ci):` / `chore(release):` / docs-only commits leave
+    #    nothing for `scripts/add_license_header.py --check` to
+    #    re-validate. GitHub Actions expressions don't expose a
+    #    `length()` function, so we round-trip the array through
+    #    `toJSON()` and compare against the literal empty-array
+    #    string instead.
+    #
+    # Trade-off: a commit that ONLY touches `scripts/` won't trigger
+    # the headers check, because `scripts/` isn't a multicz-tracked
+    # component. That's intentional — scripts/ changes are rare, the
+    # check is local-cheap (`uv run ... --check`), and missed headers
+    # there get caught on the next commit that does move a tracked
+    # component.
     needs: [detect]
+    if: toJSON(fromJson(needs.detect.outputs.changed).changed) != '[]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -1204,10 +1221,10 @@ jobs:
     # the bare array, so the string comparison against '[]' was
     # never true and audit ran on every commit — including pure
     # `fix(ci):` / `chore(release):` ones that don't touch any
-    # resolved dependency. Use the same `length(fromJson(...).changed)`
-    # idiom the per-component gates already use, with the audit's
-    # actual scope (api / job / ssr / cli) baked in so doc-only or
-    # chart-only changes also skip cleanly.
+    # resolved dependency. Use the same `contains(fromJson(...).changed,
+    # '<comp>')` idiom the per-component gates already use, with
+    # the audit's actual scope (api / job / ssr / cli) baked in so
+    # doc-only or chart-only changes also skip cleanly.
     if: >-
       !failure() && !cancelled() &&
       (contains(fromJson(needs.detect.outputs.changed).changed, 'api') ||
