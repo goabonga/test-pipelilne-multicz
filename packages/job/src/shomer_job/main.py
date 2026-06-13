@@ -21,9 +21,15 @@ from . import __version__
 log = logging.getLogger("shomer.job")
 
 
-def tick() -> None:
-    """One iteration of the work loop. Replace with real work."""
-    log.info("shomer.job tick (v%s)", __version__)
+def tick(iteration: int = 0) -> None:
+    """One iteration of the work loop. Replace with real work.
+
+    ``iteration`` is logged so a stuck consumer or a runaway interval
+    is obvious from the structured logs without having to grep the
+    PID's stderr — defaults to 0 to keep direct callers
+    backwards-compatible.
+    """
+    log.info("shomer.job tick (v%s, iteration=%d)", __version__, iteration)
 
 
 def run(
@@ -52,8 +58,8 @@ def run(
 
     iterations = 0
     while not stop:
-        tick()
         iterations += 1
+        tick(iterations)
         if max_iterations is not None and iterations >= max_iterations:
             break
         sleep(interval_seconds)

@@ -16,7 +16,10 @@ def test_run_calls_tick_max_iterations_times(monkeypatch: pytest.MonkeyPatch) ->
     and SystemExit(0)."""
     ticks: list[int] = []
     sleeps: list[float] = []
-    monkeypatch.setattr(main, "tick", lambda: ticks.append(1))
+    # `tick` now takes an iteration index (1-based) so the polling
+    # loop's log line is observable in production. The test only
+    # cares about how many times it was called, not the index.
+    monkeypatch.setattr(main, "tick", lambda i: ticks.append(i))
 
     with pytest.raises(SystemExit) as exc:
         main.run(
@@ -25,13 +28,13 @@ def test_run_calls_tick_max_iterations_times(monkeypatch: pytest.MonkeyPatch) ->
             max_iterations=3,
         )
     assert exc.value.code == 0
-    assert len(ticks) == 3
+    assert ticks == [1, 2, 3]
     assert sleeps == [0.0, 0.0]
 
 
 def test_run_uses_injected_sleep_interval(monkeypatch: pytest.MonkeyPatch) -> None:
     sleeps: list[float] = []
-    monkeypatch.setattr(main, "tick", lambda: None)
+    monkeypatch.setattr(main, "tick", lambda _i: None)
     with pytest.raises(SystemExit):
         main.run(
             interval_seconds=2.5,
