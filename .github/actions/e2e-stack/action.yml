@@ -1,0 +1,113 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+name: e2e stack
+description: |
+  Spin up an ephemeral kind cluster with the full api + job + ssr
+  stack helm-installed from their CI image artifacts, then
+  port-forward the target component to localhost so a behave /
+  Playwright / similar end-to-end runner can hit the same surface
+  owasp-scan uses for its ZAP baseline — without re-implementing
+  the deploy plumbing in each test job.
+
+  REQUIRES: the caller has already run `actions/checkout` and the
+  three upstream `<X>-image` artifacts exist (uploaded by the
+  matching `*-container` jobs upstream in the grype-gated chain).
+
+  After the action finishes, ${{ inputs.component }} is reachable
+  on http://localhost:${{ inputs.port }}.
+
+inputs:
+  component:
+    required: true
+    description: |
+      Component to expose for the test run — api or ssr. The cluster
+      deploys ALL three services regardless (api needs job, ssr
+      needs api); this just selects which one gets the port-forward.
+  port:
+    required: true
+    description: Service port + local forward port. 8000 for api, 8080 for ssr.
+  token:
+    required: true
+    description: Token with `packages:read` on ghcr (passed to `load-image` for the pull fallback).
+
+runs:
+  using: composite
+  steps:
+    # Each component image: fresh artifact if its container rebuilt
+    # this run, else `:latest` pulled from ghcr. Means the e2e jobs
+    # can run on a partial-change PR (e.g. only api changed →
+    # job / ssr served from their last released images).
+    - uses: ./.github/actions/load-image
+      with:
+        component: api
+        token: ${{ inputs.token }}
+    - uses: ./.github/actions/load-image
+      with:
+        component: job
+        token: ${{ inputs.token }}
+    - uses: ./.github/actions/load-image
+      with:
+        component: ssr
+        token: ${{ inputs.token }}
+
+    - uses: helm/kind-action@v1.10.0
+      with:
+        cluster_name: shomer-e2e-${{ inputs.component }}
+        wait: 60s
+
+    - name: Load all 3 images into kind
+      shell: bash
+      run: |
+        set -euo pipefail
+        for c in api job ssr; do
+          kind load image-archive /tmp/${c}.tar --name shomer-e2e-${{ inputs.component }}
+        done
+
+    - uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2  # v5
+
+    - name: helm install api / job / ssr (each --wait)
+      shell: bash
+      run: |
+        set -euo pipefail
+        for c in api job ssr; do
+          helm install "$c" "packages/$c/chart" \
+            --set image.repository="$c" \
+            --set image.tag=ci \
+            --set image.pullPolicy=IfNotPresent \
+            --wait --timeout 2m
+        done
+
+    - name: Port-forward svc/${{ inputs.component }} → localhost:${{ inputs.port }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        kubectl port-forward svc/${{ inputs.component }} ${{ inputs.port }}:${{ inputs.port }} \
+          >/tmp/pf-${{ inputs.component }}.log 2>&1 &
+        for _ in 1 2 3 4 5 6 7 8 9 10; do
+          if curl -fsS --max-time 2 http://localhost:${{ inputs.port }}/healthz; then
+            echo
+            echo "${{ inputs.component }} reachable on localhost:${{ inputs.port }}"
+            exit 0
+          fi
+          sleep 2
+        done
+        echo "${{ inputs.component }} never became reachable" >&2
+        cat /tmp/pf-${{ inputs.component }}.log >&2
+        exit 1
+
+    - name: Cluster state (always)
+      if: always()
+      shell: bash
+      run: kubectl get all -A
+
+    - name: Diagnostics on failure
+      if: failure()
+      shell: bash
+      run: |
+        for c in api job ssr; do
+          echo "=== describe $c ==="
+          kubectl describe deployment "$c" || true
+          echo "=== logs $c ==="
+          kubectl logs -l app.kubernetes.io/name="$c" --tail=200 || true
+        done
