@@ -47,6 +47,12 @@ COPY packages/ssr/src packages/ssr/src
 COPY packages/cli/src packages/cli/src
 RUN uv sync --frozen --all-packages
 
+# `watchfiles` is the rust-backed file watcher uvicorn itself uses
+# under --reload. We pip-install it into the venv so `job` (which has
+# no native watch — it's a polling worker) can be wrapped as
+# `watchfiles "<cmd>" <path>` to pick up source edits on the fly.
+RUN uv pip install --python /workspace/.venv watchfiles
+
 # Make the venv writable by any UID. compose runs containers as
 # `${USER_UID}:${USER_GID}` so bind mounts don't get root-owned on
 # Linux hosts; this matching write bit lets that non-root user use

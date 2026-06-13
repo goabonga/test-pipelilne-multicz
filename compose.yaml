@@ -16,10 +16,10 @@
 #
 #   api   same shape as ssr, on port 8000.
 #
-#   job   long-running worker, no native --reload. compose's
-#         develop.watch (sync+restart) catches src edits and restarts
-#         the container. sync is a no-op on top of the bind mount,
-#         but compose doesn't expose a restart-only action.
+#   job   long-running worker, no native --reload. Wrapped in
+#         `watchfiles` (the same rust-backed watcher uvicorn uses
+#         under the hood) so the job process restarts on any
+#         packages/job/src/**/*.py edit, working off the bind mount.
 #
 #   cli   long-lived `sleep infinity` container that lets a Windows /
 #         macOS dev run `docker compose exec cli shomer …` (or
@@ -53,6 +53,17 @@ services:
       - ./packages/ssr/src/shomer_ssr/static:/output/static
       - ./packages/ssr/src/shomer_ssr/templates:/output/templates
     command: ["node", "scripts/build.mjs", "--watch"]
+    # Source changes are handled by esbuild --watch inside the
+    # container (the bind mount above shows them instantly). The
+    # `rebuild` action below catches dep changes: package.json /
+    # package-lock.json edits invalidate `npm ci`'s cache, so the
+    # only correct response is rebuilding the image.
+    develop:
+      watch:
+        - action: rebuild
+          path: ./packages/web/package.json
+        - action: rebuild
+          path: ./packages/web/package-lock.json
 
   ssr:
     build:
@@ -87,6 +98,16 @@ services:
         # finished its first build, which uvicorn doesn't need anyway
         # because the static files only matter at request time.
         condition: service_started
+    # Bind mount + uvicorn --reload handles every src edit. Only
+    # rebuild when the dep closure shifts.
+    develop:
+      watch:
+        - action: rebuild
+          path: ./pyproject.toml
+        - action: rebuild
+          path: ./uv.lock
+        - action: rebuild
+          path: ./packages/ssr/pyproject.toml
 
   api:
     build:
@@ -114,6 +135,14 @@ services:
       - 0.0.0.0
       - --port
       - "8000"
+    develop:
+      watch:
+        - action: rebuild
+          path: ./pyproject.toml
+        - action: rebuild
+          path: ./uv.lock
+        - action: rebuild
+          path: ./packages/api/pyproject.toml
 
   job:
     build:
@@ -125,15 +154,24 @@ services:
     env_file:
       - path: .env
         required: false
-    command: [uv, run, --package, shomer-job, shomer-job]
+    # `watchfiles` (rust-backed, the same watcher uvicorn ships with
+    # --reload) re-execs the command whenever a .py file under the
+    # bind-mounted src dir changes. `--filter python` skips noise from
+    # editor swap files, pycache, etc.
+    command:
+      - watchfiles
+      - --filter
+      - python
+      - shomer-job
+      - /workspace/packages/job/src
     develop:
       watch:
-        # sync is a no-op (bind mount already syncs), but compose
-        # doesn't expose a bare `restart` action — `sync+restart` is
-        # the closest thing.
-        - action: sync+restart
-          path: ./packages/job/src
-          target: /workspace/packages/job/src
+        - action: rebuild
+          path: ./pyproject.toml
+        - action: rebuild
+          path: ./uv.lock
+        - action: rebuild
+          path: ./packages/job/pyproject.toml
 
   cli:
     build:
