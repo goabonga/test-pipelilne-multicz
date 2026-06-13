@@ -8,6 +8,12 @@ All notable changes to this component are documented here.
 
 - Track `ssr` `1.0.3`
 
+## [1.0.3] - 2026-06-13
+
+### Dependencies
+
+- Track `ssr` `1.0.3`
+
 ## [1.0.2] - 2026-06-13
 
 ### Dependencies

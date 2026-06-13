@@ -1,3 +1,9 @@
+shomer-job (1.0.1-1) unstable; urgency=medium
+
+  * fix(job): Pin Chainguard python base by digest and refresh the grype allowlist
+
+ -- Chris <goabonga@pm.me>  Sat, 13 Jun 2026 14:49:23 +0000
+
 shomer-job (1.0.0-1) unstable; urgency=medium
 
   * refactor!: Rename components (worker->job, web->ssr, web-frontend->web)

@@ -2,6 +2,12 @@
 
 All notable changes to this component are documented here.
 
+## [0.1.2] - 2026-06-13
+
+### Fixes
+
+- **api**: pin Chainguard python base by digest and refresh the grype allowlist (`263bcef`)
+
 ## [0.1.1] - 2026-06-13
 
 ### Fixes
