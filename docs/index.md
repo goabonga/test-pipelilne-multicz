@@ -17,13 +17,14 @@ an admin UI and a REST API — across as many tenants as you need.
 ## Components
 
 The repository is a [uv workspace](https://docs.astral.sh/uv/concepts/projects/workspaces/)
-of three independently-versioned packages:
+of independently-versioned packages:
 
-| package         | role                          | distribution                     |
-|-----------------|-------------------------------|----------------------------------|
-| `shomer-api`    | FastAPI authorization server  | Docker image, Helm chart, `.deb` |
-| `shomer-job` | background polling jobs       | Docker image, Helm chart, `.deb` |
-| `shomer-cli`    | operator CLI                  | wheel / sdist (PyPI)             |
+| package         | role                                  | distribution                     |
+|-----------------|---------------------------------------|----------------------------------|
+| `shomer-api`    | FastAPI authorization server          | Docker image, Helm chart, `.deb` |
+| `shomer-job`    | background polling jobs               | Docker image, Helm chart, `.deb` |
+| `shomer-ssr`    | Jinja-rendered login / account UI     | Docker image, Helm chart, `.deb` |
+| `shomer-cli`    | operator CLI                          | wheel / sdist (PyPI)             |
 
 Each package is released independently — its own git tag, its own
 `CHANGELOG.md`, its own `debian/changelog` stanza. Cascade rules in
