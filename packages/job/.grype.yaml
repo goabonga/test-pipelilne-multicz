@@ -17,16 +17,29 @@
 
 ignore:
   # CVE-2026-7210 (Critical) — upstream Chainguard python-3.14 in
-  # cgr.dev/chainguard/python:latest. Chainguard re-built the apk
-  # (3.14.5-r1 -> -r2 on 2026-05-27) but the CVE is still present in
-  # the grype DB, so the original version-pin expired on intent (good)
-  # but the underlying issue isn't resolved — bump the pin to -r2 and
-  # extend the expiry by a week. If Chainguard ships -r3 without a
-  # fix, the version mismatch will trip again and we re-evaluate.
-  # expires: 2026-06-09
+  # cgr.dev/chainguard/python:3.14.6-r0 (now explicitly pinned in the
+  # Dockerfile next door, no more :latest drift). The CVE has been
+  # carried across r1 / r2 / r0-of-3.14.6 without an upstream fix —
+  # we re-evaluate by the expiration; in the meantime the version pin
+  # below keeps the ignore scoped to the exact apk shipping in our
+  # image, so any Dependabot bump of the FROM line will trip the
+  # mismatch and force a fresh review.
+  # expires: 2026-06-27
   - vulnerability: CVE-2026-7210
-    reason: "Upstream Chainguard python:latest apk; awaiting patched base image."
+    reason: "Upstream Chainguard python apk on the pinned base; awaiting patched build."
     package:
       name: python-3.14
-      version: 3.14.5-r2
+      version: 3.14.6-r0
+      type: apk
+
+  # CVE-2026-9669 (High) — surfaced when Chainguard re-built the apk
+  # at 3.14.6-r0. Same upstream as CVE-2026-7210, same review cadence;
+  # the weekly grype-allowlist-sweep workflow will flag both the
+  # moment the version pin no longer matches what's in the image.
+  # expires: 2026-06-27
+  - vulnerability: CVE-2026-9669
+    reason: "Upstream Chainguard python apk on the pinned base; awaiting patched build."
+    package:
+      name: python-3.14
+      version: 3.14.6-r0
       type: apk
