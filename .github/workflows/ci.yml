@@ -327,6 +327,12 @@ jobs:
 
   api-sbom:
     needs: [api-container]
+    # Explicit gate so we don't inherit github actions' implicit
+    # "all transitive needs must have succeeded" — upstream
+    # api-container has its own conditional if, and the cascade
+    # silently skips this job otherwise even when api-container
+    # itself ran fine.
+    if: needs.api-container.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6   # need .github/actions/summary on disk
@@ -347,6 +353,7 @@ jobs:
 
   api-grype:
     needs: [api-sbom]
+    if: needs.api-sbom.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -399,11 +406,15 @@ jobs:
           body: 'Built `shomer-api_*.deb` (artifact `api-deb`).'
 
   api-deb-validate:
+    needs: [api-deb]
+    # Explicit gate (see api-sbom rationale): default `if:` would
+    # inherit the cascaded skip from api-deb's own conditional even
+    # when api-deb itself ran fine.
+    if: needs.api-deb.result == 'success'
     # Three independent gates against the just-built .deb (lintian,
     # pytest, systemd-analyze security). On any failure the artifact
     # is deleted so a broken build can't be mistaken for a working
     # one downstream. See `.github/actions/validate-deb/action.yml`.
-    needs: [api-deb]
     runs-on: ubuntu-latest
     permissions:
       actions: write   # delete-artifact (cleanup on validation failure)
@@ -576,6 +587,7 @@ jobs:
 
   job-sbom:
     needs: [job-container]
+    if: needs.job-container.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -596,6 +608,7 @@ jobs:
 
   job-grype:
     needs: [job-sbom]
+    if: needs.job-sbom.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -647,6 +660,7 @@ jobs:
 
   job-deb-validate:
     needs: [job-deb]
+    if: needs.job-deb.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       actions: write
@@ -844,6 +858,7 @@ jobs:
 
   ssr-sbom:
     needs: [ssr-container]
+    if: needs.ssr-container.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -864,6 +879,7 @@ jobs:
 
   ssr-grype:
     needs: [ssr-sbom]
+    if: needs.ssr-sbom.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -922,6 +938,7 @@ jobs:
 
   ssr-deb-validate:
     needs: [ssr-deb]
+    if: needs.ssr-deb.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       actions: write
@@ -1079,6 +1096,7 @@ jobs:
 
   cli-deb-validate:
     needs: [cli-deb]
+    if: needs.cli-deb.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       actions: write
