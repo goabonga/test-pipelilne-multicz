@@ -60,10 +60,12 @@ RUN uv sync --frozen --all-packages
 # `watchfiles "<cmd>" <path>` to pick up source edits on the fly.
 RUN uv pip install --python /workspace/.venv watchfiles
 
-# Make the venv writable by any UID. compose runs containers as
-# `${USER_UID}:${USER_GID}` so bind mounts don't get root-owned on
-# Linux hosts; this matching write bit lets that non-root user use
-# the venv created at build time (which is owned by root).
-RUN chmod -R a+rwX /workspace/.venv
+# Make the venv AND the uv cache writable by any UID. compose runs
+# containers as `${USER_UID}:${USER_GID}` so bind mounts don't get
+# root-owned on Linux hosts; the matching write bit lets that non-
+# root user reuse the venv built at image time (root-owned) and lets
+# uv keep writing to its cache at runtime instead of failing on the
+# root-populated entries seeded during `uv sync` / `uv pip install`.
+RUN chmod -R a+rwX /workspace/.venv /tmp/uv-cache
 
 ENV PATH=/workspace/.venv/bin:$PATH
