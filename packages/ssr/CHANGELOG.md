@@ -2,6 +2,16 @@
 
 All notable changes to this component are documented here.
 
+## [1.0.3] - 2026-06-13
+
+### Fixes
+
+- **ssr**: satisfy mypy --strict in app.py after the DevAwareStaticFiles refactor (`c75a9d4`)
+
+### Dependencies
+
+- Track `web` `1.1.0`
+
 ## [1.0.2] - 2026-06-13
 
 ### Fixes

@@ -2,6 +2,17 @@
 
 All notable changes to this component are documented here.
 
+## [1.1.0] - 2026-06-13
+
+### Features
+
+- **dev**: docker compose stack with watch for the whole workspace (`04b31b0`)
+- **web**: minify in every mode, inline sourcemap in dev only (`24b88c1`)
+
+### Fixes
+
+- **dev**: uv cache path + don't rmdir the templates bind mount (`72f9242`)
+
 ## [1.0.1] - 2026-06-13
 
 ### Fixes

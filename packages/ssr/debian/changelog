@@ -1,3 +1,9 @@
+shomer-ssr (1.0.3-1) unstable; urgency=medium
+
+  * fix(ssr): Satisfy mypy --strict in app.py after the DevAwareStaticFiles refactor
+
+ -- Chris <goabonga@pm.me>  Sat, 13 Jun 2026 12:31:06 +0000
+
 shomer-ssr (1.0.2-1) unstable; urgency=medium
 
   * fix(ssr): Bump python-multipart from 0.0.29 to 0.0.32

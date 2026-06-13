@@ -1022,7 +1022,7 @@ source = { editable = "packages/job" }
 
 [[package]]
 name = "shomer-ssr"
-version = "1.0.2"
+version = "1.0.3"
 source = { editable = "packages/ssr" }
 dependencies = [
     { name = "fastapi" },
