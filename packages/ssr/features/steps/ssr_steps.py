@@ -47,7 +47,12 @@ def step_status(context, status):  # noqa: ANN001
     )
 
 
-@then('the JSON body has key "{key}"')
+# {key:S} = non-whitespace match (built-in parse type). Stops the
+# pattern's regex from greedily absorbing the trailing qualifier of
+# the longer steps below (`equal to "..."`, `matching "..."`), which
+# is what behave's registration-time ambiguity check otherwise trips
+# on with the default `{key}` = lazy `.+?`.
+@then('the JSON body has key "{key:S}"')
 def step_has_key(context, key):  # noqa: ANN001
     body = context.response.json()
     assert key in body, f"missing key {key!r} in body {body!r}"
