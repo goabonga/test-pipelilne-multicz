@@ -48,7 +48,7 @@ runs:
         component: ssr
         token: ${{ inputs.token }}
 
-    - uses: helm/kind-action@v1.10.0
+    - uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc  # v1.14.0 (Node 24)
       with:
         cluster_name: shomer-${{ inputs.component }}
         wait: 60s
