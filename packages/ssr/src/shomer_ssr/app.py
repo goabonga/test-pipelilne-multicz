@@ -34,19 +34,19 @@ templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 
 class DevAwareStaticFiles(StaticFiles):
-    """``StaticFiles`` subclass that publishes a sibling ``.map`` file
-    as a ``SourceMap`` response header when one exists on disk.
+    """``StaticFiles`` subclass that advertises sibling ``.map`` files
+    via the ``SourceMap`` response header when one exists on disk.
 
-    Why a header rather than the conventional
-    ``//# sourceMappingURL=`` trailing comment in the bundle: keeping
-    main.js / main.css byte-identical between dev and release means
-    a stray dev rebuild can't slip a dev-only marker into a release
-    commit. The web container's ``--watch`` build writes main.js.map
-    next to main.js (esbuild ``sourcemap: "external"`` — no comment
+    Using the header rather than the conventional
+    ``//# sourceMappingURL=`` trailing comment keeps main.js / main.css
+    byte-identical between dev and release, so a stray dev rebuild
+    can't slip a dev-only marker into a release commit. The web
+    container's ``--watch`` build writes ``main.js.map`` next to
+    ``main.js`` (esbuild ``sourcemap: "external"``, no comment
     appended); release builds don't, so this branch silently no-ops
     in prod.
 
-    Browser devtools (Chrome, Firefox, Safari) treat the ``SourceMap``
+    Chrome / Firefox / Safari devtools treat the ``SourceMap``
     response header as equivalent to the in-bundle comment, so the
     debug experience is identical.
     """
