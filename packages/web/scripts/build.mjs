@@ -50,12 +50,18 @@ function ensureDir(dir) {
   mkdirSync(dir, { recursive: true });
 }
 
+// Minify in every mode so the dev bundle matches what production
+// ships — same byte stream, same parser behaviour, fewer "works in
+// dev, breaks in prod" surprises. In watch mode we attach an inline
+// sourcemap so browser devtools recovers original-source debuggability
+// (TypeScript names, original line numbers, sane stack traces). In a
+// one-shot build (CI, multicz release post_bump) sourcemaps are off so
+// the shipped main.js / main.css stays small.
 const jsConfig = {
   entryPoints: [join(SRC, "main.ts")],
   bundle: true,
-  // Skip minification in watch mode — saves a few ms per rebuild and
-  // keeps the bundle readable in browser devtools while iterating.
-  minify: !WATCH,
+  minify: true,
+  sourcemap: WATCH ? "inline" : false,
   format: "iife",
   target: "es2022",
   outfile: join(OUT_STATIC, "main.js"),
@@ -65,7 +71,8 @@ const jsConfig = {
 const cssConfig = {
   entryPoints: [join(SRC, "styles.css")],
   bundle: true,
-  minify: !WATCH,
+  minify: true,
+  sourcemap: WATCH ? "inline" : false,
   outfile: join(OUT_STATIC, "main.css"),
   logLevel: "info",
 };
