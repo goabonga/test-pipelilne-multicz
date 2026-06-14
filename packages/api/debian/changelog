@@ -1,3 +1,9 @@
+shomer-api (0.2.3-1) unstable; urgency=medium
+
+  * fix(api): Advertise `scopes_supported` in the OIDC discovery document
+
+ -- Chris <goabonga@pm.me>  Sun, 14 Jun 2026 08:17:32 +0000
+
 shomer-api (0.2.2-1) unstable; urgency=medium
 
   * fix(api): Tag the healthz payload with the service identifier

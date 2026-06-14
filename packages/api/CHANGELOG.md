@@ -2,6 +2,12 @@
 
 All notable changes to this component are documented here.
 
+## [0.2.3] - 2026-06-14
+
+### Fixes
+
+- **api**: advertise `scopes_supported` in the OIDC discovery document (`8c4567b`)
+
 ## [0.2.2] - 2026-06-13
 
 ### Fixes
