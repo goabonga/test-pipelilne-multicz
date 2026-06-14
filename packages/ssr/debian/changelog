@@ -1,3 +1,9 @@
+shomer-ssr (1.0.5-1) unstable; urgency=medium
+
+  * No notable changes.
+
+ -- Chris <goabonga@pm.me>  Sun, 14 Jun 2026 08:35:48 +0000
+
 shomer-ssr (1.0.4-1) unstable; urgency=medium
 
   * fix(ssr): Tighten the DevAwareStaticFiles docstring

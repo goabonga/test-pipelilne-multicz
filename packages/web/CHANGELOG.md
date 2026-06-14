@@ -2,6 +2,12 @@
 
 All notable changes to this component are documented here.
 
+## [1.1.2] - 2026-06-14
+
+### Fixes
+
+- **web**: cap password input length client-side to short-circuit DoS-shaped inputs (`4c7da47`)
+
 ## [1.1.1] - 2026-06-13
 
 ### Fixes
