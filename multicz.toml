@@ -20,6 +20,11 @@ commit_convention = "conventional"
 tag_format        = "{component}-v{version}"
 initial_version   = "0.0.0"
 post_bump_policy  = "allow"   # opt in: enables the `uv lock` hook below
+# Aggregated cross-component CHANGELOG.md at the repo root. Per-component
+# files (packages/<comp>/CHANGELOG.md) still get written; this one adds
+# the bird's-eye view so a release commit lists every component that
+# bumped + a type-grouped digest of the driving commits in one place.
+root_changelog    = "CHANGELOG.md"
 
 [components.api]
 paths      = [
