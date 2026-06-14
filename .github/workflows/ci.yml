@@ -1527,6 +1527,7 @@ jobs:
     # api still run when e2e-api was skipped (component didn't
     # change) so we don't lose coverage on partial-change PRs.
     needs:
+      - detect
       - api-grype
       - job-grype
       - ssr-grype
@@ -1534,14 +1535,23 @@ jobs:
       - chart-job-checkov
       - chart-ssr-checkov
       - e2e-api
+    # Run when any component that feeds the deployed stack is in
+    # changed — semantics are direct ("we have something new to
+    # smoke") rather than indirect ("a downstream validation
+    # succeeded"). `multicz changed` propagates the api/job/ssr →
+    # chart-X cascade upstream, so listing the parent components is
+    # enough; chart-X gets pulled in automatically when its parent
+    # changes. `!failure()` keeps the safety net intact — any
+    # upstream validation that genuinely failed still skips this job.
     if: >-
       !failure() && !cancelled() && (
-        needs.api-grype.result == 'success' ||
-        needs.job-grype.result == 'success' ||
-        needs.ssr-grype.result == 'success' ||
-        needs.chart-api-checkov.result == 'success' ||
-        needs.chart-job-checkov.result == 'success' ||
-        needs.chart-ssr-checkov.result == 'success'
+        contains(fromJson(needs.detect.outputs.changed).changed, 'api') ||
+        contains(fromJson(needs.detect.outputs.changed).changed, 'job') ||
+        contains(fromJson(needs.detect.outputs.changed).changed, 'ssr') ||
+        contains(fromJson(needs.detect.outputs.changed).changed, 'web') ||
+        contains(fromJson(needs.detect.outputs.changed).changed, 'chart-api') ||
+        contains(fromJson(needs.detect.outputs.changed).changed, 'chart-job') ||
+        contains(fromJson(needs.detect.outputs.changed).changed, 'chart-ssr')
       )
     runs-on: ubuntu-latest
     permissions:
@@ -1571,6 +1581,7 @@ jobs:
     # browser-driven regression in ui.feature kills the ZAP scan
     # early instead of letting it ramble against a broken page.
     needs:
+      - detect
       - api-grype
       - job-grype
       - ssr-grype
@@ -1578,14 +1589,23 @@ jobs:
       - chart-job-checkov
       - chart-ssr-checkov
       - e2e-ssr
+    # Run when any component that feeds the deployed stack is in
+    # changed — semantics are direct ("we have something new to
+    # smoke") rather than indirect ("a downstream validation
+    # succeeded"). `multicz changed` propagates the api/job/ssr →
+    # chart-X cascade upstream, so listing the parent components is
+    # enough; chart-X gets pulled in automatically when its parent
+    # changes. `!failure()` keeps the safety net intact — any
+    # upstream validation that genuinely failed still skips this job.
     if: >-
       !failure() && !cancelled() && (
-        needs.api-grype.result == 'success' ||
-        needs.job-grype.result == 'success' ||
-        needs.ssr-grype.result == 'success' ||
-        needs.chart-api-checkov.result == 'success' ||
-        needs.chart-job-checkov.result == 'success' ||
-        needs.chart-ssr-checkov.result == 'success'
+        contains(fromJson(needs.detect.outputs.changed).changed, 'api') ||
+        contains(fromJson(needs.detect.outputs.changed).changed, 'job') ||
+        contains(fromJson(needs.detect.outputs.changed).changed, 'ssr') ||
+        contains(fromJson(needs.detect.outputs.changed).changed, 'web') ||
+        contains(fromJson(needs.detect.outputs.changed).changed, 'chart-api') ||
+        contains(fromJson(needs.detect.outputs.changed).changed, 'chart-job') ||
+        contains(fromJson(needs.detect.outputs.changed).changed, 'chart-ssr')
       )
     runs-on: ubuntu-latest
     permissions:
@@ -1613,20 +1633,30 @@ jobs:
     # with owasp-api on the same upstream gate so a green security
     # scan and a green behavioural surface land together.
     needs:
+      - detect
       - api-grype
       - job-grype
       - ssr-grype
       - chart-api-checkov
       - chart-job-checkov
       - chart-ssr-checkov
+    # Run when any component that feeds the deployed stack is in
+    # changed — semantics are direct ("we have something new to
+    # smoke") rather than indirect ("a downstream validation
+    # succeeded"). `multicz changed` propagates the api/job/ssr →
+    # chart-X cascade upstream, so listing the parent components is
+    # enough; chart-X gets pulled in automatically when its parent
+    # changes. `!failure()` keeps the safety net intact — any
+    # upstream validation that genuinely failed still skips this job.
     if: >-
       !failure() && !cancelled() && (
-        needs.api-grype.result == 'success' ||
-        needs.job-grype.result == 'success' ||
-        needs.ssr-grype.result == 'success' ||
-        needs.chart-api-checkov.result == 'success' ||
-        needs.chart-job-checkov.result == 'success' ||
-        needs.chart-ssr-checkov.result == 'success'
+        contains(fromJson(needs.detect.outputs.changed).changed, 'api') ||
+        contains(fromJson(needs.detect.outputs.changed).changed, 'job') ||
+        contains(fromJson(needs.detect.outputs.changed).changed, 'ssr') ||
+        contains(fromJson(needs.detect.outputs.changed).changed, 'web') ||
+        contains(fromJson(needs.detect.outputs.changed).changed, 'chart-api') ||
+        contains(fromJson(needs.detect.outputs.changed).changed, 'chart-job') ||
+        contains(fromJson(needs.detect.outputs.changed).changed, 'chart-ssr')
       )
     runs-on: ubuntu-latest
     permissions:
@@ -1664,20 +1694,30 @@ jobs:
     # form submit) can drive the rendered DOM through a real
     # browser head instead of a TestClient.
     needs:
+      - detect
       - api-grype
       - job-grype
       - ssr-grype
       - chart-api-checkov
       - chart-job-checkov
       - chart-ssr-checkov
+    # Run when any component that feeds the deployed stack is in
+    # changed — semantics are direct ("we have something new to
+    # smoke") rather than indirect ("a downstream validation
+    # succeeded"). `multicz changed` propagates the api/job/ssr →
+    # chart-X cascade upstream, so listing the parent components is
+    # enough; chart-X gets pulled in automatically when its parent
+    # changes. `!failure()` keeps the safety net intact — any
+    # upstream validation that genuinely failed still skips this job.
     if: >-
       !failure() && !cancelled() && (
-        needs.api-grype.result == 'success' ||
-        needs.job-grype.result == 'success' ||
-        needs.ssr-grype.result == 'success' ||
-        needs.chart-api-checkov.result == 'success' ||
-        needs.chart-job-checkov.result == 'success' ||
-        needs.chart-ssr-checkov.result == 'success'
+        contains(fromJson(needs.detect.outputs.changed).changed, 'api') ||
+        contains(fromJson(needs.detect.outputs.changed).changed, 'job') ||
+        contains(fromJson(needs.detect.outputs.changed).changed, 'ssr') ||
+        contains(fromJson(needs.detect.outputs.changed).changed, 'web') ||
+        contains(fromJson(needs.detect.outputs.changed).changed, 'chart-api') ||
+        contains(fromJson(needs.detect.outputs.changed).changed, 'chart-job') ||
+        contains(fromJson(needs.detect.outputs.changed).changed, 'chart-ssr')
       )
     runs-on: ubuntu-latest
     permissions:
@@ -1874,6 +1914,7 @@ jobs:
     #   3. All upstream test / validate / scan needs passed (or were
     #      skipped). Any failure aborts the release.
     needs:
+      - detect
       - validate
       - detect            # needed for the per-component if: gate below
       - owasp-api
