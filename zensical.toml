@@ -16,7 +16,29 @@ Shomer &middot; Copyright &copy; 2026 Chris &middot;
 nav = [
   { "Home" = "index.md" },
   { "Changelog" = "changelog.md" },
+  { "Versions" = "versions.md" },
 ]
+
+[project.markdown_extensions.zensical.extensions.macros]
+
+# Per-component versions surfaced on docs/versions.md through the
+# `macros` extension ({{ config.extra.versions.* }}). multicz rewrites
+# each value on bump: every component lists the matching key in its
+# `bump_files` (see multicz.toml), and the `docs` component `depends_on`
+# them all so this page is regenerated whenever any version changes.
+#
+# NOTE: keys use underscores (chart_api, not chart-api) — a dash reads
+# as subtraction inside the Jinja `{{ ... }}` macro expression.
+[project.extra.versions]
+api       = "0.2.3"
+job       = "1.0.2"
+cli       = "0.1.2"
+ssr       = "1.0.5"
+web       = "1.1.2"
+chart_api = "1.0.6"
+chart_job = "1.0.2"
+chart_ssr = "1.0.5"
+docs      = "1.0.1"
 
 [project.theme]
 variant  = "classic"
@@ -28,3 +50,4 @@ language = "en"
 scheme  = "default"
 primary = "deep purple"
 accent  = "amber"
+
