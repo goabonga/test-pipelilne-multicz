@@ -2,6 +2,12 @@
 
 All notable changes to this component are documented here.
 
+## [1.0.3] - 2026-06-18
+
+### Dependencies
+
+- Track `database` `0.1.0`
+
 ## [1.0.2] - 2026-06-13
 
 ### Fixes

@@ -6,4 +6,8 @@ All notable changes to this component are documented here.
 
 ### Features
 
-- **database**: add shomer-database package (`0a69c40`)
+- **migrations**: add shomer-migrations package (`dfa8e59`)
+
+### Dependencies
+
+- Track `database` `0.1.0`

@@ -1,3 +1,9 @@
+shomer-api (0.2.4-1) unstable; urgency=medium
+
+  * No notable changes.
+
+ -- Chris <goabonga@pm.me>  Thu, 18 Jun 2026 20:15:38 +0000
+
 shomer-api (0.2.3-1) unstable; urgency=medium
 
   * fix(api): Advertise `scopes_supported` in the OIDC discovery document
