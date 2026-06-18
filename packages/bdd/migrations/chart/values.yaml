@@ -1,0 +1,24 @@
+image:
+  repository: ghcr.io/goabonga/shomer-migrations
+  tag: ""              # falls back to .Chart.AppVersion
+  pullPolicy: Always   # CI kind smoke overrides to IfNotPresent via --set
+
+# Database connection for the migration Job. Point existingSecret at a Secret
+# holding the SQLAlchemy URL (managed DB from terragrunt), or set database.env
+# inline for dev.
+database:
+  existingSecret: ""          # Secret name holding the URL
+  secretKey: SHOMER_BDD_URL
+  env: {}                     # inline env (dev), e.g. { SHOMER_BDD_URL: "postgresql+psycopg://shomer:shomer@db:5432/shomer" }
+
+migration:
+  syncWave: "-1"              # Argo CD: run the Job before the app (wave 0)
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 600
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi

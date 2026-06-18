@@ -1,0 +1,28 @@
+[project]
+name = "shomer-migrations"
+version = "0.0.0"
+description = "Shomer database migrations (Alembic). Ships the revisions + runner; depends on shomer-database for the model metadata. Only the migration image installs this."
+requires-python = ">=3.11"
+dependencies = [
+    "shomer-database",
+    "alembic>=1.13",
+]
+
+# Driver extras forward to shomer-database so the migration image can connect.
+[project.optional-dependencies]
+postgres = ["shomer-database[postgres]"]
+mysql = ["shomer-database[mysql]"]
+mssql = ["shomer-database[mssql]"]
+
+[project.scripts]
+# Migration runner used by the chart-migrations Job: `alembic upgrade head`.
+shomer-migrate = "shomer_migrations.migrate:main"
+
+[build-system]
+requires = ["hatchling>=1.21"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+# The revision tree (migrations/env.py, *.mako, versions/*) ships in this
+# wheel so `shomer-migrate` runs from the installed package in the image.
+packages = ["src/shomer_migrations"]
