@@ -26,6 +26,15 @@
 #         `compose run --rm cli shomer …`) inside a Linux env without
 #         shipping the full uv toolchain to the host.
 #
+# Plus the database tier:
+#
+#   postgres  PostgreSQL 17 with a named volume for persistence and a
+#             pg_isready healthcheck.
+#
+#   migrate   one-shot `alembic upgrade head` (the shomer-migrations
+#             image). Runs once postgres is healthy; `api` waits for it
+#             to complete successfully before starting.
+#
 # Bring it up:                docker compose up --build --watch
 # CLI one-off in container:   docker compose run --rm cli shomer health http://api:8000
 # Tear it down:               docker compose down -v
@@ -109,6 +118,36 @@ services:
         - action: rebuild
           path: ./packages/ssr/pyproject.toml
 
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: shomer
+      POSTGRES_PASSWORD: shomer
+      POSTGRES_DB: shomer
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shomer -d shomer"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # One-shot migration runner: `alembic upgrade head` against postgres. Built
+  # from the real migration image (shomer-migrations + psycopg). api waits for
+  # this to complete successfully before it starts.
+  migrate:
+    build:
+      context: packages/bdd
+      dockerfile: migrations/Dockerfile
+    environment:
+      SHOMER_BDD_URL: postgresql+psycopg://shomer:shomer@postgres:5432/shomer
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
   api:
     build:
       context: .
@@ -121,6 +160,13 @@ services:
     env_file:
       - path: .env
         required: false
+    environment:
+      SHOMER_BDD_URL: postgresql+psycopg://shomer:shomer@postgres:5432/shomer
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     command:
       - uv
       - run
@@ -191,3 +237,6 @@ services:
     # Stop signal is sent to PID 1; sleep ignores SIGTERM, so request
     # SIGINT (which sleep handles) to avoid a 10s timeout on `down`.
     stop_signal: SIGINT
+
+volumes:
+  postgres-data:
