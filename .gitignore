@@ -47,3 +47,6 @@ packages/ssr/src/shomer_ssr/static/*.map
 .idea/
 *.swp
 .DS_Store
+
+# Coverage artifacts
+.coverage
