@@ -1484,6 +1484,47 @@ jobs:
           title: migrations-container
           body: 'Built `migrations:ci` (saved to artifact `migrations-image`).'
 
+  migrations-sbom:
+    needs: [migrations-container]
+    if: '!failure() && !cancelled() && needs.migrations-container.result == ''success'''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v8
+        with: { name: migrations-image, path: /tmp }
+      - name: Install syft
+        run: curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+      - name: Generate SBOM (SPDX JSON)
+        run: syft docker-archive:/tmp/migrations.tar -o spdx-json=/tmp/migrations.sbom.spdx.json
+      - uses: actions/upload-artifact@v7
+        with: { name: migrations-sbom, path: /tmp/migrations.sbom.spdx.json, retention-days: 1 }
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: migrations-sbom
+          body: 'SPDX SBOM via `syft` (artifact `migrations-sbom`).'
+
+  migrations-grype:
+    needs: [migrations-sbom]
+    if: '!failure() && !cancelled() && needs.migrations-sbom.result == ''success'''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v8
+        with: { name: migrations-sbom, path: /tmp }
+      - name: Install grype
+        run: curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+      - name: Scan SBOM (--fail-on high)
+        working-directory: packages/bdd/migrations
+        run: grype sbom:/tmp/migrations.sbom.spdx.json --fail-on high
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: migrations-grype
+          body: '`grype --fail-on high` on the migrations SBOM.'
+
   # ─────────────────────── audit (workspace-wide) ───────────────────────
 
   audit:
@@ -1820,6 +1861,37 @@ jobs:
         with:
           title: chart-migrations-checkov
           body: '`checkov --framework helm` static security scan on `packages/bdd/migrations/chart/`.'
+
+  chart-migrations-package:
+    # Package the chart with the bumped version + rewritten name so
+    # release-chart-migrations can download + helm push.
+    needs: [chart-migrations-checkov]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
+      - uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2  # v5
+      - name: Rewrite Chart.yaml name for this repo's namespace
+        run: |
+          REPO='${{ github.event.repository.name }}'
+          sed -i "s/^name: shomer-migrations$/name: ${REPO}-migrations/" packages/bdd/migrations/chart/Chart.yaml
+      - name: helm package
+        run: |
+          mkdir -p /tmp/chart-migrations
+          helm package packages/bdd/migrations/chart --destination /tmp/chart-migrations
+      - uses: actions/upload-artifact@v7
+        with:
+          name: chart-migrations-tgz
+          path: /tmp/chart-migrations/
+          retention-days: 1
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: chart-migrations-package
+          body: '`helm package` (bump-previewed version + rewritten name) → `chart-migrations-tgz` artifact.'
 
   # ─────────────────────── OWASP baseline (kind + ZAP, per HTTP service) ───────────────────────
 
@@ -2254,6 +2326,8 @@ jobs:
       - chart-api-package
       - chart-job-package
       - chart-ssr-package
+      - migrations-grype
+      - chart-migrations-package
       - docs-build
     # Per-component success-required gate. The earlier
     # `!failure() && !cancelled() && main && !chore(release)` shape
@@ -2290,6 +2364,10 @@ jobs:
        needs.chart-job-package.result == 'success') &&
       (!contains(fromJson(needs.detect.outputs.changed).changed, 'chart-ssr') ||
        needs.chart-ssr-package.result == 'success') &&
+      (!contains(fromJson(needs.detect.outputs.changed).changed, 'migrations') ||
+       needs.migrations-grype.result == 'success') &&
+      (!contains(fromJson(needs.detect.outputs.changed).changed, 'chart-migrations') ||
+       needs.chart-migrations-package.result == 'success') &&
       (!contains(fromJson(needs.detect.outputs.changed).changed, 'docs') ||
        needs.docs-build.result == 'success')
     runs-on: ubuntu-latest
@@ -2303,6 +2381,8 @@ jobs:
       chart_api_version: ${{ steps.bump.outputs.chart_api_version }}
       chart_job_version: ${{ steps.bump.outputs.chart_job_version }}
       chart_ssr_version: ${{ steps.bump.outputs.chart_ssr_version }}
+      migrations_version: ${{ steps.bump.outputs.migrations_version }}
+      chart_migrations_version: ${{ steps.bump.outputs.chart_migrations_version }}
       docs_version: ${{ steps.bump.outputs.docs_version }}
       owner: ${{ steps.owner.outputs.value }}
       repo: ${{ steps.names.outputs.repo }}
@@ -2432,12 +2512,14 @@ jobs:
           CHART_API=$(jq -r    '.bumps["chart-api"].next_version    // empty' /tmp/release.json)
           CHART_JOB=$(jq -r '.bumps["chart-job"].next_version // empty' /tmp/release.json)
           CHART_SSR=$(jq -r    '.bumps["chart-ssr"].next_version    // empty' /tmp/release.json)
+          MIGRATIONS=$(jq -r       '.bumps.migrations.next_version       // empty' /tmp/release.json)
+          CHART_MIGRATIONS=$(jq -r '.bumps["chart-migrations"].next_version // empty' /tmp/release.json)
           DOCS=$(jq -r         '.bumps.docs.next_version          // empty' /tmp/release.json)
           # Surface what we extracted so the workflow log makes the
           # downstream skip/run decision auditable without having to
           # re-resolve via gh api.
-          printf '[release-bump] extracted versions:\n  api=%s job=%s ssr=%s cli=%s\n  chart-api=%s chart-job=%s chart-ssr=%s docs=%s\n' \
-            "$API" "$JOB" "$SSR" "$CLI" "$CHART_API" "$CHART_JOB" "$CHART_SSR" "$DOCS"
+          printf '[release-bump] extracted versions:\n  api=%s job=%s ssr=%s cli=%s migrations=%s\n  chart-api=%s chart-job=%s chart-ssr=%s chart-migrations=%s docs=%s\n' \
+            "$API" "$JOB" "$SSR" "$CLI" "$MIGRATIONS" "$CHART_API" "$CHART_JOB" "$CHART_SSR" "$CHART_MIGRATIONS" "$DOCS"
           echo "api_version=$API"                   >> "$GITHUB_OUTPUT"
           echo "job_version=$JOB"             >> "$GITHUB_OUTPUT"
           echo "cli_version=$CLI"                   >> "$GITHUB_OUTPUT"
@@ -2445,6 +2527,8 @@ jobs:
           echo "chart_api_version=$CHART_API"       >> "$GITHUB_OUTPUT"
           echo "chart_job_version=$CHART_JOB" >> "$GITHUB_OUTPUT"
           echo "chart_ssr_version=$CHART_SSR"       >> "$GITHUB_OUTPUT"
+          echo "migrations_version=$MIGRATIONS"     >> "$GITHUB_OUTPUT"
+          echo "chart_migrations_version=$CHART_MIGRATIONS" >> "$GITHUB_OUTPUT"
           echo "docs_version=$DOCS"                 >> "$GITHUB_OUTPUT"
 
       - name: Compute lowercase owner
@@ -2815,6 +2899,103 @@ jobs:
             Pushed `oci://ghcr.io/${{ needs.release-bump.outputs.owner }}/charts/${{ needs.release-bump.outputs.repo }}-ssr:${{ needs.release-bump.outputs.chart_ssr_version }}`,
             cut GitHub Release `chart-ssr-v${{ needs.release-bump.outputs.chart_ssr_version }}`.
             CI artifact (`chart-ssr-tgz`) deleted post-publish.
+
+  release-migrations:
+    # Migration-runner image (no .deb). The chart-migrations appVersion
+    # points at this image, so it must publish alongside the chart.
+    needs: [release-bump]
+    if: |
+      !failure() && !cancelled() &&
+      needs.release-bump.outputs.migrations_version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+      actions: write
+      id-token: write   # cosign keyless via GitHub OIDC
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+      - uses: goabonga/multicz-action@95e90628797bc7dec0d2ad7d9abc6278f3465ed2  # v1
+      - uses: ./.github/actions/publish-image
+        with:
+          component: migrations
+          version: ${{ needs.release-bump.outputs.migrations_version }}
+          owner: ${{ needs.release-bump.outputs.owner }}
+          repo: ${{ needs.release-bump.outputs.repo }}
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+      - name: gh release create migrations-v${{ needs.release-bump.outputs.migrations_version }}
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="migrations-v${{ needs.release-bump.outputs.migrations_version }}"
+          multicz release-notes --tag "$TAG" \
+            | gh release create "$TAG" --title "$TAG" --notes-file -
+      - name: Delete consumed CI artifacts
+        uses: geekyeggo/delete-artifact@176a747ab7e287e3ff4787bf8a148716375ca118  # v6
+        with:
+          name: |
+            migrations-image
+            migrations-sbom
+          failOnError: false
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: release-migrations
+          body: |
+            Pushed `ghcr.io/${{ needs.release-bump.outputs.owner }}/${{ needs.release-bump.outputs.repo }}-migrations:${{ needs.release-bump.outputs.migrations_version }}` (+ `latest`),
+            cut GitHub Release `migrations-v${{ needs.release-bump.outputs.migrations_version }}`.
+            CI artifacts (`migrations-image`, `migrations-sbom`) deleted post-publish.
+
+  release-chart-migrations:
+    needs: [release-bump]
+    if: |
+      !failure() && !cancelled() &&
+      needs.release-bump.outputs.chart_migrations_version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+      - uses: goabonga/multicz-action@95e90628797bc7dec0d2ad7d9abc6278f3465ed2  # v1
+      - uses: ./.github/actions/publish-chart
+        with:
+          component: migrations
+          owner: ${{ needs.release-bump.outputs.owner }}
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+      - name: gh release create chart-migrations-v${{ needs.release-bump.outputs.chart_migrations_version }}
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="chart-migrations-v${{ needs.release-bump.outputs.chart_migrations_version }}"
+          multicz release-notes --tag "$TAG" \
+            | gh release create "$TAG" --title "$TAG" --notes-file -
+      - name: Delete consumed CI artifact
+        uses: geekyeggo/delete-artifact@176a747ab7e287e3ff4787bf8a148716375ca118  # v6
+        with:
+          name: chart-migrations-tgz
+          failOnError: false
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: release-chart-migrations
+          body: |
+            Pushed `oci://ghcr.io/${{ needs.release-bump.outputs.owner }}/charts/${{ needs.release-bump.outputs.repo }}-migrations:${{ needs.release-bump.outputs.chart_migrations_version }}`,
+            cut GitHub Release `chart-migrations-v${{ needs.release-bump.outputs.chart_migrations_version }}`.
+            CI artifact (`chart-migrations-tgz`) deleted post-publish.
 
   release-docs:
     # Consume the already-built `docs-site` artifact (produced by

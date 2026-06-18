@@ -1,0 +1,39 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Per-component grype allowlist for the migration image (auto-discovered when
+# grype runs with this directory as CWD — see `working-directory:
+# packages/bdd/migrations` on the migrations-grype step in ci.yml). Same
+# Chainguard base as api / job / ssr, so the same base-image apk CVEs apply.
+#
+# Every entry pins package.name + package.version and carries a `# expires:`
+# marker (read by the weekly grype-allowlist-sweep workflow). The version pin
+# auto-resolves each ignore the moment the base image ships a patched apk.
+
+ignore:
+  # expires: 2026-06-27
+  - vulnerability: CVE-2026-7210
+    reason: "Upstream Chainguard python apk on the pinned base; awaiting patched build."
+    package:
+      name: python-3.14
+      version: 3.14.6-r0
+      type: apk
+
+  # expires: 2026-06-27
+  - vulnerability: CVE-2026-9669
+    reason: "Upstream Chainguard python apk on the pinned base; awaiting patched build."
+    package:
+      name: python-3.14
+      version: 3.14.6-r0
+      type: apk
+
+  # CVE-2026-44432 (High) — Chainguard py3-pip-wheel apk on the pinned base.
+  # Fixed upstream in 26.1.2-r1; the version pin below auto-resolves this
+  # ignore once the base image is bumped to ship it.
+  # expires: 2026-07-02
+  - vulnerability: CVE-2026-44432
+    reason: "Chainguard py3-pip-wheel apk on the pinned base; fixed in 26.1.2-r1, pending a base-image bump."
+    package:
+      name: py3-pip-wheel
+      version: 26.1.2-r0
+      type: apk
