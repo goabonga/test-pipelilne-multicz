@@ -1,0 +1,23 @@
+[project]
+name = "shomer-database"
+version = "0.0.0"
+description = "Shomer database library: SQLAlchemy models and an injectable connector (postgres / mysql / mssql). No migration tooling — that lives in shomer-migrations."
+requires-python = ">=3.11"
+# Runtime dependency for consumers (api / job): models + connector only.
+dependencies = [
+    "sqlalchemy>=2.0",
+]
+
+# Database drivers — install only the one(s) you connect to:
+#   uv pip install "shomer-database[postgres]"   (or [mysql] / [mssql])
+[project.optional-dependencies]
+postgres = ["psycopg[binary]>=3.2"]
+mysql = ["pymysql>=1.1"]
+mssql = ["pyodbc>=5.1"]
+
+[build-system]
+requires = ["hatchling>=1.21"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/shomer_database"]
