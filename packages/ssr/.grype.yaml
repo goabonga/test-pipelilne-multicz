@@ -43,3 +43,15 @@ ignore:
       name: python-3.14
       version: 3.14.6-r0
       type: apk
+
+  # CVE-2026-44432 (High) — Chainguard py3-pip-wheel apk on the pinned base.
+  # Fixed upstream in 26.1.2-r1; the version pin below auto-resolves this
+  # ignore the moment the base image is bumped to ship it (Dependabot /
+  # grype-allowlist-sweep). Short expiry to force that bump.
+  # expires: 2026-07-02
+  - vulnerability: CVE-2026-44432
+    reason: "Chainguard py3-pip-wheel apk on the pinned base; fixed in 26.1.2-r1, pending a base-image bump."
+    package:
+      name: py3-pip-wheel
+      version: 26.1.2-r0
+      type: apk
