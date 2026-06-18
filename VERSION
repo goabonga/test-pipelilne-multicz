@@ -1,9 +1,12 @@
 api=0.2.3
 job=1.0.2
 cli=0.1.2
+database=0.0.0
+migrations=0.0.0
 ssr=1.0.5
 web=1.1.2
 chart-api=1.0.6
 chart-job=1.0.2
 chart-ssr=1.0.5
+chart-migrations=0.0.0
 docs=1.0.2

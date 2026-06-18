@@ -43,6 +43,9 @@ mirrors    = [
     { file = "packages/api/chart/Chart.yaml", key = "appVersion" },
 ]
 changelog  = "packages/api/CHANGELOG.md"
+# api consumes the shomer-database library — a database bump cascades a
+# patch here so a fresh image ships with the updated models/connector.
+depends_on = ["database"]
 post_bump  = ["uv lock"]
 
 [[components.api.writers]]
@@ -78,6 +81,9 @@ mirrors    = [
     { file = "packages/job/chart/Chart.yaml", key = "appVersion" },
 ]
 changelog  = "packages/job/CHANGELOG.md"
+# job consumes the shomer-database library — a database bump cascades a
+# patch here so a fresh image ships with the updated models/connector.
+depends_on = ["database"]
 post_bump  = ["uv lock"]
 
 [[components.job.writers]]
@@ -187,6 +193,65 @@ ref  = "shomer-cli=={version}"
 type = "debian"
 ref  = "shomer-cli_{version}-1_all.deb"
 
+# `database` — Python library: SQLAlchemy models + injectable connector
+# (postgres / mysql / mssql). Consumed by api / job; carries NO migration
+# tooling. Pure wheel, no release artifact (add a `pypi` one if published).
+[components.database]
+paths      = ["packages/bdd/database/**"]
+bump_files = [
+    { file = "packages/bdd/database/pyproject.toml", key = "project.version" },
+    { file = "packages/bdd/database/src/shomer_database/__init__.py", key = 'regex:^__version__\s*=\s*"([^"]+)"' },
+    { file = "VERSION", key = 'regex:^database=(.+)$' },
+    { file = "zensical.toml", key = "project.extra.versions.database" },
+]
+changelog  = "packages/bdd/database/CHANGELOG.md"
+post_bump  = ["uv lock"]
+
+# `migrations` — Alembic revisions + runner, shipped as the migration image.
+# Depends on `database` for the model metadata. appVersion mirrors into the
+# chart-migrations Helm chart (cascade like api -> chart-api).
+[components.migrations]
+paths      = [
+    "packages/bdd/migrations/src/**",
+    "packages/bdd/migrations/pyproject.toml",
+    "packages/bdd/migrations/Dockerfile",
+    "packages/bdd/migrations/alembic.ini",
+]
+bump_files = [
+    { file = "packages/bdd/migrations/pyproject.toml", key = "project.version" },
+    { file = "packages/bdd/migrations/src/shomer_migrations/__init__.py", key = 'regex:^__version__\s*=\s*"([^"]+)"' },
+    { file = "VERSION", key = 'regex:^migrations=(.+)$' },
+    { file = "zensical.toml", key = "project.extra.versions.migrations" },
+]
+mirrors    = [
+    { file = "packages/bdd/migrations/chart/Chart.yaml", key = "appVersion" },
+]
+changelog  = "packages/bdd/migrations/CHANGELOG.md"
+# migrations imports shomer_database (models metadata) — a database bump
+# cascades a patch so the migration image rebuilds with the new models.
+depends_on = ["database"]
+post_bump  = ["uv lock"]
+
+[[components.migrations.artifacts]]
+type = "docker"
+ref  = "ghcr.io/goabonga/shomer-migrations:{version}"
+
+# `chart-migrations` — Helm chart deploying the migration Job. Bumps on its own
+# template changes and when `migrations` ships a new image via the appVersion
+# mirror cascade.
+[components.chart-migrations]
+paths      = ["packages/bdd/migrations/chart/**"]
+bump_files = [
+    { file = "packages/bdd/migrations/chart/Chart.yaml", key = "version" },
+    { file = "VERSION", key = 'regex:^chart-migrations=(.+)$' },
+    { file = "zensical.toml", key = "project.extra.versions.chart_migrations" },
+]
+changelog  = "packages/bdd/migrations/chart/CHANGELOG.md"
+
+[[components.chart-migrations.artifacts]]
+type = "helm"
+ref  = "shomer-migrations-{version}.tgz"
+
 [components.chart-api]
 paths      = ["packages/api/chart/**"]
 bump_files = [
@@ -244,7 +309,7 @@ bump_files = [
 # all means any bump cascades a `docs` patch — regenerating the site so
 # docs/versions.md ships the fresh numbers.
 depends_on = [
-    "api", "job", "cli", "ssr", "web",
-    "chart-api", "chart-job", "chart-ssr",
+    "api", "job", "cli", "database", "migrations", "ssr", "web",
+    "chart-api", "chart-job", "chart-ssr", "chart-migrations",
 ]
 bump_rules = { docs = "patch" }

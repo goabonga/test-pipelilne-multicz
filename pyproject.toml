@@ -5,17 +5,21 @@ description = "Shomer monorepo (api, job, cli) — uv workspace root."
 requires-python = ">=3.11"
 
 [tool.uv.workspace]
-members = ["packages/*"]
+# `packages/bdd` groups two packages (database + migrations), hence the
+# nested glob; the grouping dir itself is not a package, so it is excluded.
+members = ["packages/*", "packages/bdd/*"]
 # `web` is a Node project (TS / CSS / Jinja templates that
 # build into packages/ssr/src/shomer_ssr/{static,templates}/). uv
 # should ignore it — it has no pyproject.toml.
-exclude = ["packages/web"]
+exclude = ["packages/web", "packages/bdd"]
 
 [tool.uv.sources]
 shomer-api = { workspace = true }
 shomer-job = { workspace = true }
 shomer-cli = { workspace = true }
 shomer-ssr = { workspace = true }
+shomer-database = { workspace = true }
+shomer-migrations = { workspace = true }
 
 [dependency-groups]
 dev = [
@@ -49,5 +53,7 @@ testpaths = [
     "packages/job/tests",
     "packages/cli/tests",
     "packages/ssr/tests",
+    "packages/bdd/database/tests",
+    "packages/bdd/migrations/tests",
 ]
 addopts = "-q"

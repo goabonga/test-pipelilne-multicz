@@ -33,11 +33,14 @@ nav = [
 api       = "0.2.3"
 job       = "1.0.2"
 cli       = "0.1.2"
+database  = "0.0.0"
+migrations = "0.0.0"
 ssr       = "1.0.5"
 web       = "1.1.2"
 chart_api = "1.0.6"
 chart_job = "1.0.2"
 chart_ssr = "1.0.5"
+chart_migrations = "0.0.0"
 docs      = "1.0.2"
 
 [project.theme]
