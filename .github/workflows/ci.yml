@@ -323,8 +323,8 @@ jobs:
       - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
         with: { python-version: "3.12" }
       - run: uv sync --frozen --all-packages
-      - name: Pytest — api
-        run: uv run pytest packages/api/tests -q
+      - name: Pytest + coverage — api
+        run: uv run --with pytest-cov pytest packages/api/tests --cov=shomer_api --cov-report=term-missing --cov-fail-under=100 -q
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
@@ -608,8 +608,8 @@ jobs:
       - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
         with: { python-version: "3.12" }
       - run: uv sync --frozen --all-packages
-      - name: Pytest — job
-        run: uv run pytest packages/job/tests -q
+      - name: Pytest + coverage — job
+        run: uv run --with pytest-cov pytest packages/job/tests --cov=shomer_job --cov-report=term-missing --cov-fail-under=100 -q
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
@@ -874,8 +874,8 @@ jobs:
       - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
         with: { python-version: "3.12" }
       - run: uv sync --frozen --all-packages
-      - name: Pytest — ssr
-        run: uv run pytest packages/ssr/tests -q
+      - name: Pytest + coverage — ssr
+        run: uv run --with pytest-cov pytest packages/ssr/tests --cov=shomer_ssr --cov-report=term-missing --cov-fail-under=100 -q
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
@@ -1137,8 +1137,8 @@ jobs:
       - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
         with: { python-version: "3.12" }
       - run: uv sync --frozen --all-packages
-      - name: Pytest — cli
-        run: uv run pytest packages/cli/tests -q
+      - name: Pytest + coverage — cli
+        run: uv run --with pytest-cov pytest packages/cli/tests --cov=shomer_cli --cov-report=term-missing --cov-fail-under=100 -q
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
@@ -1298,8 +1298,8 @@ jobs:
       - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
         with: { python-version: "3.12" }
       - run: uv sync --frozen --all-packages
-      - name: Pytest — database
-        run: uv run pytest packages/bdd/database/tests -q
+      - name: Pytest + coverage — database
+        run: uv run --with pytest-cov pytest packages/bdd/database/tests --cov=shomer_database --cov-report=term-missing --cov-fail-under=100 -q
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
@@ -1403,8 +1403,8 @@ jobs:
       - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
         with: { python-version: "3.12" }
       - run: uv sync --frozen --all-packages
-      - name: Pytest — migrations
-        run: uv run pytest packages/bdd/migrations/tests -q
+      - name: Pytest + coverage — migrations
+        run: uv run --with pytest-cov pytest packages/bdd/migrations/tests --cov=shomer_migrations --cov-report=term-missing --cov-fail-under=100 -q
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
