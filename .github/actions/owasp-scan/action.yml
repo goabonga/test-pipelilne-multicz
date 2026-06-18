@@ -63,6 +63,12 @@ runs:
 
     - uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2  # v5
 
+    # Postgres + `alembic upgrade head` before the app comes up.
+    - uses: ./.github/actions/db-stack
+      with:
+        cluster_name: shomer-${{ inputs.component }}
+        token: ${{ inputs.token }}
+
     - name: helm install api / job / ssr (each --wait)
       shell: bash
       run: |

@@ -1222,6 +1222,268 @@ jobs:
           title: cli-deb-validate
           body: 'lintian + `tests/install/test_cli.py` (no systemd unit on the cli package).'
 
+  # ─────────────────────── database (shomer-database wheel) ───────────────────────
+
+  database-lint:
+    needs: [detect, headers]
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'database')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
+      - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
+        with: { python-version: "3.12" }
+      - run: uv sync --frozen --all-packages
+      - name: Ruff lint — database
+        run: uv run ruff check packages/bdd/database
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: database-lint
+          body: '`ruff check` on `packages/bdd/database/`.'
+
+  database-format:
+    needs: [detect, headers]
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'database')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
+      - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
+        with: { python-version: "3.12" }
+      - run: uv sync --frozen --all-packages
+      - name: Ruff format check — database
+        run: uv run ruff format --check packages/bdd/database
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: database-format
+          body: '`ruff format --check` on `packages/bdd/database/`.'
+
+  database-typecheck:
+    needs: [detect, headers]
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'database')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
+      - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
+        with: { python-version: "3.12" }
+      - run: uv sync --frozen --all-packages
+      - name: Mypy --strict — database
+        run: uv run --with mypy mypy --strict packages/bdd/database/src
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: database-typecheck
+          body: '`mypy --strict` on `packages/bdd/database/src/`.'
+
+  database-test:
+    needs: [database-lint, database-format, database-typecheck]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
+      - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
+        with: { python-version: "3.12" }
+      - run: uv sync --frozen --all-packages
+      - name: Pytest — database
+        run: uv run pytest packages/bdd/database/tests -q
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: database-test
+          body: '`pytest` on `packages/bdd/database/tests/`.'
+
+  database-bandit:
+    needs: [database-test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
+      - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
+        with: { python-version: "3.12" }
+      - run: uv tool install bandit
+      - name: Bandit — database
+        run: bandit -r packages/bdd/database/src
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: database-bandit
+          body: '`bandit -r` on `packages/bdd/database/src/`.'
+
+  # ─────────────────────── migrations (shomer-migrations image) ───────────────────────
+
+  migrations-lint:
+    needs: [detect, headers]
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'migrations')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
+      - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
+        with: { python-version: "3.12" }
+      - run: uv sync --frozen --all-packages
+      - name: Ruff lint — migrations
+        run: uv run ruff check packages/bdd/migrations
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: migrations-lint
+          body: '`ruff check` on `packages/bdd/migrations/`.'
+
+  migrations-format:
+    needs: [detect, headers]
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'migrations')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
+      - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
+        with: { python-version: "3.12" }
+      - run: uv sync --frozen --all-packages
+      - name: Ruff format check — migrations
+        run: uv run ruff format --check packages/bdd/migrations
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: migrations-format
+          body: '`ruff format --check` on `packages/bdd/migrations/`.'
+
+  migrations-typecheck:
+    needs: [detect, headers]
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'migrations')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
+      - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
+        with: { python-version: "3.12" }
+      - run: uv sync --frozen --all-packages
+      - name: Mypy --strict — migrations
+        run: uv run --with mypy mypy --strict packages/bdd/migrations/src
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: migrations-typecheck
+          body: '`mypy --strict` on `packages/bdd/migrations/src/`.'
+
+  migrations-test:
+    needs: [migrations-lint, migrations-format, migrations-typecheck]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
+      - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
+        with: { python-version: "3.12" }
+      - run: uv sync --frozen --all-packages
+      - name: Pytest — migrations
+        run: uv run pytest packages/bdd/migrations/tests -q
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: migrations-test
+          body: '`pytest` on `packages/bdd/migrations/tests/`.'
+
+  migrations-bandit:
+    needs: [migrations-test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
+      - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
+        with: { python-version: "3.12" }
+      - run: uv tool install bandit
+      - name: Bandit — migrations
+        run: bandit -r packages/bdd/migrations/src
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: migrations-bandit
+          body: '`bandit -r` on `packages/bdd/migrations/src/`.'
+
+  migrations-hadolint:
+    # Dockerfile lint for the migration-runner image.
+    needs: [detect, headers]
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'migrations')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: hadolint/hadolint-action@2332a7b74a6de0dda2e2221d575162eba76ba5e5  # v3.3.0
+        with:
+          dockerfile: packages/bdd/migrations/Dockerfile
+          format: tty
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: migrations-hadolint
+          body: '`hadolint` on `packages/bdd/migrations/Dockerfile`.'
+
+  migrations-container:
+    # Build the migration-runner image (shomer-migrations + driver). Consumed
+    # by the e2e / owasp db-stack (loaded into kind to run alembic upgrade head)
+    # and by release-migrations. Build context is packages/bdd — the image
+    # needs the sibling shomer-database.
+    needs: [migrations-bandit, audit, migrations-hadolint, detect]
+    if: '!failure() && !cancelled() && contains(fromJson(needs.detect.outputs.changed).changed, ''migrations'')'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
+      - uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5  # v4
+      - name: Build migrations image
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf  # v7
+        with:
+          context: packages/bdd
+          file: packages/bdd/migrations/Dockerfile
+          load: true
+          tags: migrations:ci
+          cache-from: type=gha,scope=migrations
+          cache-to: type=gha,mode=max,scope=migrations
+      - name: Save image tarball
+        run: docker save migrations:ci -o /tmp/migrations.tar
+      - uses: actions/upload-artifact@v7
+        with: { name: migrations-image, path: /tmp/migrations.tar, retention-days: 1 }
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: migrations-container
+          body: 'Built `migrations:ci` (saved to artifact `migrations-image`).'
+
   # ─────────────────────── audit (workspace-wide) ───────────────────────
 
   audit:
@@ -1240,7 +1502,7 @@ jobs:
     # closure produces an identical result. The fresh-CVE catch is
     # still covered weekly by grype-allowlist-sweep on each published
     # image.
-    needs: [api-test, job-test, ssr-test, cli-test, detect]
+    needs: [api-test, job-test, ssr-test, cli-test, database-test, migrations-test, detect]
     # The earlier `needs.detect.outputs.changed != '[]'` gate was a
     # category error: `detect.outputs.changed` is the FULL multicz
     # JSON object (`{"changed": [...], "unchanged": [...]}`), not
@@ -1256,7 +1518,9 @@ jobs:
       (contains(fromJson(needs.detect.outputs.changed).changed, 'api') ||
        contains(fromJson(needs.detect.outputs.changed).changed, 'job') ||
        contains(fromJson(needs.detect.outputs.changed).changed, 'ssr') ||
-       contains(fromJson(needs.detect.outputs.changed).changed, 'cli'))
+       contains(fromJson(needs.detect.outputs.changed).changed, 'cli') ||
+       contains(fromJson(needs.detect.outputs.changed).changed, 'database') ||
+       contains(fromJson(needs.detect.outputs.changed).changed, 'migrations'))
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -1509,6 +1773,54 @@ jobs:
           title: chart-ssr-package
           body: '`helm package` (bump-previewed version + rewritten name) → `chart-ssr-tgz` artifact.'
 
+  chart-migrations-lint:
+    needs: [detect, headers]
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'chart-migrations')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
+      - uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2  # v5
+      - name: helm lint — chart-migrations
+        run: helm lint packages/bdd/migrations/chart
+      - name: helm template smoke — chart-migrations
+        run: helm template ci packages/bdd/migrations/chart > /tmp/chart-migrations.yaml
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: chart-migrations-lint
+          body: '`helm lint` + `helm template` smoke on `packages/bdd/migrations/chart/`.'
+
+  chart-migrations-checkov:
+    needs: [chart-migrations-lint]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
+      - uses: bridgecrewio/checkov-action@fa9edf8f0a491c59a924ea6accd5bdcf07752cff  # v12
+        with:
+          directory: packages/bdd/migrations/chart
+          framework: helm
+          quiet: true
+          output_format: cli
+          soft_fail: false
+          # CKV_K8S_21: namespace is deploy-time. CKV_K8S_43: digest pinning
+          # is incompatible with the :VERSION tag scheme (cosign instead).
+          # CKV_K8S_8 / CKV_K8S_9: liveness/readiness probes are meaningless on
+          # a run-to-completion migration Job.
+          skip_check: CKV_K8S_21,CKV_K8S_43,CKV_K8S_8,CKV_K8S_9
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: chart-migrations-checkov
+          body: '`checkov --framework helm` static security scan on `packages/bdd/migrations/chart/`.'
+
   # ─────────────────────── OWASP baseline (kind + ZAP, per HTTP service) ───────────────────────
 
   owasp-api:
@@ -1534,6 +1846,8 @@ jobs:
       - chart-api-checkov
       - chart-job-checkov
       - chart-ssr-checkov
+      - migrations-container
+      - chart-migrations-checkov
       - e2e-api
     # Run when any component that feeds the deployed stack is in
     # changed — semantics are direct ("we have something new to
@@ -1551,7 +1865,9 @@ jobs:
         contains(fromJson(needs.detect.outputs.changed).changed, 'web') ||
         contains(fromJson(needs.detect.outputs.changed).changed, 'chart-api') ||
         contains(fromJson(needs.detect.outputs.changed).changed, 'chart-job') ||
-        contains(fromJson(needs.detect.outputs.changed).changed, 'chart-ssr')
+        contains(fromJson(needs.detect.outputs.changed).changed, 'chart-ssr') ||
+        contains(fromJson(needs.detect.outputs.changed).changed, 'migrations') ||
+        contains(fromJson(needs.detect.outputs.changed).changed, 'chart-migrations')
       )
     runs-on: ubuntu-latest
     permissions:
@@ -1588,6 +1904,8 @@ jobs:
       - chart-api-checkov
       - chart-job-checkov
       - chart-ssr-checkov
+      - migrations-container
+      - chart-migrations-checkov
       - e2e-ssr
     # Run when any component that feeds the deployed stack is in
     # changed — semantics are direct ("we have something new to
@@ -1605,7 +1923,9 @@ jobs:
         contains(fromJson(needs.detect.outputs.changed).changed, 'web') ||
         contains(fromJson(needs.detect.outputs.changed).changed, 'chart-api') ||
         contains(fromJson(needs.detect.outputs.changed).changed, 'chart-job') ||
-        contains(fromJson(needs.detect.outputs.changed).changed, 'chart-ssr')
+        contains(fromJson(needs.detect.outputs.changed).changed, 'chart-ssr') ||
+        contains(fromJson(needs.detect.outputs.changed).changed, 'migrations') ||
+        contains(fromJson(needs.detect.outputs.changed).changed, 'chart-migrations')
       )
     runs-on: ubuntu-latest
     permissions:
@@ -1640,6 +1960,8 @@ jobs:
       - chart-api-checkov
       - chart-job-checkov
       - chart-ssr-checkov
+      - migrations-container
+      - chart-migrations-checkov
     # Run when any component that feeds the deployed stack is in
     # changed — semantics are direct ("we have something new to
     # smoke") rather than indirect ("a downstream validation
@@ -1656,7 +1978,9 @@ jobs:
         contains(fromJson(needs.detect.outputs.changed).changed, 'web') ||
         contains(fromJson(needs.detect.outputs.changed).changed, 'chart-api') ||
         contains(fromJson(needs.detect.outputs.changed).changed, 'chart-job') ||
-        contains(fromJson(needs.detect.outputs.changed).changed, 'chart-ssr')
+        contains(fromJson(needs.detect.outputs.changed).changed, 'chart-ssr') ||
+        contains(fromJson(needs.detect.outputs.changed).changed, 'migrations') ||
+        contains(fromJson(needs.detect.outputs.changed).changed, 'chart-migrations')
       )
     runs-on: ubuntu-latest
     permissions:
@@ -1701,6 +2025,8 @@ jobs:
       - chart-api-checkov
       - chart-job-checkov
       - chart-ssr-checkov
+      - migrations-container
+      - chart-migrations-checkov
     # Run when any component that feeds the deployed stack is in
     # changed — semantics are direct ("we have something new to
     # smoke") rather than indirect ("a downstream validation
@@ -1717,7 +2043,9 @@ jobs:
         contains(fromJson(needs.detect.outputs.changed).changed, 'web') ||
         contains(fromJson(needs.detect.outputs.changed).changed, 'chart-api') ||
         contains(fromJson(needs.detect.outputs.changed).changed, 'chart-job') ||
-        contains(fromJson(needs.detect.outputs.changed).changed, 'chart-ssr')
+        contains(fromJson(needs.detect.outputs.changed).changed, 'chart-ssr') ||
+        contains(fromJson(needs.detect.outputs.changed).changed, 'migrations') ||
+        contains(fromJson(needs.detect.outputs.changed).changed, 'chart-migrations')
       )
     runs-on: ubuntu-latest
     permissions:

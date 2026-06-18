@@ -1,0 +1,100 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+name: db stack
+description: |
+  Inside an already-created kind cluster, deploy PostgreSQL 17 and run the
+  database migration (`alembic upgrade head` via the chart-migrations Job)
+  before the application charts are installed.
+
+  The migration image resolves like the app images: the `migrations-image`
+  artifact (uploaded by `migrations-container` when migrations changed) is
+  reused when present; otherwise the released image is pulled at the version
+  reported by `multicz get migrations` (the last released version on an
+  unchanged component). As a last resort — before migrations has ever been
+  released — it is built from source so the stack still comes up.
+
+  REQUIRES: the caller has already created the kind cluster, run
+  `azure/setup-helm`, `bump-preview` (so `multicz` is on PATH), and checked
+  out the repo.
+
+inputs:
+  cluster_name:
+    required: true
+    description: Name of the existing kind cluster to load images into.
+  token:
+    required: true
+    description: Token with `actions:read` (artifact-existence probe).
+
+runs:
+  using: composite
+  steps:
+    - id: probe
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+      run: |
+        set -euo pipefail
+        if gh api \
+             "/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts?per_page=100" \
+             --jq '.artifacts[].name' 2>/dev/null \
+             | grep -qx "migrations-image"; then
+          echo "[db-stack] migrations-image artifact present"
+          echo "exists=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "[db-stack] migrations-image absent; building inline"
+          echo "exists=false" >> "$GITHUB_OUTPUT"
+        fi
+
+    - if: steps.probe.outputs.exists == 'true'
+      uses: actions/download-artifact@v8
+      with:
+        name: migrations-image
+        path: /tmp
+
+    - if: steps.probe.outputs.exists != 'true'
+      name: Pull released migration image (multicz get migrations), else build
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+      run: |
+        set -euo pipefail
+        OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+        REPO="${{ github.event.repository.name }}"
+        VERSION=$(multicz get migrations)
+        IMAGE="ghcr.io/${OWNER}/${REPO}-migrations:${VERSION}"
+        echo "[db-stack] no artifact; trying released image ${IMAGE}"
+        echo "${{ inputs.token }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+        if docker pull "${IMAGE}"; then
+          docker tag "${IMAGE}" migrations:ci
+        else
+          echo "[db-stack] ${IMAGE} unavailable (not released yet) — building from source"
+          docker build -f packages/bdd/migrations/Dockerfile -t migrations:ci packages/bdd
+        fi
+        docker save migrations:ci -o /tmp/migrations.tar
+
+    - name: Load postgres:17 + migrations into kind
+      shell: bash
+      run: |
+        set -euo pipefail
+        docker pull postgres:17
+        kind load docker-image postgres:17 --name ${{ inputs.cluster_name }}
+        kind load image-archive /tmp/migrations.tar --name ${{ inputs.cluster_name }}
+
+    - name: Deploy postgres + wait ready
+      shell: bash
+      run: |
+        set -euo pipefail
+        kubectl apply -f "${{ github.action_path }}/postgres.yaml"
+        kubectl rollout status deploy/postgres --timeout=120s
+
+    - name: Run migration (alembic upgrade head, --wait)
+      shell: bash
+      run: |
+        set -euo pipefail
+        helm install migrations packages/bdd/migrations/chart \
+          --set image.repository=migrations \
+          --set image.tag=ci \
+          --set image.pullPolicy=IfNotPresent \
+          --set database.existingSecret=shomer-db \
+          --wait --timeout 2m

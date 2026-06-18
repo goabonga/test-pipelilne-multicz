@@ -1,0 +1,62 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+#
+# Ephemeral PostgreSQL 17 for the e2e / owasp kind clusters. Throwaway
+# (emptyDir, no PVC) — the cluster is torn down at the end of the job. The
+# Secret holds the SQLAlchemy URL consumed by the migration Job (and, once
+# wired, the app charts) via database.existingSecret=shomer-db.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: shomer-db
+type: Opaque
+stringData:
+  SHOMER_BDD_URL: postgresql+psycopg://shomer:shomer@postgres:5432/shomer
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  labels:
+    app: postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:17
+          imagePullPolicy: IfNotPresent
+          env:
+            - { name: POSTGRES_USER, value: shomer }
+            - { name: POSTGRES_PASSWORD, value: shomer }
+            - { name: POSTGRES_DB, value: shomer }
+            - { name: PGDATA, value: /var/lib/postgresql/data/pgdata }
+          ports:
+            - { containerPort: 5432, name: postgres }
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "shomer", "-d", "shomer"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/postgresql/data }
+      volumes:
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+spec:
+  selector:
+    app: postgres
+  ports:
+    - { port: 5432, targetPort: postgres }
