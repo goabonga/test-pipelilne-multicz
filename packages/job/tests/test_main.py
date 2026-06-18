@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Chris <goabonga@pm.me>
 
+import signal
+
 import pytest
 
 from shomer_job import main
@@ -42,3 +44,17 @@ def test_run_uses_injected_sleep_interval(monkeypatch: pytest.MonkeyPatch) -> No
             max_iterations=2,
         )
     assert sleeps == [2.5]
+
+
+def test_run_stops_on_signal(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The injected sleep fires the registered SIGTERM handler, exercising
+    the _on_signal callback (stop = True) and the stop-driven loop exit."""
+    monkeypatch.setattr(main, "tick", lambda _i: None)
+
+    def fake_sleep(_seconds: float) -> None:
+        handler = signal.getsignal(signal.SIGTERM)
+        handler(signal.SIGTERM, None)  # type: ignore[operator]
+
+    with pytest.raises(SystemExit) as exc:
+        main.run(interval_seconds=0.0, sleep=fake_sleep)
+    assert exc.value.code == 0
