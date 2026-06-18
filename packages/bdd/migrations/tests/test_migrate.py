@@ -23,7 +23,9 @@ def test_config_points_at_packaged_migrations() -> None:
 
 def test_upgrade_invokes_alembic(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[tuple[object, str]] = []
-    monkeypatch.setattr(migrate.command, "upgrade", lambda cfg, rev: calls.append((cfg, rev)))
+    monkeypatch.setattr(
+        migrate.command, "upgrade", lambda cfg, rev: calls.append((cfg, rev))
+    )
     migrate.upgrade("head")
     assert len(calls) == 1
     cfg, rev = calls[0]

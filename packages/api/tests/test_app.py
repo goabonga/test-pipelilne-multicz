@@ -40,7 +40,8 @@ def test_run_invokes_uvicorn(monkeypatch: pytest.MonkeyPatch) -> None:
 
     calls: list[dict[str, object]] = []
     monkeypatch.setattr(
-        "uvicorn.run", lambda *args, **kwargs: calls.append({"args": args, "kwargs": kwargs})
+        "uvicorn.run",
+        lambda *args, **kwargs: calls.append({"args": args, "kwargs": kwargs}),
     )
     appmod.run()
     assert calls
