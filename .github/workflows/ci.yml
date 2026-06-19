@@ -600,6 +600,19 @@ jobs:
   job-test:
     needs: [job-lint, job-format, job-typecheck]
     runs-on: ubuntu-latest
+    # Redis broker / result backend for the Celery worker. The unit
+    # suite runs tasks eagerly (no broker needed), but the service is
+    # here so integration-style checks can reach a live broker.
+    services:
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v6
         with:
@@ -609,6 +622,8 @@ jobs:
         with: { python-version: "3.12" }
       - run: uv sync --frozen --all-packages
       - name: Pytest + coverage — job
+        env:
+          REDIS_URL: redis://localhost:6379/0
         run: uv run --with pytest-cov pytest packages/job/tests --cov=shomer_job --cov-report=term-missing --cov-fail-under=100 -q
       - name: Summary
         if: always()
