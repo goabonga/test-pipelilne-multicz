@@ -19,7 +19,7 @@ from __future__ import annotations
 import logging
 import os
 
-from celery import Celery
+from celery import Celery  # type: ignore[import-untyped]
 
 from . import __version__
 
@@ -39,7 +39,7 @@ app.conf.beat_schedule = {
 }
 
 
-@app.task(name="shomer_job.tick")
+@app.task(name="shomer_job.tick")  # type: ignore[untyped-decorator]
 def tick() -> str:
     """One maintenance pass. Replace with real work.
 
