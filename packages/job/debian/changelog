@@ -1,3 +1,10 @@
+shomer-job (1.1.0-1) unstable; urgency=medium
+
+  * feat(job): Run as a celery worker backed by redis
+  * fix(job): Satisfy mypy --strict on the celery worker
+
+ -- Chris <goabonga@pm.me>  Fri, 19 Jun 2026 23:16:48 +0000
+
 shomer-job (1.0.3-1) unstable; urgency=medium
 
   * No notable changes.

@@ -3,6 +3,22 @@
 All notable changes across components, aggregated per release.
 Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
+## 2026-06-19
+
+### Releases
+
+- **chart-job** patch — 1.0.3 → 1.0.4  _(cascade from job 1.1.0)_
+- **docs** patch — 1.0.3 → 1.0.4  _(cascade from job 1.1.0)_
+- **job** minor — 1.0.3 → 1.1.0
+
+### Features
+
+- **job**: run as a celery worker backed by redis (`9403e09`)
+
+### Fixes
+
+- **job**: satisfy mypy --strict on the celery worker (`2afbe4e`)
+
 ## 2026-06-18
 
 ### Releases

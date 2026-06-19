@@ -2,6 +2,16 @@
 
 All notable changes to this component are documented here.
 
+## [1.1.0] - 2026-06-19
+
+### Features
+
+- **job**: run as a celery worker backed by redis (`9403e09`)
+
+### Fixes
+
+- **job**: satisfy mypy --strict on the celery worker (`2afbe4e`)
+
 ## [1.0.3] - 2026-06-18
 
 ### Dependencies

@@ -31,17 +31,17 @@ nav = [
 # as subtraction inside the Jinja `{{ ... }}` macro expression.
 [project.extra.versions]
 api       = "0.2.4"
-job       = "1.0.3"
+job       = "1.1.0"
 cli       = "0.1.2"
 database  = "0.1.0"
 migrations = "0.1.0"
 ssr       = "1.0.5"
 web       = "1.1.2"
 chart_api = "1.0.7"
-chart_job = "1.0.3"
+chart_job = "1.0.4"
 chart_ssr = "1.0.5"
 chart_migrations = "0.1.0"
-docs      = "1.0.3"
+docs      = "1.0.4"
 
 [project.theme]
 variant  = "classic"
