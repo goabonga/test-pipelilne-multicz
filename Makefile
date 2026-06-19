@@ -1,4 +1,4 @@
-.PHONY: help install lint format test header headers-check docs docs-dev \
+.PHONY: help install hooks lint format test header headers-check docs docs-dev \
         release-status release-plan release-validate release-config release-graph \
         release-dry-run release clean
 
@@ -18,6 +18,7 @@ help:
 	@echo ""
 	@echo "Setup:"
 	@echo "  make install         Sync the workspace venv (all packages + dev/doc/favicon groups)"
+	@echo "  make hooks           Install the pre-commit / pre-push git hooks"
 	@echo ""
 	@echo "Quality:"
 	@echo "  make lint            Run ruff check across packages and scripts"
@@ -46,6 +47,11 @@ help:
 # dependency groups, all resolved against uv.lock for reproducibility.
 install:
 	$(UV) sync --all-packages --group dev --group doc --group favicon
+
+# Register the git hooks defined in .pre-commit-config.yaml. Needs the
+# dev group (pre-commit) installed — run `make install` first.
+hooks:
+	$(UV) run pre-commit install --install-hooks -t pre-commit -t pre-push
 
 lint:
 	$(UV) run ruff check packages scripts

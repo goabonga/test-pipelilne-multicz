@@ -25,6 +25,7 @@ shomer-migrations = { workspace = true }
 dev = [
     "pytest>=8.0",
     "ruff>=0.15.15",
+    "pre-commit>=4.0",
 ]
 doc = [
     "zensical>=0.0.45",

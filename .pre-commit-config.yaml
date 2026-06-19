@@ -1,0 +1,49 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Local pre-commit / pre-push gates mirroring the CI "base checks" so a
+# push can't land code that the pipeline will immediately reject. Fast
+# checks (ruff, SPDX headers) run on every commit; mypy --strict runs on
+# push to keep commits snappy while still blocking a broken push.
+#
+# Install once:  make hooks
+#   (or: uv run pre-commit install -t pre-commit -t pre-push)
+
+default_install_hook_types: [pre-commit, pre-push]
+
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff check
+        entry: uv run ruff check packages scripts
+        language: system
+        types_or: [python, pyi]
+        pass_filenames: false
+        stages: [pre-commit, pre-push]
+
+      - id: ruff-format
+        name: ruff format --check
+        entry: uv run ruff format --check packages scripts
+        language: system
+        types_or: [python, pyi]
+        pass_filenames: false
+        stages: [pre-commit, pre-push]
+
+      - id: license-headers
+        name: SPDX license headers
+        entry: bash -c 'uv run python scripts/add_license_header.py --check --path packages && uv run python scripts/add_license_header.py --check --path scripts'
+        language: system
+        types: [python]
+        pass_filenames: false
+        stages: [pre-commit, pre-push]
+
+      # mypy --strict per package — same per-component invocation the CI
+      # *-typecheck jobs use, so a green pre-push means green typecheck.
+      - id: mypy-strict
+        name: mypy --strict (per package)
+        entry: bash -c 'for d in packages/api/src packages/bdd/database/src packages/bdd/migrations/src packages/cli/src packages/job/src packages/ssr/src; do uv run --with mypy mypy --strict "$d" || exit 1; done'
+        language: system
+        types: [python]
+        pass_filenames: false
+        stages: [pre-push]
