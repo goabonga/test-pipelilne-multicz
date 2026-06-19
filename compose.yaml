@@ -16,10 +16,11 @@
 #
 #   api   same shape as ssr, on port 8000.
 #
-#   job   long-running worker, no native --reload. Wrapped in
-#         `watchfiles` (the same rust-backed watcher uvicorn uses
-#         under the hood) so the job process restarts on any
-#         packages/job/src/**/*.py edit, working off the bind mount.
+#   job   long-running Celery worker (Redis broker + result backend),
+#         no native --reload. Wrapped in `watchfiles` (the same
+#         rust-backed watcher uvicorn uses under the hood) so the
+#         worker restarts on any packages/job/src/**/*.py edit, working
+#         off the bind mount. Waits for the `redis` healthcheck.
 #
 #   cli   long-lived `sleep infinity` container that lets a Windows /
 #         macOS dev run `docker compose exec cli shomer …` (or
@@ -30,6 +31,9 @@
 #
 #   postgres  PostgreSQL 17 with a named volume for persistence and a
 #             pg_isready healthcheck.
+#
+#   redis     Redis 7 — Celery broker + result backend for `job`, with
+#             a redis-cli ping healthcheck.
 #
 #   migrate   one-shot `alembic upgrade head` (the shomer-migrations
 #             image). Runs once postgres is healthy; `api` waits for it
@@ -134,6 +138,19 @@ services:
       timeout: 5s
       retries: 10
 
+  # Celery broker + result backend for the `job` worker. A redis-cli
+  # ping healthcheck gates `job` so the worker never starts against a
+  # broker that isn't accepting connections yet.
+  redis:
+    image: redis:7
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   # One-shot migration runner: `alembic upgrade head` against postgres. Built
   # from the real migration image (shomer-migrations + psycopg). api waits for
   # this to complete successfully before it starts.
@@ -200,6 +217,11 @@ services:
     env_file:
       - path: .env
         required: false
+    environment:
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
     # `watchfiles` (rust-backed, the same watcher uvicorn ships with
     # --reload) re-execs the command whenever a .py file under the
     # bind-mounted src dir changes. `--filter python` skips noise from
