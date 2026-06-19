@@ -13,7 +13,13 @@ Homepage: https://github.com/goabonga/shomer
 
 Package: shomer-job
 Architecture: all
-Depends: ${python3:Depends}, ${misc:Depends}
+Depends:
+ ${python3:Depends},
+ ${misc:Depends},
+ python3-celery,
+ python3-redis,
+ redis-server,
 Description: Shomer background job.
- Polling loop running token cleanup and audit replication
- jobs. Ships a systemd unit (shomer-job.service).
+ Celery worker running token cleanup and audit replication tasks,
+ backed by a Redis broker + result backend. Depends on redis-server
+ for a local broker and ships a systemd unit (shomer-job.service).

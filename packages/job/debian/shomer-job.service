@@ -1,7 +1,7 @@
 [Unit]
 Description=Shomer background job
-After=network-online.target
-Wants=network-online.target
+After=network-online.target redis-server.service
+Wants=network-online.target redis-server.service
 
 [Service]
 Type=exec
@@ -9,12 +9,17 @@ ExecStart=/usr/bin/shomer-job
 Restart=on-failure
 RestartSec=2s
 
+# Broker / result backend. Defaults to the local redis-server the
+# package depends on; override via a drop-in to point at managed Redis.
+Environment=REDIS_URL=redis://localhost:6379/0
+
 DynamicUser=yes
 NoNewPrivileges=yes
 PrivateTmp=yes
 PrivateDevices=yes
 PrivateUsers=yes
-PrivateNetwork=yes
+# The worker speaks to Redis over TCP, so it cannot run in a private
+# network namespace; lock it to loopback instead (local redis-server).
 ProtectSystem=strict
 ProtectHome=yes
 ProtectKernelTunables=yes
@@ -30,12 +35,13 @@ MemoryDenyWriteExecute=yes
 RestrictRealtime=yes
 RestrictNamespaces=yes
 RestrictSUIDSGID=yes
-RestrictAddressFamilies=AF_UNIX
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 CapabilityBoundingSet=
 AmbientCapabilities=
 DevicePolicy=closed
 DeviceAllow=
 IPAddressDeny=any
+IPAddressAllow=localhost
 SystemCallArchitectures=native
 SystemCallFilter=@system-service
 SystemCallFilter=~@privileged @resources

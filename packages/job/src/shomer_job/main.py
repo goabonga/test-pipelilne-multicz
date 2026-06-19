@@ -1,66 +1,59 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Chris <goabonga@pm.me>
 
-"""Minimal polling loop.
+"""Shomer background jobs — a Celery worker backed by Redis.
 
-Real implementations would purge expired refresh tokens, replicate
-audit events to a SIEM, etc. The skeleton just ticks once a minute
-with an injectable sleep so tests can drive it without waiting.
+Real work (purging expired refresh tokens, replicating audit events to
+a SIEM, …) is modelled as Celery tasks. Both the broker and the result
+backend are Redis, configured from ``REDIS_URL`` (default
+``redis://localhost:6379/0`` — the docker-compose ``redis`` service and
+the systemd unit both inject it).
+
+``run()`` is the console-script entrypoint: it boots a worker with an
+embedded beat scheduler so the periodic ``tick`` fires without a
+standalone ``celery beat`` process.
 """
 
 from __future__ import annotations
 
 import logging
-import signal
-import sys
-import time
-from collections.abc import Callable
+import os
+
+from celery import Celery
 
 from . import __version__
 
 log = logging.getLogger("shomer.job")
 
+# Broker + result backend. Override REDIS_URL to point at a managed
+# Redis; the systemd unit and docker-compose both set it.
+REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 
-def tick(iteration: int = 0) -> None:
-    """One iteration of the work loop. Replace with real work.
+app = Celery("shomer-job", broker=REDIS_URL, backend=REDIS_URL)
 
-    ``iteration`` is logged so a stuck consumer or a runaway interval
-    is obvious from the structured logs without having to grep the
-    PID's stderr — defaults to 0 to keep direct callers
-    backwards-compatible.
+# Fire `tick` once a minute. Embedded beat (`worker --beat`) drives this
+# in the single-worker skeleton; a real deployment would run a dedicated
+# `celery beat` process instead.
+app.conf.beat_schedule = {
+    "shomer-job-tick": {"task": "shomer_job.tick", "schedule": 60.0},
+}
+
+
+@app.task(name="shomer_job.tick")
+def tick() -> str:
+    """One maintenance pass. Replace with real work.
+
+    Returns a short status string so the Redis result backend has
+    something to store (and tests have something to assert on).
     """
-    log.info("shomer.job tick (v%s, iteration=%d)", __version__, iteration)
+    log.info("shomer.job tick (v%s)", __version__)
+    return f"shomer-job tick ok (v{__version__})"
 
 
-def run(
-    *,
-    interval_seconds: float = 60.0,
-    sleep: Callable[[float], None] = time.sleep,
-    max_iterations: int | None = None,
-) -> None:
+def run() -> None:
     """Console-script entrypoint (``shomer-job``).
 
-    ``max_iterations`` and ``sleep`` are injected so tests can drive
-    the loop deterministically without sleeping.
+    Boots a Celery worker with embedded beat so the periodic schedule
+    above runs without a separate ``celery beat`` process.
     """
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
-    log.info("shomer.job starting (v%s, interval=%ss)", __version__, interval_seconds)
-
-    stop = False
-
-    def _on_signal(signum: int, _frame: object) -> None:
-        nonlocal stop
-        log.info("shomer.job received signal %s, shutting down", signum)
-        stop = True
-
-    signal.signal(signal.SIGTERM, _on_signal)
-    signal.signal(signal.SIGINT, _on_signal)
-
-    iterations = 0
-    while not stop:
-        iterations += 1
-        tick(iterations)
-        if max_iterations is not None and iterations >= max_iterations:
-            break
-        sleep(interval_seconds)
-    sys.exit(0)
+    app.worker_main(argv=["worker", "--loglevel=INFO", "--beat"])

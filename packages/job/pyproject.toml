@@ -3,7 +3,10 @@ name = "shomer-job"
 version = "1.0.3"
 description = "Shomer background job (token cleanup, audit replication)."
 requires-python = ">=3.11"
-dependencies = []
+# Celery worker with a Redis broker + result backend. The `redis` extra
+# pulls the Python redis client; the Debian package declares the system
+# python3-celery / python3-redis / redis-server equivalents.
+dependencies = ["celery[redis]>=5.3"]
 
 [project.scripts]
 shomer-job = "shomer_job.main:run"
