@@ -164,7 +164,59 @@ bump_files = [
     { file = "zensical.toml", key = "project.extra.versions.web" },
 ]
 changelog  = "packages/web/CHANGELOG.md"
+# web imports the shared @shomer/lib package — a lib bump cascades a
+# patch here so the regenerated bundle ships the updated shared code
+# (and ssr cascades on from web in turn).
+depends_on = ["lib"]
 post_bump  = ["npm --prefix packages/web run build"]
+
+# `lib` is the shared TypeScript package (@shomer/lib): framework-
+# agnostic validation + types consumed by `web` (React) and `app`
+# (React Native). Pure source with no build artifact — consumers bundle
+# it straight from source — so it carries no `artifacts` block (like
+# `database`). Its own tag stream (lib-vX.Y.Z) + changelog.
+[components.lib]
+paths      = [
+    "packages/lib/src/**",
+    "packages/lib/package.json",
+    "packages/lib/tsconfig.json",
+    "packages/lib/biome.json",
+]
+bump_files = [
+    { file = "packages/lib/package.json", key = "version" },
+    { file = "VERSION", key = 'regex:^lib=(.+)$' },
+    { file = "zensical.toml", key = "project.extra.versions.lib" },
+]
+changelog  = "packages/lib/CHANGELOG.md"
+
+# `app` is the React Native (bare) mobile app. It consumes `lib`, so a
+# lib bump cascades a patch here (a fresh APK/IPA ships the shared
+# code). Native version sync (android versionName / iOS marketing
+# version) happens at build time in the release-app CI job, not via a
+# bump_files rewrite, to keep this config independent of the generated
+# native project layout. No multicz `artifacts` type covers an APK/IPA;
+# the release-app job attaches them to the GitHub release.
+[components.app]
+paths      = [
+    "packages/app/src/**",
+    "packages/app/index.js",
+    "packages/app/app.json",
+    "packages/app/package.json",
+    "packages/app/tsconfig.json",
+    "packages/app/biome.json",
+    "packages/app/metro.config.js",
+    "packages/app/jest.config.js",
+    "packages/app/.maestro/**",
+    "packages/app/android/**",
+    "packages/app/ios/**",
+]
+bump_files = [
+    { file = "packages/app/package.json", key = "version" },
+    { file = "VERSION", key = 'regex:^app=(.+)$' },
+    { file = "zensical.toml", key = "project.extra.versions.app" },
+]
+changelog  = "packages/app/CHANGELOG.md"
+depends_on = ["lib"]
 
 [components.cli]
 paths      = ["packages/cli/**"]
@@ -309,7 +361,7 @@ bump_files = [
 # all means any bump cascades a `docs` patch — regenerating the site so
 # docs/versions.md ships the fresh numbers.
 depends_on = [
-    "api", "job", "cli", "database", "migrations", "ssr", "web",
+    "api", "job", "cli", "database", "migrations", "ssr", "web", "lib", "app",
     "chart-api", "chart-job", "chart-ssr", "chart-migrations",
 ]
 bump_rules = { docs = "patch" }
