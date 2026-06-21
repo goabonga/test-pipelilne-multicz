@@ -95,7 +95,7 @@ jobs:
       # output wins otherwise.
       changed: ${{ steps.release-bypass.outputs.changed || steps.changed.outputs.json }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -175,7 +175,7 @@ jobs:
     if: toJSON(fromJson(needs.detect.outputs.changed).changed) != '[]'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -196,7 +196,7 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: goabonga/multicz-action@95e90628797bc7dec0d2ad7d9abc6278f3465ed2  # v1
@@ -219,7 +219,7 @@ jobs:
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'docs')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -254,7 +254,7 @@ jobs:
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'api')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -275,7 +275,7 @@ jobs:
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'api')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -296,7 +296,7 @@ jobs:
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'api')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -316,7 +316,7 @@ jobs:
     needs: [api-lint, api-format, api-typecheck]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -336,7 +336,7 @@ jobs:
     needs: [api-test]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -360,7 +360,7 @@ jobs:
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'api')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: hadolint/hadolint-action@2332a7b74a6de0dda2e2221d575162eba76ba5e5  # v3.3.0
         with:
           dockerfile: packages/api/Dockerfile
@@ -389,7 +389,7 @@ jobs:
     if: '!failure() && !cancelled() && contains(fromJson(needs.detect.outputs.changed).changed, ''api'')'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -428,7 +428,7 @@ jobs:
     if: '!failure() && !cancelled() && needs.api-container.result == ''success'''
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6   # need .github/actions/summary on disk
+      - uses: actions/checkout@v7   # need .github/actions/summary on disk
       - uses: actions/download-artifact@v8
         with: { name: api-image, path: /tmp }
       - name: Install syft
@@ -449,7 +449,7 @@ jobs:
     if: '!failure() && !cancelled() && needs.api-sbom.result == ''success'''
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
         with: { name: api-sbom, path: /tmp }
       - name: Install grype
@@ -476,7 +476,7 @@ jobs:
     if: '!failure() && !cancelled() && contains(fromJson(needs.detect.outputs.changed).changed, ''api'')'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -518,7 +518,7 @@ jobs:
     permissions:
       actions: write   # delete-artifact (cleanup on validation failure)
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -539,7 +539,7 @@ jobs:
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'job')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -560,7 +560,7 @@ jobs:
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'job')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -581,7 +581,7 @@ jobs:
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'job')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -614,7 +614,7 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -636,7 +636,7 @@ jobs:
     needs: [job-test]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -657,7 +657,7 @@ jobs:
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'job')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: hadolint/hadolint-action@2332a7b74a6de0dda2e2221d575162eba76ba5e5  # v3.3.0
         with:
           dockerfile: packages/job/Dockerfile
@@ -676,7 +676,7 @@ jobs:
     if: '!failure() && !cancelled() && contains(fromJson(needs.detect.outputs.changed).changed, ''job'')'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -707,7 +707,7 @@ jobs:
     if: '!failure() && !cancelled() && needs.job-container.result == ''success'''
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
         with: { name: job-image, path: /tmp }
       - name: Install syft
@@ -728,7 +728,7 @@ jobs:
     if: '!failure() && !cancelled() && needs.job-sbom.result == ''success'''
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
         with: { name: job-sbom, path: /tmp }
       - name: Install grype
@@ -749,7 +749,7 @@ jobs:
     if: '!failure() && !cancelled() && contains(fromJson(needs.detect.outputs.changed).changed, ''job'')'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -784,7 +784,7 @@ jobs:
     permissions:
       actions: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -805,7 +805,7 @@ jobs:
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'ssr')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -826,7 +826,7 @@ jobs:
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'ssr')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -847,7 +847,7 @@ jobs:
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'ssr')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -876,7 +876,7 @@ jobs:
       )
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -902,7 +902,7 @@ jobs:
     needs: [ssr-test]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -923,7 +923,7 @@ jobs:
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'ssr')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: hadolint/hadolint-action@2332a7b74a6de0dda2e2221d575162eba76ba5e5  # v3.3.0
         with:
           dockerfile: packages/ssr/Dockerfile
@@ -946,7 +946,7 @@ jobs:
       needs.audit.result == 'success'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -980,7 +980,7 @@ jobs:
     if: '!failure() && !cancelled() && needs.ssr-container.result == ''success'''
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
         with: { name: ssr-image, path: /tmp }
       - name: Install syft
@@ -1001,7 +1001,7 @@ jobs:
     if: '!failure() && !cancelled() && needs.ssr-sbom.result == ''success'''
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
         with: { name: ssr-sbom, path: /tmp }
       - name: Install grype
@@ -1024,7 +1024,7 @@ jobs:
       needs.audit.result == 'success'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -1062,7 +1062,7 @@ jobs:
     permissions:
       actions: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -1083,7 +1083,7 @@ jobs:
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'cli')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -1104,7 +1104,7 @@ jobs:
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'cli')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -1125,7 +1125,7 @@ jobs:
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'cli')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -1145,7 +1145,7 @@ jobs:
     needs: [cli-lint, cli-format, cli-typecheck]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -1165,7 +1165,7 @@ jobs:
     needs: [cli-test]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -1187,7 +1187,7 @@ jobs:
     if: '!failure() && !cancelled() && contains(fromJson(needs.detect.outputs.changed).changed, ''cli'')'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -1222,7 +1222,7 @@ jobs:
     permissions:
       actions: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -1244,7 +1244,7 @@ jobs:
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'database')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -1265,7 +1265,7 @@ jobs:
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'database')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -1286,7 +1286,7 @@ jobs:
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'database')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -1306,7 +1306,7 @@ jobs:
     needs: [database-lint, database-format, database-typecheck]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -1326,7 +1326,7 @@ jobs:
     needs: [database-test]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -1349,7 +1349,7 @@ jobs:
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'migrations')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -1370,7 +1370,7 @@ jobs:
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'migrations')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -1391,7 +1391,7 @@ jobs:
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'migrations')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -1411,7 +1411,7 @@ jobs:
     needs: [migrations-lint, migrations-format, migrations-typecheck]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -1431,7 +1431,7 @@ jobs:
     needs: [migrations-test]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -1453,7 +1453,7 @@ jobs:
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'migrations')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: hadolint/hadolint-action@2332a7b74a6de0dda2e2221d575162eba76ba5e5  # v3.3.0
         with:
           dockerfile: packages/bdd/migrations/Dockerfile
@@ -1474,7 +1474,7 @@ jobs:
     if: '!failure() && !cancelled() && contains(fromJson(needs.detect.outputs.changed).changed, ''migrations'')'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -1504,7 +1504,7 @@ jobs:
     if: '!failure() && !cancelled() && needs.migrations-container.result == ''success'''
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
         with: { name: migrations-image, path: /tmp }
       - name: Install syft
@@ -1525,7 +1525,7 @@ jobs:
     if: '!failure() && !cancelled() && needs.migrations-sbom.result == ''success'''
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
         with: { name: migrations-sbom, path: /tmp }
       - name: Install grype
@@ -1579,7 +1579,7 @@ jobs:
        contains(fromJson(needs.detect.outputs.changed).changed, 'migrations'))
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -1605,7 +1605,7 @@ jobs:
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'chart-api')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -1625,7 +1625,7 @@ jobs:
     needs: [chart-api-lint]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -1655,7 +1655,7 @@ jobs:
     needs: [chart-api-checkov]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -1685,7 +1685,7 @@ jobs:
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'chart-job')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -1705,7 +1705,7 @@ jobs:
     needs: [chart-job-lint]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -1731,7 +1731,7 @@ jobs:
     needs: [chart-job-checkov]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -1761,7 +1761,7 @@ jobs:
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'chart-ssr')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -1781,7 +1781,7 @@ jobs:
     needs: [chart-ssr-lint]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -1804,7 +1804,7 @@ jobs:
     needs: [chart-ssr-checkov]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -1834,7 +1834,7 @@ jobs:
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'chart-migrations')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -1854,7 +1854,7 @@ jobs:
     needs: [chart-migrations-lint]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -1883,7 +1883,7 @@ jobs:
     needs: [chart-migrations-checkov]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -1961,7 +1961,7 @@ jobs:
       packages: read   # load-image's ghcr.io fallback pull
       actions: read   # gh api artifact-existence probe in load-image
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -2019,7 +2019,7 @@ jobs:
       packages: read
       actions: read   # gh api artifact-existence probe in load-image
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -2074,7 +2074,7 @@ jobs:
       packages: read
       actions: read   # gh api artifact-existence probe in load-image
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -2083,7 +2083,7 @@ jobs:
           component: api
           port: "8000"
           token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
-      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b   # v8.1.0
+      - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39   # v8.2.0
         with:
           python-version: "3.12"
       - name: Install e2e dependency-group
@@ -2139,7 +2139,7 @@ jobs:
       packages: read
       actions: read   # gh api artifact-existence probe in load-image
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -2148,7 +2148,7 @@ jobs:
           component: ssr
           port: "8080"
           token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
-      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b   # v8.1.0
+      - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39   # v8.2.0
         with:
           python-version: "3.12"
       - name: Install e2e dependency-group
@@ -2177,7 +2177,7 @@ jobs:
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'web')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -2202,7 +2202,7 @@ jobs:
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'web')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -2227,7 +2227,7 @@ jobs:
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'web')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -2251,7 +2251,7 @@ jobs:
     needs: [web-lint, web-format, web-typecheck]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -2280,7 +2280,7 @@ jobs:
     needs: [web-typecheck, web-test]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -2316,7 +2316,7 @@ jobs:
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'lib')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -2339,7 +2339,7 @@ jobs:
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'lib')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -2362,7 +2362,7 @@ jobs:
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'lib')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -2384,7 +2384,7 @@ jobs:
     needs: [lib-lint, lib-format, lib-typecheck]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -2417,7 +2417,7 @@ jobs:
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'app')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -2442,7 +2442,7 @@ jobs:
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'app')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -2467,7 +2467,7 @@ jobs:
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'app')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -2491,7 +2491,7 @@ jobs:
     needs: [app-lint, app-format, app-typecheck]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
@@ -2516,7 +2516,7 @@ jobs:
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'app')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: actions/setup-node@v6
@@ -2537,7 +2537,7 @@ jobs:
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'app')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: actions/setup-node@v6
@@ -2564,7 +2564,7 @@ jobs:
     if: '!failure() && !cancelled() && needs.app-sbom.result == ''success'''
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
         with: { name: app-sbom, path: /tmp }
       - name: Install grype
@@ -2583,7 +2583,7 @@ jobs:
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'app')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Install gitleaks
@@ -2605,7 +2605,7 @@ jobs:
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'app')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
@@ -2627,10 +2627,10 @@ jobs:
     if: '!failure() && !cancelled() && needs.app-test.result == ''success'''
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
@@ -2664,7 +2664,7 @@ jobs:
     if: '!failure() && !cancelled() && needs.app-android-build.result == ''success'''
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: actions/download-artifact@v8
@@ -2703,7 +2703,7 @@ jobs:
     # First macOS runner in the graph — free on this public repo.
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: actions/setup-node@v6
@@ -2742,7 +2742,7 @@ jobs:
     if: '!failure() && !cancelled() && needs.app-ios-build.result == ''success'''
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: actions/download-artifact@v8
@@ -2872,7 +2872,7 @@ jobs:
       repo: ${{ steps.names.outputs.repo }}
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: main
           fetch-depth: 0
@@ -3052,7 +3052,7 @@ jobs:
       actions: write    # delete-artifact (cleanup after publish)
       id-token: write   # cosign keyless via GitHub OIDC
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: main
           fetch-depth: 0
@@ -3108,7 +3108,7 @@ jobs:
       actions: write
       id-token: write   # cosign keyless via GitHub OIDC
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: main
           fetch-depth: 0
@@ -3161,7 +3161,7 @@ jobs:
       actions: write
       id-token: write   # cosign keyless via GitHub OIDC
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: main
           fetch-depth: 0
@@ -3217,7 +3217,7 @@ jobs:
       contents: write
       actions: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: main
           fetch-depth: 0
@@ -3265,13 +3265,13 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: main
           fetch-depth: 0
           token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
       - uses: goabonga/multicz-action@95e90628797bc7dec0d2ad7d9abc6278f3465ed2  # v1
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
@@ -3324,7 +3324,7 @@ jobs:
       packages: write
       actions: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: main
           fetch-depth: 0
@@ -3369,7 +3369,7 @@ jobs:
       packages: write
       actions: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: main
           fetch-depth: 0
@@ -3414,7 +3414,7 @@ jobs:
       packages: write
       actions: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: main
           fetch-depth: 0
@@ -3462,7 +3462,7 @@ jobs:
       actions: write
       id-token: write   # cosign keyless via GitHub OIDC
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: main
           fetch-depth: 0
@@ -3511,7 +3511,7 @@ jobs:
       packages: write
       actions: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: main
           fetch-depth: 0
@@ -3567,7 +3567,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: main
           fetch-depth: 0
