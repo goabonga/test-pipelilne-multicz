@@ -9,4 +9,9 @@
  */
 
 export type { Credentials } from "./credentials";
-export { formatError, validateCredentials } from "./credentials";
+export {
+  formatError,
+  PASSWORD_MAX_LENGTH,
+  PASSWORD_MIN_LENGTH,
+  validateCredentials,
+} from "./credentials";
