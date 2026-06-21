@@ -2,6 +2,12 @@
 
 All notable changes to this component are documented here.
 
+## [0.4.0] - 2026-06-21
+
+### Features
+
+- **lib**: add sanitizeCredentials (`7896980`)
+
 ## [0.3.0] - 2026-06-21
 
 ### Features

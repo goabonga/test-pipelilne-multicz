@@ -7,6 +7,21 @@ Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
 ### Releases
 
+- **app** patch — 0.1.2 → 0.1.3  _(cascade from lib 0.4.0)_
+- **chart-ssr** patch — 1.0.8 → 1.0.9  _(cascade from ssr 1.1.3)_
+- **docs** patch — 1.0.7 → 1.0.8  _(cascade from web 1.2.3)_
+- **lib** minor — 0.3.0 → 0.4.0
+- **ssr** patch — 1.1.2 → 1.1.3  _(cascade from web 1.2.3)_
+- **web** patch — 1.2.2 → 1.2.3  _(cascade from lib 0.4.0)_
+
+### Features
+
+- **lib**: add sanitizeCredentials (`7896980`)
+
+## 2026-06-21
+
+### Releases
+
 - **app** patch — 0.1.1 → 0.1.2  _(cascade from lib 0.3.0)_
 - **chart-ssr** patch — 1.0.7 → 1.0.8  _(cascade from ssr 1.1.2)_
 - **docs** patch — 1.0.6 → 1.0.7  _(cascade from web 1.2.2)_

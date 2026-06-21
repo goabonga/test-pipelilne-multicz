@@ -2,6 +2,12 @@
 
 All notable changes to this component are documented here.
 
+## [1.0.9] - 2026-06-21
+
+### Dependencies
+
+- Track `ssr` `1.1.3`
+
 ## [1.0.8] - 2026-06-21
 
 ### Dependencies
