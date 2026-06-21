@@ -17,7 +17,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from fastapi import FastAPI, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.responses import Response
@@ -93,32 +93,29 @@ def healthz() -> dict[str, str]:
     return {"status": "ok", "version": __version__}
 
 
-@app.get("/", response_class=HTMLResponse)
-def home(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(
-        request, "home.html", {"version": __version__, "config": frontend_config()}
-    )
-
-
-@app.get("/login", response_class=HTMLResponse)
-def login_form(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(
-        request,
-        "login.html",
-        {"version": __version__, "error": None, "config": frontend_config()},
-    )
-
-
 @app.post("/login")
 def login_submit(
     username: str = Form(...),
     password: str = Form(...),
-) -> RedirectResponse:
-    # Cookie-based session auth lands in a follow-up — this stub
-    # always succeeds and redirects home so the form is wired
-    # end-to-end (template + POST handler + redirect).
+) -> JSONResponse:
+    # Stub auth — always succeeds. The SPA POSTs here, then navigates
+    # home client-side on the 200. A follow-up wires a real cookie-
+    # session flow against shomer-api.
     _ = (username, password)
-    return RedirectResponse(url="/", status_code=303)
+    return JSONResponse({"status": "ok"})
+
+
+@app.get("/{full_path:path}", response_class=HTMLResponse)
+def spa(request: Request, full_path: str) -> HTMLResponse:
+    # Single-page app: every client route (``/``, ``/login``, deep
+    # links, refreshes) is served the same Jinja shell, which injects
+    # the runtime config; React Router renders the matching view. The
+    # ``/static`` mount and ``/healthz`` are registered earlier, so
+    # they never fall through to this catch-all.
+    _ = full_path
+    return templates.TemplateResponse(
+        request, "index.html", {"version": __version__, "config": frontend_config()}
+    )
 
 
 def run() -> None:

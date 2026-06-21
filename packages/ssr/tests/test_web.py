@@ -19,35 +19,36 @@ def test_healthz_returns_status_and_version() -> None:
     assert response.json() == {"status": "ok", "version": __version__}
 
 
-def test_home_renders_html_with_login_link() -> None:
+def test_root_serves_the_spa_shell() -> None:
     response = client.get("/")
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/html")
     body = response.text
-    assert "Shomer" in body
-    assert 'href="/login"' in body
+    assert 'id="root"' in body  # React mount point
+    assert "shomer-ssr" in body
     assert __version__ in body  # rendered in the footer
 
 
-def test_login_form_renders_username_and_password_fields() -> None:
-    response = client.get("/login")
-    assert response.status_code == 200
-    body = response.text
-    assert 'name="username"' in body
-    assert 'name="password"' in body
-    assert 'method="post"' in body
+def test_client_routes_serve_the_same_shell() -> None:
+    """Deep links / refreshes on any client route return the shell so
+    React Router can take over (SPA serving)."""
+    for path in ("/login", "/some/deep/link"):
+        response = client.get(path)
+        assert response.status_code == 200
+        assert response.headers["content-type"].startswith("text/html")
+        assert 'id="root"' in response.text
 
 
-def test_login_post_redirects_to_home() -> None:
-    """The stub handler always succeeds and 303-redirects to /. Will
-    evolve into a real cookie-session flow against shomer-api."""
+def test_login_post_returns_ok_json() -> None:
+    """The stub handler always succeeds with a 200 JSON body; the SPA
+    navigates home client-side. Will evolve into a real cookie-session
+    flow against shomer-api."""
     response = client.post(
         "/login",
         data={"username": "alice", "password": "wonderland"},
-        follow_redirects=False,
     )
-    assert response.status_code == 303
-    assert response.headers["location"] == "/"
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
 
 
 def test_run_invokes_uvicorn(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -2,20 +2,13 @@
 // Copyright (c) 2026 Chris <goabonga@pm.me>
 
 /**
- * Web entrypoint.
- *
- * Mounts the React islands into the server-rendered Jinja pages. Each
- * island is opt-in: it renders only when its mount node exists, so a
- * page that doesn't carry `#login-root` ships no React work.
+ * Web entrypoint — mounts the React SPA into the server shell's #root.
  */
 
 import { createRoot } from "react-dom/client";
-import { LoginForm } from "./components/LoginForm";
-import { readConfig } from "./config";
+import { App } from "./App";
 
-const config = readConfig();
-
-const loginRoot = document.getElementById("login-root");
-if (loginRoot) {
-  createRoot(loginRoot).render(<LoginForm config={config} />);
+const rootEl = document.getElementById("root");
+if (rootEl) {
+  createRoot(rootEl).render(<App />);
 }
