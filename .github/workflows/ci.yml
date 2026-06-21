@@ -2799,6 +2799,12 @@ jobs:
       - migrations-grype
       - chart-migrations-package
       - docs-build
+      - app-android-e2e
+      - app-ios-e2e
+      - app-grype
+      - app-mobsfscan
+      - app-secrets
+      - app-audit
     # Per-component success-required gate. The earlier
     # `!failure() && !cancelled() && main && !chore(release)` shape
     # was too permissive: it accepted skipped upstreams as "fine",
@@ -2839,7 +2845,14 @@ jobs:
       (!contains(fromJson(needs.detect.outputs.changed).changed, 'chart-migrations') ||
        needs.chart-migrations-package.result == 'success') &&
       (!contains(fromJson(needs.detect.outputs.changed).changed, 'docs') ||
-       needs.docs-build.result == 'success')
+       needs.docs-build.result == 'success') &&
+      (!contains(fromJson(needs.detect.outputs.changed).changed, 'app') ||
+       (needs.app-android-e2e.result == 'success' &&
+        needs.app-ios-e2e.result == 'success' &&
+        needs.app-grype.result == 'success' &&
+        needs.app-mobsfscan.result == 'success' &&
+        needs.app-secrets.result == 'success' &&
+        needs.app-audit.result == 'success'))
     runs-on: ubuntu-latest
     permissions:
       contents: write   # push release commit + tags
@@ -2854,6 +2867,7 @@ jobs:
       migrations_version: ${{ steps.bump.outputs.migrations_version }}
       chart_migrations_version: ${{ steps.bump.outputs.chart_migrations_version }}
       docs_version: ${{ steps.bump.outputs.docs_version }}
+      app_version: ${{ steps.bump.outputs.app_version }}
       owner: ${{ steps.owner.outputs.value }}
       repo: ${{ steps.names.outputs.repo }}
 
@@ -3233,6 +3247,71 @@ jobs:
           body: |
             Built `shomer-cli_${{ needs.release-bump.outputs.cli_version }}-1_all.deb`, cut GitHub Release `cli-v${{ needs.release-bump.outputs.cli_version }}` with the .deb attached.
             CI artifact (`cli-deb`) deleted post-publish.
+
+  release-app:
+    # React Native app: builds the release Android artifacts and cuts a
+    # GitHub Release with the .apk + .aab attached. The RN template build
+    # is debug-signed, so this works with no secret; production Play
+    # Store signing should be wired via an ANDROID_KEYSTORE secret + a
+    # release signingConfig. iOS is build/E2E-verified in CI but NOT
+    # published here — a distributable .ipa needs an Apple Developer
+    # account (99/yr) + signing certs in secrets, which this free-runner
+    # pipeline deliberately omits.
+    needs: [release-bump]
+    if: |
+      !failure() && !cancelled() &&
+      needs.release-bump.outputs.app_version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+      - uses: goabonga/multicz-action@95e90628797bc7dec0d2ad7d9abc6278f3465ed2  # v1
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: packages/app/package-lock.json
+      - run: npm ci
+        working-directory: packages/app
+      - name: Stamp native version from app_version
+        env:
+          VER: ${{ needs.release-bump.outputs.app_version }}
+          RUN: ${{ github.run_number }}
+        run: |
+          set -euo pipefail
+          gradle=packages/app/android/app/build.gradle
+          sed -i "s/versionName \"[^\"]*\"/versionName \"$VER\"/" "$gradle"
+          sed -i "s/versionCode [0-9]\+/versionCode $RUN/" "$gradle"
+      - name: Build release APK + AAB
+        working-directory: packages/app/android
+        run: ./gradlew assembleRelease bundleRelease --no-daemon
+      - name: gh release create app-v${{ needs.release-bump.outputs.app_version }}
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="app-v${{ needs.release-bump.outputs.app_version }}"
+          APK=packages/app/android/app/build/outputs/apk/release/app-release.apk
+          AAB=packages/app/android/app/build/outputs/bundle/release/app-release.aab
+          multicz release-notes --tag "$TAG" \
+            | gh release create "$TAG" --title "$TAG" --notes-file - "$APK" "$AAB"
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: release-app
+          body: |
+            Built the release Android APK + AAB (debug-signed) at `${{ needs.release-bump.outputs.app_version }}` and cut GitHub Release `app-v${{ needs.release-bump.outputs.app_version }}` with both attached.
+            iOS is CI-verified (simulator build + Maestro) but not published — a distributable `.ipa` needs an Apple Developer account + signing secrets.
 
   release-chart-api:
     needs: [release-bump]
