@@ -41,6 +41,8 @@ COPY packages/api/pyproject.toml packages/api/pyproject.toml
 COPY packages/job/pyproject.toml packages/job/pyproject.toml
 COPY packages/ssr/pyproject.toml packages/ssr/pyproject.toml
 COPY packages/cli/pyproject.toml packages/cli/pyproject.toml
+COPY packages/bdd/database/pyproject.toml packages/bdd/database/pyproject.toml
+COPY packages/bdd/migrations/pyproject.toml packages/bdd/migrations/pyproject.toml
 RUN uv sync --frozen --no-install-project --no-install-workspace
 
 # --- Layer 2: workspace members in editable mode --------------------
@@ -52,6 +54,8 @@ COPY packages/api/src packages/api/src
 COPY packages/job/src packages/job/src
 COPY packages/ssr/src packages/ssr/src
 COPY packages/cli/src packages/cli/src
+COPY packages/bdd/database/src packages/bdd/database/src
+COPY packages/bdd/migrations/src packages/bdd/migrations/src
 RUN uv sync --frozen --all-packages
 
 # `watchfiles` is the rust-backed file watcher uvicorn itself uses
