@@ -2307,6 +2307,466 @@ jobs:
           title: web-build
           body: '`npm run build` → `static/{main.js, main.css}` + `templates/*.html`, uploaded as `web-dist`.'
 
+  # ─────────────────────── lib (shared TS) ───────────────────────
+  # @shomer/lib is an npm-workspace member, so every job installs at the
+  # repo root (hoisted) and runs the check against the lib workspace.
+
+  lib-lint:
+    needs: [detect, headers]
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'lib')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: npm run lint -w packages/lib
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: lib-lint
+          body: '`biome lint` on `packages/lib/`.'
+
+  lib-format:
+    needs: [detect, headers]
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'lib')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: npm run format:check -w packages/lib
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: lib-format
+          body: '`biome format --check` on `packages/lib/`.'
+
+  lib-typecheck:
+    needs: [detect, headers]
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'lib')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: npm run typecheck -w packages/lib
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: lib-typecheck
+          body: '`tsc --noEmit` on `packages/lib/`.'
+
+  lib-test:
+    needs: [lib-lint, lib-format, lib-typecheck]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: npm run test -w packages/lib
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: lib-test
+          body: '`vitest` on `packages/lib/`.'
+
+  # ─────────────────────── app (React Native) ───────────────────────
+  # @shomer/app is NOT a workspace member (RN/Metro hoisting), so its
+  # jobs install in packages/app and cache against its own lockfile. It
+  # consumes @shomer/lib from ../lib (file: dep / Metro alias), so every
+  # job checks out the full repo. DevSecOps surface mirrors the Python
+  # chain: lint/format/typecheck/test, supply-chain (npm audit + SBOM +
+  # grype), secrets (gitleaks), mobile SAST (mobsfscan), then per-OS
+  # build + Maestro E2E (Android on ubuntu, iOS on macOS — both free on
+  # this public repo; the iOS simulator needs no Apple account).
+
+  app-lint:
+    needs: [detect, headers]
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'app')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: packages/app/package-lock.json
+      - run: npm ci
+        working-directory: packages/app
+      - run: npm run lint
+        working-directory: packages/app
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: app-lint
+          body: '`biome lint` on `packages/app/src`.'
+
+  app-format:
+    needs: [detect, headers]
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'app')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: packages/app/package-lock.json
+      - run: npm ci
+        working-directory: packages/app
+      - run: npm run format:check
+        working-directory: packages/app
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: app-format
+          body: '`biome format --check` on `packages/app/src`.'
+
+  app-typecheck:
+    needs: [detect, headers]
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'app')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: packages/app/package-lock.json
+      - run: npm ci
+        working-directory: packages/app
+      - run: npm run typecheck
+        working-directory: packages/app
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: app-typecheck
+          body: '`tsc --noEmit` on `packages/app/` (resolves @shomer/lib via tsconfig path).'
+
+  app-test:
+    needs: [app-lint, app-format, app-typecheck]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: packages/app/package-lock.json
+      - run: npm ci
+        working-directory: packages/app
+      - run: npm test
+        working-directory: packages/app
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: app-test
+          body: '`jest` on `packages/app/` — exercises the shared @shomer/lib validation.'
+
+  app-audit:
+    needs: [detect, headers]
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'app')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+      - name: npm audit (high+)
+        run: npm audit --audit-level=high
+        working-directory: packages/app
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: app-audit
+          body: '`npm audit --audit-level=high` on `packages/app/package-lock.json`.'
+
+  app-sbom:
+    needs: [detect, headers]
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'app')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: packages/app/package-lock.json
+      - run: npm ci
+        working-directory: packages/app
+      - name: Generate CycloneDX SBOM
+        working-directory: packages/app
+        run: npx --yes @cyclonedx/cyclonedx-npm@latest --output-format JSON --output-file /tmp/app.sbom.cdx.json
+      - uses: actions/upload-artifact@v7
+        with: { name: app-sbom, path: /tmp/app.sbom.cdx.json, retention-days: 1 }
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: app-sbom
+          body: 'CycloneDX SBOM via `@cyclonedx/cyclonedx-npm` (artifact `app-sbom`).'
+
+  app-grype:
+    needs: [app-sbom]
+    if: '!failure() && !cancelled() && needs.app-sbom.result == ''success'''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v8
+        with: { name: app-sbom, path: /tmp }
+      - name: Install grype
+        run: curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+      - name: Scan SBOM (--fail-on high)
+        run: grype sbom:/tmp/app.sbom.cdx.json --fail-on high
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: app-grype
+          body: '`grype --fail-on high` on the app SBOM.'
+
+  app-secrets:
+    needs: [detect, headers]
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'app')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Install gitleaks
+        run: |
+          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.21.2/gitleaks_8.21.2_linux_x64.tar.gz \
+            | tar -xz -C /tmp gitleaks
+          sudo mv /tmp/gitleaks /usr/local/bin/gitleaks
+      - name: gitleaks (filesystem scan)
+        run: gitleaks dir packages/app --no-banner --redact --verbose
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: app-secrets
+          body: '`gitleaks` filesystem scan of `packages/app/`.'
+
+  app-mobsfscan:
+    needs: [detect, headers]
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'app')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
+        with: { python-version: "3.12" }
+      - run: uv tool install mobsfscan
+      - name: mobsfscan (mobile SAST)
+        # Static analysis of the native Android/iOS sources + RN JS for
+        # hardcoded secrets, weak crypto, insecure storage/network config.
+        run: uv tool run mobsfscan packages/app/android packages/app/ios packages/app/src
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: app-mobsfscan
+          body: '`mobsfscan` (MobSF static analysis) on the native + RN sources.'
+
+  app-android-build:
+    needs: [app-test]
+    if: '!failure() && !cancelled() && needs.app-test.result == ''success'''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: packages/app/package-lock.json
+      - run: npm ci
+        working-directory: packages/app
+      # assembleRelease embeds the JS bundle and is debug-signed by the
+      # RN template, so the APK runs standalone (no Metro) on the
+      # emulator and needs no signing secret in PR CI.
+      - name: Gradle assembleRelease
+        working-directory: packages/app/android
+        run: ./gradlew assembleRelease --no-daemon
+      - uses: actions/upload-artifact@v7
+        with:
+          name: app-apk
+          path: packages/app/android/app/build/outputs/apk/release/app-release.apk
+          retention-days: 1
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: app-android-build
+          body: '`./gradlew assembleRelease` → `app-release.apk` (artifact `app-apk`).'
+
+  app-android-e2e:
+    needs: [app-android-build]
+    if: '!failure() && !cancelled() && needs.app-android-build.result == ''success'''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v8
+        with: { name: app-apk, path: /tmp }
+      - name: Install Maestro
+        run: |
+          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      # KVM permissions so the x86_64 emulator boots with hardware accel
+      # on the (free, public-repo) ubuntu runner.
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Maestro E2E on Android emulator
+        uses: reactivecircus/android-emulator-runner@324029e2f414c084d8b15ba075288885e74aef9c  # v2.34.0
+        with:
+          api-level: 34
+          arch: x86_64
+          profile: pixel_6
+          script: |
+            adb install -r /tmp/app-release.apk
+            maestro test packages/app/.maestro
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: app-android-e2e
+          body: 'Android emulator (API 34) + `maestro test packages/app/.maestro` against the installed release APK.'
+
+  app-ios-build:
+    needs: [app-test]
+    if: '!failure() && !cancelled() && needs.app-test.result == ''success'''
+    # First macOS runner in the graph — free on this public repo.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: packages/app/package-lock.json
+      - run: npm ci
+        working-directory: packages/app
+      - name: CocoaPods install
+        working-directory: packages/app/ios
+        run: pod install
+      # Unsigned simulator build — no Apple Developer account needed.
+      - name: xcodebuild (iphonesimulator)
+        working-directory: packages/app/ios
+        run: |
+          xcodebuild -workspace ShomerApp.xcworkspace -scheme ShomerApp \
+            -configuration Release -sdk iphonesimulator \
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
+      - name: Zip the .app
+        working-directory: packages/app/ios
+        run: |
+          APP=$(find build/Build/Products/Release-iphonesimulator -maxdepth 1 -name '*.app' | head -n1)
+          ditto -c -k --sequesterRsrc --keepParent "$APP" /tmp/ShomerApp-sim.app.zip
+      - uses: actions/upload-artifact@v7
+        with: { name: app-ios-app, path: /tmp/ShomerApp-sim.app.zip, retention-days: 1 }
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: app-ios-build
+          body: 'Unsigned `xcodebuild -sdk iphonesimulator` → `ShomerApp.app` (artifact `app-ios-app`).'
+
+  app-ios-e2e:
+    needs: [app-ios-build]
+    if: '!failure() && !cancelled() && needs.app-ios-build.result == ''success'''
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v8
+        with: { name: app-ios-app, path: /tmp }
+      - name: Install Maestro
+        run: |
+          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - name: Boot simulator + install app
+        run: |
+          set -euo pipefail
+          unzip -q /tmp/ShomerApp-sim.app.zip -d /tmp/ios-app
+          UDID=$(xcrun simctl list devices available | grep -m1 -oE '\([0-9A-F-]{36}\)' | tr -d '()')
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl install "$UDID" "$(find /tmp/ios-app -maxdepth 1 -name '*.app' | head -n1)"
+      - name: Maestro E2E on iOS simulator
+        run: maestro test packages/app/.maestro
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: app-ios-e2e
+          body: 'iOS simulator + `maestro test packages/app/.maestro` against the installed unsigned app.'
+
   # ─────────────────────── release (main only, full graph green) ───────────────────────
 
   release-bump:
