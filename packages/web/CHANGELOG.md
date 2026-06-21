@@ -2,6 +2,17 @@
 
 All notable changes to this component are documented here.
 
+## [1.2.0] - 2026-06-21
+
+### Features
+
+- **web**: render the login form as a React island (`d61dcc8`)
+- **web**: convert the frontend to a React Router SPA (`c57878d`)
+
+### Dependencies
+
+- Track `lib` `0.1.0`
+
 ## [1.1.2] - 2026-06-14
 
 ### Fixes

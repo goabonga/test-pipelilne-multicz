@@ -1,3 +1,10 @@
+shomer-job (1.1.1-1) unstable; urgency=medium
+
+  * fix(job): Write the celery beat schedule to a writable path
+  * fix(job): Bump chainguard/python in /packages/job
+
+ -- Chris <goabonga@pm.me>  Sun, 21 Jun 2026 19:07:00 +0000
+
 shomer-job (1.1.0-1) unstable; urgency=medium
 
   * feat(job): Run as a celery worker backed by redis

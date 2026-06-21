@@ -2,6 +2,22 @@
 
 All notable changes to this component are documented here.
 
+## [1.1.0] - 2026-06-21
+
+### Features
+
+- **web**: render the login form as a React island (`d61dcc8`)
+- **web**: convert the frontend to a React Router SPA (`c57878d`)
+
+### Fixes
+
+- **deps**: bump fastapi from 0.136.3 to 0.137.0 (`796e513`)
+- **ssr**: bump chainguard/python in /packages/ssr (`9efc673`)
+
+### Dependencies
+
+- Track `web` `1.2.0`
+
 ## [1.0.5] - 2026-06-14
 
 ### Dependencies

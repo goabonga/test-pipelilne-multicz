@@ -2,6 +2,13 @@
 
 All notable changes to this component are documented here.
 
+## [0.2.5] - 2026-06-21
+
+### Fixes
+
+- **api**: bump chainguard/python in /packages/api (`664c254`)
+- **deps**: bump fastapi from 0.136.3 to 0.137.0 (`796e513`)
+
 ## [0.2.4] - 2026-06-18
 
 ### Dependencies

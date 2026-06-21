@@ -2,6 +2,13 @@
 
 All notable changes to this component are documented here.
 
+## [1.1.1] - 2026-06-21
+
+### Fixes
+
+- **job**: write the celery beat schedule to a writable path (`a46f7e8`)
+- **job**: bump chainguard/python in /packages/job (`d96a244`)
+
 ## [1.1.0] - 2026-06-19
 
 ### Features

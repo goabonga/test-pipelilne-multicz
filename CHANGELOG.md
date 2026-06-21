@@ -3,6 +3,45 @@
 All notable changes across components, aggregated per release.
 Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
+## 2026-06-21
+
+### Releases
+
+- **api** patch — 0.2.4 → 0.2.5
+- **app** minor — 0.0.0 → 0.1.0  _(cascade from lib 0.1.0)_
+- **chart-api** patch — 1.0.7 → 1.0.8  _(cascade from api 0.2.5)_
+- **chart-job** patch — 1.0.4 → 1.0.5  _(cascade from job 1.1.1)_
+- **chart-ssr** patch — 1.0.5 → 1.0.6  _(cascade from ssr 1.1.0)_
+- **docs** patch — 1.0.4 → 1.0.5  _(cascade from api 0.2.5)_
+- **job** patch — 1.1.0 → 1.1.1
+- **lib** minor — 0.0.0 → 0.1.0
+- **ssr** minor — 1.0.5 → 1.1.0  _(cascade from web 1.2.0)_
+- **web** minor — 1.1.2 → 1.2.0  _(cascade from lib 0.1.0)_
+
+### Features
+
+- **app**: scaffold the React Native (bare) mobile app (`56ed132`)
+- **app**: publish signed store builds when secrets are configured (`31ae54b`)
+- **lib**: add shared @shomer/lib package and npm workspace root (`f89a567`)
+- **ssr**: render the login form as a React island (`d61dcc8`)
+- **ssr**: convert the frontend to a React Router SPA (`c57878d`)
+- **web**: render the login form as a React island (`d61dcc8`)
+- **web**: convert the frontend to a React Router SPA (`c57878d`)
+
+### Fixes
+
+- **api**: bump chainguard/python in /packages/api (`664c254`)
+- **api**: bump fastapi from 0.136.3 to 0.137.0 (`796e513`)
+- **app**: bump react from 19.2.3 to 19.2.7 in /packages/app (`1692fa6`)
+- **app**: unblock app-sbom and app-mobsfscan (`681450e`)
+- **app**: pin the Gradle wrapper to 9.3.1 for React Native 0.86 (`b1239dc`)
+- **app**: make the Maestro e2e flow pass on Android and iOS (`194ee5d`)
+- **app**: submit the e2e login via the keyboard return key (`0f7b90d`)
+- **job**: write the celery beat schedule to a writable path (`a46f7e8`)
+- **job**: bump chainguard/python in /packages/job (`d96a244`)
+- **ssr**: bump fastapi from 0.136.3 to 0.137.0 (`796e513`)
+- **ssr**: bump chainguard/python in /packages/ssr (`9efc673`)
+
 ## 2026-06-19
 
 ### Releases

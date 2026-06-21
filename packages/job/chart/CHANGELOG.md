@@ -2,6 +2,12 @@
 
 All notable changes to this component are documented here.
 
+## [1.0.5] - 2026-06-21
+
+### Dependencies
+
+- Track `job` `1.1.1`
+
 ## [1.0.4] - 2026-06-19
 
 ### Dependencies
