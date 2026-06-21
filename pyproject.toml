@@ -8,10 +8,10 @@ requires-python = ">=3.11"
 # `packages/bdd` groups two packages (database + migrations), hence the
 # nested glob; the grouping dir itself is not a package, so it is excluded.
 members = ["packages/*", "packages/bdd/*"]
-# `web` is a Node project (TS / CSS / Jinja templates that
-# build into packages/ssr/src/shomer_ssr/{static,templates}/). uv
-# should ignore it — it has no pyproject.toml.
-exclude = ["packages/web", "packages/bdd"]
+# `web`, `lib` and `app` are Node/TS projects (the React bundle source,
+# the shared @shomer/lib, and the React Native app). uv should ignore
+# them — they have no pyproject.toml.
+exclude = ["packages/web", "packages/lib", "packages/app", "packages/bdd"]
 
 [tool.uv.sources]
 shomer-api = { workspace = true }

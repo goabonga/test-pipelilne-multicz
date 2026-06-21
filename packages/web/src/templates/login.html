@@ -2,14 +2,21 @@
 {% block title %}Sign in — Shomer{% endblock %}
 {% block content %}
 <h1>Sign in</h1>
-<form id="login" method="post" action="/login">
-  <label for="username">Username</label>
-  <input id="username" name="username" type="text" autocomplete="username" required />
 
-  <label for="password">Password</label>
-  <input id="password" name="password" type="password" autocomplete="current-password" required />
+<!-- React login island (see packages/web/src/main.tsx). -->
+<div id="login-root"></div>
 
-  <p class="error">{% if error %}{{ error }}{% endif %}</p>
-  <button type="submit">Sign in</button>
-</form>
+<!-- No-JS fallback: a plain server form that still posts to /login. -->
+<noscript>
+  <form id="login" method="post" action="/login">
+    <label for="username">Username</label>
+    <input id="username" name="username" type="text" autocomplete="username" required />
+
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" autocomplete="current-password" required />
+
+    <p class="error">{% if error %}{{ error }}{% endif %}</p>
+    <button type="submit">Sign in</button>
+  </form>
+</noscript>
 {% endblock %}
