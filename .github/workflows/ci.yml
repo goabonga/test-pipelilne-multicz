@@ -2549,7 +2549,11 @@ jobs:
         working-directory: packages/app
       - name: Generate CycloneDX SBOM
         working-directory: packages/app
-        run: npx --yes @cyclonedx/cyclonedx-npm@latest --output-format JSON --output-file /tmp/app.sbom.cdx.json
+        # --ignore-npm-errors: @shomer/lib is linked from ../lib, so its
+        # dev-only deps resolve from the root workspace, not packages/app
+        # — `npm ls` flags them missing. They aren't shipped, so tolerate
+        # the noise and still emit a complete SBOM of the real deps.
+        run: npx --yes @cyclonedx/cyclonedx-npm@latest --ignore-npm-errors --output-format JSON --output-file /tmp/app.sbom.cdx.json
       - uses: actions/upload-artifact@v7
         with: { name: app-sbom, path: /tmp/app.sbom.cdx.json, retention-days: 1 }
       - name: Summary
@@ -2611,10 +2615,40 @@ jobs:
       - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
         with: { python-version: "3.12" }
       - run: uv tool install mobsfscan
-      - name: mobsfscan (mobile SAST)
+      - name: mobsfscan (mobile SAST, fail on ERROR/WARNING)
         # Static analysis of the native Android/iOS sources + RN JS for
         # hardcoded secrets, weak crypto, insecure storage/network config.
-        run: uv tool run mobsfscan packages/app/android packages/app/ios packages/app/src
+        # mobsfscan exits non-zero on ANY finding (incl. INFO hardening
+        # nags that every RN app trips), so we gate explicitly: fail only
+        # on ERROR/WARNING, minus an allowlist of accepted scaffold
+        # findings. INFO is reported but advisory.
+        run: |
+          set -uo pipefail
+          uv tool run mobsfscan --json -o /tmp/mobsf.json \
+            packages/app/android packages/app/ios packages/app/src || true
+          python3 - <<'PY'
+          import json, sys
+
+          # Accepted for the RN scaffold (mitigated / not applicable):
+          #   task_hijacking on the singleTask launcher activity is RN's
+          #   standard launch mode; StrandHogg is mitigated at runtime by
+          #   android:taskAffinity="" on MainActivity.
+          ACCEPTED = {"android_task_hijacking1", "android_task_hijacking2"}
+          GATE = {"ERROR", "WARNING"}
+
+          data = json.load(open("/tmp/mobsf.json"))
+          blocking = []
+          for rule, info in sorted(data.get("results", {}).items()):
+              sev = (info.get("metadata", {}).get("severity") or "").upper()
+              print(f"{sev:8} {rule}")
+              if sev in GATE and rule not in ACCEPTED:
+                  blocking.append(f"{sev} {rule}")
+          if blocking:
+              print("\nFAIL — unaccepted high-severity findings:")
+              print("\n".join(blocking))
+              sys.exit(1)
+          print("\nOK — no unaccepted ERROR/WARNING findings (INFO is advisory).")
+          PY
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
