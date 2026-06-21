@@ -92,15 +92,29 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        // Real upload signing, populated only when the CI release-app job
+        // injects the keystore via -P / ORG_GRADLE_PROJECT_* properties.
+        // Without them the `release` build below falls back to debug
+        // signing, so PR-CI E2E and secret-less release builds keep
+        // working with no keystore configured.
+        release {
+            if (project.hasProperty('SHOMER_UPLOAD_STORE_FILE')) {
+                storeFile file(project.property('SHOMER_UPLOAD_STORE_FILE'))
+                storePassword project.property('SHOMER_UPLOAD_STORE_PASSWORD')
+                keyAlias project.property('SHOMER_UPLOAD_KEY_ALIAS')
+                keyPassword project.property('SHOMER_UPLOAD_KEY_PASSWORD')
+            }
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            // Sign with the real upload key when the keystore properties
+            // are present (CI release with secrets configured); otherwise
+            // debug-sign so the build still produces a runnable artifact.
+            signingConfig project.hasProperty('SHOMER_UPLOAD_STORE_FILE') ? signingConfigs.release : signingConfigs.debug
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
