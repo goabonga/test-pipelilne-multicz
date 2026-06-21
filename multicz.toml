@@ -219,7 +219,14 @@ changelog  = "packages/app/CHANGELOG.md"
 depends_on = ["lib"]
 
 [components.cli]
-paths      = ["packages/cli/**"]
+# Source + packaging only — NOT `**`, which would include `tests/` and
+# flag cli as changed on a test-only commit.
+paths      = [
+    "packages/cli/src/**",
+    "packages/cli/pyproject.toml",
+    "packages/cli/debian/**",
+    "packages/cli/data/**",
+]
 bump_files = [
     { file = "packages/cli/pyproject.toml", key = "project.version" },
     { file = "packages/cli/src/shomer_cli/__init__.py", key = 'regex:^__version__\s*=\s*"([^"]+)"' },
@@ -249,7 +256,14 @@ ref  = "shomer-cli_{version}-1_all.deb"
 # (postgres / mysql / mssql). Consumed by api / job; carries NO migration
 # tooling. Pure wheel, no release artifact (add a `pypi` one if published).
 [components.database]
-paths      = ["packages/bdd/database/**"]
+# Source + manifest only — NOT `**`, which would sweep in `tests/` and
+# make a test-only commit cascade a spurious "changed" through every
+# api / job / migrations consumer (matches the src-scoped paths the
+# other components use).
+paths      = [
+    "packages/bdd/database/src/**",
+    "packages/bdd/database/pyproject.toml",
+]
 bump_files = [
     { file = "packages/bdd/database/pyproject.toml", key = "project.version" },
     { file = "packages/bdd/database/src/shomer_database/__init__.py", key = 'regex:^__version__\s*=\s*"([^"]+)"' },
