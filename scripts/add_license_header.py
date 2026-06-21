@@ -14,6 +14,19 @@ LICENSE_LINES = [
 ]
 LICENSE_HEADER = "\n".join(LICENSE_LINES)
 
+# Vendored / generated trees that ship their own (foreign) source — never
+# our code to stamp. Notably packages/app/node_modules carries React
+# Native's bundled Python tooling, which would otherwise trip the check.
+EXCLUDE_DIRS = {
+    "node_modules",
+    ".git",
+    ".venv",
+    "__pycache__",
+    "Pods",
+    "build",
+    ".gradle",
+}
+
 
 def has_license(lines: list[str]) -> bool:
     lines = [line.strip() for line in lines]
@@ -57,7 +70,10 @@ def check_license(file_path: str) -> bool:
 def process_directory(root: str, extensions: list[str], check_only: bool) -> int:
     missing_files: list[str] = []
 
-    for dirpath, _, filenames in os.walk(root):
+    for dirpath, dirnames, filenames in os.walk(root):
+        # Prune vendored/generated trees in place so os.walk never
+        # descends into them.
+        dirnames[:] = [d for d in dirnames if d not in EXCLUDE_DIRS]
         for filename in filenames:
             path = os.path.join(dirpath, filename)
             ext = os.path.splitext(filename)[1]
