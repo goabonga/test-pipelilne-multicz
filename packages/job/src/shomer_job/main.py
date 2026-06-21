@@ -38,6 +38,16 @@ app.conf.beat_schedule = {
     "shomer-job-tick": {"task": "shomer_job.tick", "schedule": 60.0},
 }
 
+# Embedded beat persists a small schedule DB (last-run timestamps). Its
+# default location is the CWD, which isn't writable when the worker runs
+# as a non-root user — the docker-compose dev container and the systemd
+# unit both do. Point it at a writable path; override with
+# CELERYBEAT_SCHEDULE if a deployment wants durable state on a volume.
+app.conf.beat_schedule_filename = os.environ.get(
+    "CELERYBEAT_SCHEDULE",
+    "/tmp/celerybeat-schedule",  # noqa: S108  # nosec B108
+)
+
 
 @app.task(name="shomer_job.tick")  # type: ignore[untyped-decorator]
 def tick() -> str:
