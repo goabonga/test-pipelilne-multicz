@@ -1446,7 +1446,7 @@ requires-dist = [{ name = "celery", extras = ["redis"], specifier = ">=5.3" }]
 
 [[package]]
 name = "shomer-migrations"
-version = "0.1.0"
+version = "0.1.1"
 source = { editable = "packages/bdd/migrations" }
 dependencies = [
     { name = "alembic" },

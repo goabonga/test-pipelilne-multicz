@@ -7,6 +7,18 @@ Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
 ### Releases
 
+- **chart-migrations** patch — 0.1.0 → 0.1.1  _(cascade from migrations 0.1.1)_
+- **docs** patch — 1.0.8 → 1.0.9  _(cascade from migrations 0.1.1)_
+- **migrations** patch — 0.1.0 → 0.1.1
+
+### Fixes
+
+- **migrations**: document the shomer-migrate entrypoint (`987f120`)
+
+## 2026-06-21
+
+### Releases
+
 - **app** patch — 0.1.2 → 0.1.3  _(cascade from lib 0.4.0)_
 - **chart-ssr** patch — 1.0.8 → 1.0.9  _(cascade from ssr 1.1.3)_
 - **docs** patch — 1.0.7 → 1.0.8  _(cascade from web 1.2.3)_
