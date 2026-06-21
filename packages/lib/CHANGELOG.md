@@ -2,6 +2,12 @@
 
 All notable changes to this component are documented here.
 
+## [0.2.0] - 2026-06-21
+
+### Features
+
+- **lib**: export the password length bounds (`a80b5a7`)
+
 ## [0.1.0] - 2026-06-21
 
 ### Features

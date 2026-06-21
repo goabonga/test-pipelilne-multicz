@@ -2,6 +2,12 @@
 
 All notable changes to this component are documented here.
 
+## [0.1.1] - 2026-06-21
+
+### Dependencies
+
+- Track `lib` `0.2.0`
+
 ## [0.1.0] - 2026-06-21
 
 ### Features

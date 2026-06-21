@@ -7,6 +7,21 @@ Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
 ### Releases
 
+- **app** patch — 0.1.0 → 0.1.1  _(cascade from lib 0.2.0)_
+- **chart-ssr** patch — 1.0.6 → 1.0.7  _(cascade from ssr 1.1.1)_
+- **docs** patch — 1.0.5 → 1.0.6  _(cascade from web 1.2.1)_
+- **lib** minor — 0.1.0 → 0.2.0
+- **ssr** patch — 1.1.0 → 1.1.1  _(cascade from web 1.2.1)_
+- **web** patch — 1.2.0 → 1.2.1  _(cascade from lib 0.2.0)_
+
+### Features
+
+- **lib**: export the password length bounds (`a80b5a7`)
+
+## 2026-06-21
+
+### Releases
+
 - **api** patch — 0.2.4 → 0.2.5
 - **app** minor — 0.0.0 → 0.1.0  _(cascade from lib 0.1.0)_
 - **chart-api** patch — 1.0.7 → 1.0.8  _(cascade from api 0.2.5)_
