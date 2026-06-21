@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { formatError, normalizeUsername, validateCredentials } from "../src/index";
+import {
+  formatError,
+  normalizeUsername,
+  sanitizeCredentials,
+  validateCredentials,
+} from "../src/index";
 
 describe("formatError", () => {
   it("returns empty for empty reason", () => {
@@ -18,6 +23,15 @@ describe("normalizeUsername", () => {
 
   it("leaves an already-canonical value untouched", () => {
     expect(normalizeUsername("bob")).toBe("bob");
+  });
+});
+
+describe("sanitizeCredentials", () => {
+  it("normalises the username but leaves the password intact", () => {
+    expect(sanitizeCredentials({ username: "  Alice ", password: "  Secret " })).toEqual({
+      username: "alice",
+      password: "  Secret ",
+    });
   });
 });
 

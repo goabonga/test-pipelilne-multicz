@@ -14,5 +14,6 @@ export {
   normalizeUsername,
   PASSWORD_MAX_LENGTH,
   PASSWORD_MIN_LENGTH,
+  sanitizeCredentials,
   validateCredentials,
 } from "./credentials";

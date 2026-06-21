@@ -26,6 +26,13 @@ export function normalizeUsername(username: string): string {
   return username.trim().toLowerCase();
 }
 
+// Canonical credentials to submit: the username is normalised, the
+// password is left byte-for-byte intact (trimming or lower-casing it
+// would silently change the secret).
+export function sanitizeCredentials(creds: Credentials): Credentials {
+  return { username: normalizeUsername(creds.username), password: creds.password };
+}
+
 // Password length bounds, exported so the web and mobile login forms can
 // surface matching hints/placeholders without re-declaring the numbers.
 // The upper bound keeps an honest-but-typo'd password from triggering
