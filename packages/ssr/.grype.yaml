@@ -44,6 +44,28 @@ ignore:
       version: 3.14.6-r0
       type: apk
 
+  # CVE-2026-7210 (High) — same upstream CVE, but grype now reports it
+  # on the python-3.14-base subpackage (the entry above only pins the
+  # python-3.14 package, so the -base finding slipped past --fail-on
+  # high). Fixed in 3.14.6-r1; the version pin auto-resolves the ignore
+  # once the base image is bumped.
+  # expires: 2026-06-27
+  - vulnerability: CVE-2026-7210
+    reason: "Upstream Chainguard python-3.14-base apk on the pinned base; fixed in 3.14.6-r1, pending a base-image bump."
+    package:
+      name: python-3.14-base
+      version: 3.14.6-r0
+      type: apk
+
+  # CVE-2026-9669 (High) — python-3.14-base subpackage, same upstream.
+  # expires: 2026-06-27
+  - vulnerability: CVE-2026-9669
+    reason: "Upstream Chainguard python-3.14-base apk on the pinned base; fixed in 3.14.6-r1, pending a base-image bump."
+    package:
+      name: python-3.14-base
+      version: 3.14.6-r0
+      type: apk
+
   # CVE-2026-44432 (High) — Chainguard py3-pip-wheel apk on the pinned base.
   # Fixed upstream in 26.1.2-r1; the version pin below auto-resolves this
   # ignore the moment the base image is bumped to ship it (Dependabot /
