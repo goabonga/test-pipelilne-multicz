@@ -1,0 +1,12 @@
+{
+  "extends": "@react-native/typescript-config",
+  "compilerOptions": {
+    "types": ["jest"],
+    "baseUrl": ".",
+    "paths": {
+      "@shomer/lib": ["../lib/src/index.ts"]
+    }
+  },
+  "include": ["src", "index.js"],
+  "exclude": ["**/node_modules", "**/Pods", "android", "ios"]
+}
