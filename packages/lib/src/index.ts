@@ -11,6 +11,7 @@
 export type { Credentials } from "./credentials";
 export {
   formatError,
+  normalizeUsername,
   PASSWORD_MAX_LENGTH,
   PASSWORD_MIN_LENGTH,
   validateCredentials,

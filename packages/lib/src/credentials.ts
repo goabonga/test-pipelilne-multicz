@@ -19,6 +19,13 @@ export function formatError(reason: string): string {
   return `Sign-in failed: ${reason}`;
 }
 
+// Canonical form for a username: trimmed + lower-cased, so the web and
+// mobile clients submit the same value regardless of stray spaces or
+// capitalisation.
+export function normalizeUsername(username: string): string {
+  return username.trim().toLowerCase();
+}
+
 // Password length bounds, exported so the web and mobile login forms can
 // surface matching hints/placeholders without re-declaring the numbers.
 // The upper bound keeps an honest-but-typo'd password from triggering

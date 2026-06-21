@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatError, validateCredentials } from "../src/index";
+import { formatError, normalizeUsername, validateCredentials } from "../src/index";
 
 describe("formatError", () => {
   it("returns empty for empty reason", () => {
@@ -8,6 +8,16 @@ describe("formatError", () => {
 
   it("prefixes the reason with a stable label", () => {
     expect(formatError("invalid creds")).toBe("Sign-in failed: invalid creds");
+  });
+});
+
+describe("normalizeUsername", () => {
+  it("trims surrounding whitespace and lower-cases", () => {
+    expect(normalizeUsername("  Alice  ")).toBe("alice");
+  });
+
+  it("leaves an already-canonical value untouched", () => {
+    expect(normalizeUsername("bob")).toBe("bob");
   });
 });
 
