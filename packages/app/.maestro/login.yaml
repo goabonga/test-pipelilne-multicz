@@ -1,0 +1,29 @@
+# Maestro end-to-end flow for the login screen.
+# Runs on an Android emulator (CI: app-android-e2e) and an iOS
+# simulator (CI: app-ios-e2e). Asserts the shared @shomer/lib
+# validation surfaces the same message the web client shows.
+appId: com.shomerapp
+---
+- launchApp:
+    clearState: true
+- assertVisible: "Sign in"
+
+# Invalid: short password is rejected client-side with the shared message.
+- tapOn:
+    id: "username"
+- inputText: "alice"
+- tapOn:
+    id: "password"
+- inputText: "short"
+- hideKeyboard
+- tapOn: "Sign in"
+- assertVisible: "Sign-in failed: password must be at least 8 characters"
+
+# Valid: the error clears.
+- tapOn:
+    id: "password"
+- eraseText
+- inputText: "wonderland8"
+- hideKeyboard
+- tapOn: "Sign in"
+- assertNotVisible: "Sign-in failed: password must be at least 8 characters"
