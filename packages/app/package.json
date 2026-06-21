@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@shomer/lib": "file:../lib",
-    "react": "19.2.3",
+    "react": "19.2.7",
     "react-native": "0.86.0",
     "react-native-safe-area-context": "^5.5.2"
   },
