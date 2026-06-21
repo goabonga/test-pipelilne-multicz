@@ -3487,7 +3487,7 @@ jobs:
           xcodebuild -exportArchive -archivePath /tmp/ShomerApp.xcarchive \
             -exportOptionsPlist /tmp/ExportOptions.plist -exportPath /tmp/export
       - name: Upload to TestFlight
-        uses: apple-actions/upload-testflight-build@41bb718fb7b8e0c9824fa3fbe8cd7e6018839a4c  # v5.2.1
+        uses: apple-actions/upload-testflight-build@1ad58030672057aa084b4e96beb6f7a8c627f9e6  # v5.2.1
         with:
           app-path: /tmp/export/ShomerApp.ipa
           issuer-id: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
