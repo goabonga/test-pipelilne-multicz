@@ -3430,7 +3430,7 @@ jobs:
       APPLE_BUNDLE_ID: ${{ secrets.APPLE_BUNDLE_ID }}
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: main
           fetch-depth: 0
