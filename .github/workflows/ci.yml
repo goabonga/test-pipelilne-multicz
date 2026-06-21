@@ -2185,9 +2185,8 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: packages/web/package-lock.json
-      - run: npm ci
-        working-directory: packages/web
+          cache-dependency-path: package-lock.json
+      - run: npm ci   # root install — hoists the npm workspace (lib + web)
       - name: Biome lint — web
         run: npm run lint
         working-directory: packages/web
@@ -2211,9 +2210,8 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: packages/web/package-lock.json
-      - run: npm ci
-        working-directory: packages/web
+          cache-dependency-path: package-lock.json
+      - run: npm ci   # root install — hoists the npm workspace (lib + web)
       - name: Biome format check — web
         run: npm run format:check
         working-directory: packages/web
@@ -2237,9 +2235,8 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: packages/web/package-lock.json
-      - run: npm ci
-        working-directory: packages/web
+          cache-dependency-path: package-lock.json
+      - run: npm ci   # root install — hoists the npm workspace (lib + web)
       - name: tsc --noEmit — web
         run: npm run typecheck
         working-directory: packages/web
@@ -2262,9 +2259,8 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: packages/web/package-lock.json
-      - run: npm ci
-        working-directory: packages/web
+          cache-dependency-path: package-lock.json
+      - run: npm ci   # root install — hoists the npm workspace (lib + web)
       - name: Vitest — web
         run: npm test
         working-directory: packages/web
@@ -2292,9 +2288,8 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: packages/web/package-lock.json
-      - run: npm ci
-        working-directory: packages/web
+          cache-dependency-path: package-lock.json
+      - run: npm ci   # root install — hoists the npm workspace (lib + web)
       - name: Build → packages/ssr/src/shomer_ssr/{static,templates}/
         run: npm run build
         working-directory: packages/web
@@ -2422,11 +2417,10 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: packages/web/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install web deps
-        run: npm ci
-        working-directory: packages/web
+        run: npm ci   # root install — hoists the npm workspace (lib + web)
 
       - uses: goabonga/multicz-action@95e90628797bc7dec0d2ad7d9abc6278f3465ed2  # v1
 

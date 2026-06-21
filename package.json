@@ -1,0 +1,18 @@
+{
+  "name": "shomer-monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "description": "JS/TS workspace root for the shomer monorepo: shared lib + the React web bundle source. The React Native app (packages/app) is intentionally NOT a workspace member — it keeps its own node_modules to avoid Metro/react-native hoisting issues and consumes @shomer/lib through a Metro alias.",
+  "type": "module",
+  "workspaces": [
+    "packages/lib",
+    "packages/web"
+  ],
+  "scripts": {
+    "lint": "npm run lint --workspaces --if-present",
+    "format:check": "npm run format:check --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "build": "npm run build --workspace packages/web"
+  }
+}

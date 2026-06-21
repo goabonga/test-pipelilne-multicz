@@ -1,6 +1,8 @@
 # Node (web builds JS/CSS/templates that land in packages/ssr/)
-packages/web/node_modules/
+# npm workspaces hoist dependencies into the repo-root node_modules.
+node_modules/
 packages/web/dist/
+packages/lib/dist/
 
 # Python
 __pycache__/

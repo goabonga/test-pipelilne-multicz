@@ -57,26 +57,31 @@ services:
       dockerfile: packages/web/Dockerfile.dev
     user: "${USER_UID:-1000}:${USER_GID:-1000}"
     volumes:
-      # Sources read by esbuild + the template copier
-      - ./packages/web/src:/app/src
-      - ./packages/web/scripts:/app/scripts
-      - ./packages/web/tsconfig.json:/app/tsconfig.json:ro
-      - ./packages/web/biome.json:/app/biome.json:ro
+      # Sources read by esbuild + the template copier (workspace layout)
+      - ./packages/web/src:/app/packages/web/src
+      - ./packages/web/scripts:/app/packages/web/scripts
+      - ./packages/web/tsconfig.json:/app/packages/web/tsconfig.json:ro
+      - ./packages/web/biome.json:/app/packages/web/biome.json:ro
+      # Shared @shomer/lib source — bundled into the web output, so live
+      # edits here must reach the watch build too.
+      - ./packages/lib/src:/app/packages/lib/src
       # Build output target — shared with the ssr container
       - ./packages/ssr/src/shomer_ssr/static:/output/static
       - ./packages/ssr/src/shomer_ssr/templates:/output/templates
-    command: ["node", "scripts/build.mjs", "--watch"]
+    command: ["node", "packages/web/scripts/build.mjs", "--watch"]
     # Source changes are handled by esbuild --watch inside the
     # container (the bind mount above shows them instantly). The
-    # `rebuild` action below catches dep changes: package.json /
-    # package-lock.json edits invalidate `npm ci`'s cache, so the
-    # only correct response is rebuilding the image.
+    # `rebuild` action below catches dep changes: a manifest or the root
+    # lockfile edit invalidates `npm ci`'s cache, so the only correct
+    # response is rebuilding the image.
     develop:
       watch:
         - action: rebuild
+          path: ./package-lock.json
+        - action: rebuild
           path: ./packages/web/package.json
         - action: rebuild
-          path: ./packages/web/package-lock.json
+          path: ./packages/lib/package.json
 
   ssr:
     build:
