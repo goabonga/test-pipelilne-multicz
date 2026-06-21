@@ -3032,11 +3032,12 @@ jobs:
           MIGRATIONS=$(jq -r       '.bumps.migrations.next_version       // empty' /tmp/release.json)
           CHART_MIGRATIONS=$(jq -r '.bumps["chart-migrations"].next_version // empty' /tmp/release.json)
           DOCS=$(jq -r         '.bumps.docs.next_version          // empty' /tmp/release.json)
+          APP=$(jq -r          '.bumps.app.next_version           // empty' /tmp/release.json)
           # Surface what we extracted so the workflow log makes the
           # downstream skip/run decision auditable without having to
           # re-resolve via gh api.
-          printf '[release-bump] extracted versions:\n  api=%s job=%s ssr=%s cli=%s migrations=%s\n  chart-api=%s chart-job=%s chart-ssr=%s chart-migrations=%s docs=%s\n' \
-            "$API" "$JOB" "$SSR" "$CLI" "$MIGRATIONS" "$CHART_API" "$CHART_JOB" "$CHART_SSR" "$CHART_MIGRATIONS" "$DOCS"
+          printf '[release-bump] extracted versions:\n  api=%s job=%s ssr=%s cli=%s migrations=%s app=%s\n  chart-api=%s chart-job=%s chart-ssr=%s chart-migrations=%s docs=%s\n' \
+            "$API" "$JOB" "$SSR" "$CLI" "$MIGRATIONS" "$APP" "$CHART_API" "$CHART_JOB" "$CHART_SSR" "$CHART_MIGRATIONS" "$DOCS"
           echo "api_version=$API"                   >> "$GITHUB_OUTPUT"
           echo "job_version=$JOB"             >> "$GITHUB_OUTPUT"
           echo "cli_version=$CLI"                   >> "$GITHUB_OUTPUT"
@@ -3047,6 +3048,7 @@ jobs:
           echo "migrations_version=$MIGRATIONS"     >> "$GITHUB_OUTPUT"
           echo "chart_migrations_version=$CHART_MIGRATIONS" >> "$GITHUB_OUTPUT"
           echo "docs_version=$DOCS"                 >> "$GITHUB_OUTPUT"
+          echo "app_version=$APP"                   >> "$GITHUB_OUTPUT"
 
       - name: Compute lowercase owner
         id: owner
