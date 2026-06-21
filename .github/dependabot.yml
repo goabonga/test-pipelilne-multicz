@@ -59,10 +59,11 @@ updates:
       - "dependencies"
       - "python"
 
-  # web (TS / build tooling). Everything in this package.json is
-  # devDependencies, so all bumps land as chore(deps); the rewrite confirms.
+  # Root npm workspace (lib + web). The single root package-lock.json
+  # spans both members. React/react-dom are runtime (-> fix(deps)); the
+  # rest are build/test tooling grouped into one chore(deps) PR.
   - package-ecosystem: "npm"
-    directory: "/packages/web"
+    directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -74,18 +75,82 @@ updates:
         applies-to: version-updates
         patterns:
           - "@biomejs/*"
+          - "@testing-library/*"
           - "@types/*"
           - "esbuild"
           - "jsdom"
           - "typescript"
           - "vitest"
     commit-message:
-      prefix: "chore(deps)"
+      prefix: "fix(deps)"
       prefix-development: "chore(deps)"
       include: "scope"
     labels:
       - "dependencies"
       - "web"
+
+  # React Native app — its own standalone lockfile (not a workspace
+  # member). Mostly RN/build tooling -> chore(deps).
+  - package-ecosystem: "npm"
+    directory: "/packages/app"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Paris"
+    open-pull-requests-limit: 5
+    groups:
+      app-dev-tools:
+        applies-to: version-updates
+        patterns:
+          - "@babel/*"
+          - "@biomejs/*"
+          - "@react-native*/*"
+          - "@types/*"
+          - "jest"
+          - "react-test-renderer"
+          - "typescript"
+    commit-message:
+      prefix: "fix(deps)"
+      prefix-development: "chore(deps)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "app"
+
+  # Android native (Gradle) deps of the app.
+  - package-ecosystem: "gradle"
+    directory: "/packages/app/android"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Paris"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "fix(deps)"
+    labels:
+      - "dependencies"
+      - "app"
+      - "android"
+
+  # iOS tooling: RN drives CocoaPods through a Gemfile. Dependabot no
+  # longer supports the CocoaPods ecosystem directly, so we track the
+  # Ruby Gemfile (the `cocoapods` gem) via bundler instead.
+  - package-ecosystem: "bundler"
+    directory: "/packages/app"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Paris"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "fix(deps)"
+    labels:
+      - "dependencies"
+      - "app"
+      - "ios"
 
   # Container base images for the three runtime services. Base-image bumps
   # ship in production, so the rewrite classifies them as fix(deps).

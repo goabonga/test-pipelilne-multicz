@@ -38,6 +38,24 @@ repos:
         pass_filenames: false
         stages: [pre-commit, pre-push]
 
+      # biome lint/format for the JS/TS packages (lib + web workspace,
+      # and the standalone app), mirroring the CI *-lint / *-format jobs.
+      - id: biome-lint
+        name: biome lint (lib / web / app)
+        entry: bash -c 'npm run lint --workspaces --if-present && npm --prefix packages/app run lint'
+        language: system
+        files: \.(ts|tsx|js|jsx)$
+        pass_filenames: false
+        stages: [pre-commit, pre-push]
+
+      - id: biome-format
+        name: biome format --check (lib / web / app)
+        entry: bash -c 'npm run format:check --workspaces --if-present && npm --prefix packages/app run format:check'
+        language: system
+        files: \.(ts|tsx|js|jsx)$
+        pass_filenames: false
+        stages: [pre-commit, pre-push]
+
       # mypy --strict per package — same per-component invocation the CI
       # *-typecheck jobs use, so a green pre-push means green typecheck.
       - id: mypy-strict
