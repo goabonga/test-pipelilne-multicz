@@ -7,6 +7,21 @@ Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
 ### Releases
 
+- **app** patch — 0.1.1 → 0.1.2  _(cascade from lib 0.3.0)_
+- **chart-ssr** patch — 1.0.7 → 1.0.8  _(cascade from ssr 1.1.2)_
+- **docs** patch — 1.0.6 → 1.0.7  _(cascade from web 1.2.2)_
+- **lib** minor — 0.2.0 → 0.3.0
+- **ssr** patch — 1.1.1 → 1.1.2  _(cascade from web 1.2.2)_
+- **web** patch — 1.2.1 → 1.2.2  _(cascade from lib 0.3.0)_
+
+### Features
+
+- **lib**: add normalizeUsername helper (`c6860a0`)
+
+## 2026-06-21
+
+### Releases
+
 - **app** patch — 0.1.0 → 0.1.1  _(cascade from lib 0.2.0)_
 - **chart-ssr** patch — 1.0.6 → 1.0.7  _(cascade from ssr 1.1.1)_
 - **docs** patch — 1.0.5 → 1.0.6  _(cascade from web 1.2.1)_

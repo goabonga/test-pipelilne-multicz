@@ -2,6 +2,12 @@
 
 All notable changes to this component are documented here.
 
+## [0.3.0] - 2026-06-21
+
+### Features
+
+- **lib**: add normalizeUsername helper (`c6860a0`)
+
 ## [0.2.0] - 2026-06-21
 
 ### Features
