@@ -51,7 +51,7 @@ export default function App() {
         <Text testID="error" style={styles.error}>
           {error}
         </Text>
-        <Button title="Sign in" onPress={onSubmit} />
+        <Button testID="submit" title="Sign in" onPress={onSubmit} />
       </View>
     </SafeAreaProvider>
   );
