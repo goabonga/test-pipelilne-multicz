@@ -32,4 +32,9 @@ def upgrade(revision: str = "head") -> None:
 
 
 def main() -> None:
+    """Console-script entrypoint (``shomer-migrate``).
+
+    Applies migrations up to the revision given as the first CLI argument,
+    or to ``head`` when none is provided.
+    """
     upgrade(sys.argv[1] if len(sys.argv) > 1 else "head")
