@@ -3310,14 +3310,14 @@ jobs:
             echo "apple=${APPLE:+yes}"
           } >> "$GITHUB_OUTPUT"
 
-  release-app:
-    # Android half of the app release. Builds the release AAB + APK,
-    # signs them with the real upload keystore when the keystore secrets
-    # are set (else debug-signed), uploads the AAB to Google Play when the
-    # service-account secret is set, and ALWAYS cuts the app-vX.Y.Z GitHub
-    # Release with the artifacts attached.
+  release-app-android:
+    # Android half of the app release. The app-vX.Y.Z GitHub Release is
+    # ALWAYS cut (so the tag carries notes), but the signed AAB + APK are
+    # built and attached ONLY when the upload keystore secrets are set —
+    # we never publish a debug-signed binary as a release. The AAB is
+    # pushed to Google Play when the service-account secret is also set.
     #
-    # Optional secrets (absent => artifact-only release, nothing to Play):
+    # Optional secrets (absent => notes-only GitHub Release, no binaries):
     #   ANDROID_KEYSTORE_BASE64 / ANDROID_KEYSTORE_PASSWORD /
     #   ANDROID_KEY_ALIAS / ANDROID_KEY_PASSWORD     — upload signing
     #   PLAY_SERVICE_ACCOUNT_JSON                    — Play Console upload
@@ -3335,18 +3335,24 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
       - uses: goabonga/multicz-action@95e90628797bc7dec0d2ad7d9abc6278f3465ed2  # v1
+      # Build toolchain + signed build only run when a keystore is set —
+      # no keystore => no binaries to produce, just the notes-only release.
       - uses: actions/setup-java@v5
+        if: needs.release-app-gate.outputs.android_sign == 'yes'
         with:
           distribution: temurin
           java-version: "17"
       - uses: actions/setup-node@v6
+        if: needs.release-app-gate.outputs.android_sign == 'yes'
         with:
           node-version: "22"
           cache: npm
           cache-dependency-path: packages/app/package-lock.json
       - run: npm ci
+        if: needs.release-app-gate.outputs.android_sign == 'yes'
         working-directory: packages/app
       - name: Stamp native version from app_version
+        if: needs.release-app-gate.outputs.android_sign == 'yes'
         env:
           VER: ${{ needs.release-bump.outputs.app_version }}
           RUN: ${{ github.run_number }}
@@ -3369,10 +3375,6 @@ jobs:
           ORG_GRADLE_PROJECT_SHOMER_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ORG_GRADLE_PROJECT_SHOMER_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: ./gradlew assembleRelease bundleRelease --no-daemon
-      - name: Build debug-signed release (no keystore configured)
-        if: needs.release-app-gate.outputs.android_sign != 'yes'
-        working-directory: packages/app/android
-        run: ./gradlew assembleRelease bundleRelease --no-daemon
       - name: Upload AAB to Google Play
         # Real signing AND a service account are both required: Play
         # rejects a debug-signed bundle.
@@ -3384,22 +3386,31 @@ jobs:
           releaseFiles: packages/app/android/app/build/outputs/bundle/release/app-release.aab
           track: internal
       - name: gh release create app-v${{ needs.release-bump.outputs.app_version }}
+        # The GitHub Release is always created; binaries are attached only
+        # when they were built (keystore present).
         env:
           GH_TOKEN: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.release-bump.outputs.app_version }}
+          ANDROID_SIGN: ${{ needs.release-app-gate.outputs.android_sign }}
         run: |
           set -euo pipefail
-          TAG="app-v${{ needs.release-bump.outputs.app_version }}"
-          APK=packages/app/android/app/build/outputs/apk/release/app-release.apk
-          AAB=packages/app/android/app/build/outputs/bundle/release/app-release.aab
-          multicz release-notes --tag "$TAG" \
-            | gh release create "$TAG" --title "$TAG" --notes-file - "$APK" "$AAB"
+          TAG="app-v${VERSION}"
+          if [ "${ANDROID_SIGN}" = "yes" ]; then
+            APK=packages/app/android/app/build/outputs/apk/release/app-release.apk
+            AAB=packages/app/android/app/build/outputs/bundle/release/app-release.aab
+            multicz release-notes --tag "$TAG" \
+              | gh release create "$TAG" --title "$TAG" --notes-file - "$APK" "$AAB"
+          else
+            multicz release-notes --tag "$TAG" \
+              | gh release create "$TAG" --title "$TAG" --notes-file -
+          fi
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
-          title: release-app
+          title: release-app-android
           body: |
-            Built the release Android APK + AAB at `${{ needs.release-bump.outputs.app_version }}` (signed=`${{ needs.release-app-gate.outputs.android_sign == 'yes' }}`, Play upload=`${{ needs.release-app-gate.outputs.android_sign == 'yes' && needs.release-app-gate.outputs.play == 'yes' }}`) and cut GitHub Release `app-v${{ needs.release-bump.outputs.app_version }}` with both attached.
+            Cut GitHub Release `app-v${{ needs.release-bump.outputs.app_version }}` (binaries attached=`${{ needs.release-app-gate.outputs.android_sign == 'yes' }}`, Play upload=`${{ needs.release-app-gate.outputs.android_sign == 'yes' && needs.release-app-gate.outputs.play == 'yes' }}`). Without the upload keystore the release carries notes only — no debug-signed APK/AAB is published.
 
   release-app-ios:
     # iOS half of the app release — runs ONLY when the Apple signing
