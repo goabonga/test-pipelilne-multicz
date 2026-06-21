@@ -33,6 +33,21 @@ STATIC_DIR = Path(__file__).parent / "static"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 
+def frontend_config() -> dict[str, str]:
+    """Runtime config handed to the React islands.
+
+    Serialised into a ``<script id="app-config" type="application/json">``
+    tag by ``base.html`` (``{{ config | tojson }}``) and read at mount
+    time by ``packages/web/src/config.ts``. The server stays the single
+    source of truth — nothing here is duplicated in the JS bundle.
+    """
+    return {
+        "appName": "Shomer",
+        "version": __version__,
+        "loginAction": "/login",
+    }
+
+
 class DevAwareStaticFiles(StaticFiles):
     """``StaticFiles`` subclass that advertises sibling ``.map`` files
     via the ``SourceMap`` response header when one exists on disk.
@@ -80,13 +95,17 @@ def healthz() -> dict[str, str]:
 
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(request, "home.html", {"version": __version__})
+    return templates.TemplateResponse(
+        request, "home.html", {"version": __version__, "config": frontend_config()}
+    )
 
 
 @app.get("/login", response_class=HTMLResponse)
 def login_form(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(
-        request, "login.html", {"version": __version__, "error": None}
+        request,
+        "login.html",
+        {"version": __version__, "error": None, "config": frontend_config()},
     )
 
 

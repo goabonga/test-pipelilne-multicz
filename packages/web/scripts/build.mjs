@@ -9,7 +9,7 @@
 // (from compose) for an incremental esbuild loop; without the flag
 // for a one-shot release build called via multicz's post_bump.
 //
-//   src/main.ts           ──> esbuild bundle ──> static/main.js
+//   src/main.tsx          ──> esbuild bundle ──> static/main.js
 //   src/styles.css        ──> esbuild bundle ──> static/main.css
 //   src/templates/*.html  ──> verbatim copy   ──> templates/
 //
@@ -71,12 +71,15 @@ function ensureDir(dir) {
 // is silently omitted by the ssr server. .map files are gitignored
 // regardless.
 const jsConfig = {
-  entryPoints: [join(SRC, "main.ts")],
+  entryPoints: [join(SRC, "main.tsx")],
   bundle: true,
   minify: true,
   sourcemap: WATCH ? "external" : false,
   format: "iife",
   target: "es2022",
+  // React 19 automatic runtime — esbuild injects the jsx-runtime
+  // imports, so components don't need `import React`.
+  jsx: "automatic",
   outfile: join(OUT_STATIC, "main.js"),
   logLevel: "info",
 };
