@@ -33,8 +33,8 @@ describe("validateCredentials", () => {
   });
 
   it("rejects an over-long password", () => {
-    expect(
-      validateCredentials({ username: "alice", password: "x".repeat(257) }),
-    ).toBe("password must be at most 256 characters");
+    expect(validateCredentials({ username: "alice", password: "x".repeat(257) })).toBe(
+      "password must be at most 256 characters",
+    );
   });
 });
