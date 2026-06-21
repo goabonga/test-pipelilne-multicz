@@ -44,6 +44,8 @@ export default function App() {
           accessibilityLabel="Password"
           placeholder="Password"
           secureTextEntry
+          returnKeyType="go"
+          onSubmitEditing={onSubmit}
           value={password}
           onChangeText={setPassword}
           style={styles.input}
