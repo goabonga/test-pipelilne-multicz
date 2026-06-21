@@ -129,6 +129,12 @@ updates:
     open-pull-requests-limit: 3
     commit-message:
       prefix: "fix(deps)"
+    ignore:
+      # The Gradle wrapper version is pinned by the React Native release
+      # (RN 0.86 -> Gradle 9.3.1); a newer Gradle ships a Kotlin stdlib
+      # the RN gradle plugin can't read (metadata 2.3 vs compiler 2.1).
+      # Bump it together with a RN upgrade, never on its own.
+      - dependency-name: "gradle"
     labels:
       - "dependencies"
       - "app"
