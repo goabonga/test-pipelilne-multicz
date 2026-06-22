@@ -82,9 +82,12 @@ updates:
           - "typescript"
           - "vitest"
     commit-message:
+      # No `include: scope` — the prefix already carries the scope, so
+      # adding it would double it into `chore(deps)(deps-dev):` (invalid
+      # Conventional Commit). Runtime bumps -> fix(deps), dev tooling ->
+      # chore(deps), matching the rewritten commit subjects.
       prefix: "fix(deps)"
       prefix-development: "chore(deps)"
-      include: "scope"
     labels:
       - "dependencies"
       - "web"
@@ -111,9 +114,12 @@ updates:
           - "react-test-renderer"
           - "typescript"
     commit-message:
+      # No `include: scope` — the prefix already carries the scope, so
+      # adding it would double it into `chore(deps)(deps-dev):` (invalid
+      # Conventional Commit). Runtime bumps -> fix(deps), dev tooling ->
+      # chore(deps), matching the rewritten commit subjects.
       prefix: "fix(deps)"
       prefix-development: "chore(deps)"
-      include: "scope"
     labels:
       - "dependencies"
       - "app"
