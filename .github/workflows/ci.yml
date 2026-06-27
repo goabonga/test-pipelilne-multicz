@@ -1609,7 +1609,7 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
-      - uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2  # v5
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310  # v5
       - name: helm lint — chart-api
         run: helm lint packages/api/chart
       - name: helm template smoke — chart-api
@@ -1629,7 +1629,7 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
-      - uses: bridgecrewio/checkov-action@fa9edf8f0a491c59a924ea6accd5bdcf07752cff  # v12
+      - uses: bridgecrewio/checkov-action@063da70420ab562cb31f661b374a76b6a42ed6b5  # v12
         with:
           directory: packages/api/chart
           framework: helm
@@ -1659,7 +1659,7 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
-      - uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2  # v5
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310  # v5
       - name: Rewrite Chart.yaml name for this repo's namespace
         run: |
           REPO='${{ github.event.repository.name }}'
@@ -1689,7 +1689,7 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
-      - uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2  # v5
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310  # v5
       - name: helm lint — chart-job
         run: helm lint packages/job/chart
       - name: helm template smoke — chart-job
@@ -1709,7 +1709,7 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
-      - uses: bridgecrewio/checkov-action@fa9edf8f0a491c59a924ea6accd5bdcf07752cff  # v12
+      - uses: bridgecrewio/checkov-action@063da70420ab562cb31f661b374a76b6a42ed6b5  # v12
         with:
           directory: packages/job/chart
           framework: helm
@@ -1735,7 +1735,7 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
-      - uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2  # v5
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310  # v5
       - name: Rewrite Chart.yaml name for this repo's namespace
         run: |
           REPO='${{ github.event.repository.name }}'
@@ -1765,7 +1765,7 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
-      - uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2  # v5
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310  # v5
       - name: helm lint — chart-ssr
         run: helm lint packages/ssr/chart
       - name: helm template smoke — chart-ssr
@@ -1785,7 +1785,7 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
-      - uses: bridgecrewio/checkov-action@fa9edf8f0a491c59a924ea6accd5bdcf07752cff  # v12
+      - uses: bridgecrewio/checkov-action@063da70420ab562cb31f661b374a76b6a42ed6b5  # v12
         with:
           directory: packages/ssr/chart
           framework: helm
@@ -1808,7 +1808,7 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
-      - uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2  # v5
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310  # v5
       - name: Rewrite Chart.yaml name for this repo's namespace
         run: |
           REPO='${{ github.event.repository.name }}'
@@ -1838,7 +1838,7 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
-      - uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2  # v5
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310  # v5
       - name: helm lint — chart-migrations
         run: helm lint packages/bdd/migrations/chart
       - name: helm template smoke — chart-migrations
@@ -1858,7 +1858,7 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
-      - uses: bridgecrewio/checkov-action@fa9edf8f0a491c59a924ea6accd5bdcf07752cff  # v12
+      - uses: bridgecrewio/checkov-action@063da70420ab562cb31f661b374a76b6a42ed6b5  # v12
         with:
           directory: packages/bdd/migrations/chart
           framework: helm
@@ -1887,7 +1887,7 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
-      - uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2  # v5
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310  # v5
       - name: Rewrite Chart.yaml name for this repo's namespace
         run: |
           REPO='${{ github.event.repository.name }}'
