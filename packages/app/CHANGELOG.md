@@ -2,6 +2,12 @@
 
 All notable changes to this component are documented here.
 
+## [0.1.4] - 2026-06-27
+
+### Fixes
+
+- **app**: pin Babel 7 and Jest 29 for React Native 0.86 (`3186e94`)
+
 ## [0.1.3] - 2026-06-21
 
 ### Dependencies

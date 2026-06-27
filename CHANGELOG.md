@@ -3,6 +3,17 @@
 All notable changes across components, aggregated per release.
 Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
+## 2026-06-27
+
+### Releases
+
+- **app** patch — 0.1.3 → 0.1.4
+- **docs** patch — 1.0.9 → 1.0.10  _(cascade from app 0.1.4)_
+
+### Fixes
+
+- **app**: pin Babel 7 and Jest 29 for React Native 0.86 (`3186e94`)
+
 ## 2026-06-21
 
 ### Releases

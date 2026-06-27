@@ -1,6 +1,6 @@
 {
   "name": "@shomer/app",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Shomer React Native app (iOS + Android). Shares validation/types with the web client through @shomer/lib.",
   "private": true,
   "scripts": {
