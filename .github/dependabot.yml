@@ -113,6 +113,18 @@ updates:
           - "jest"
           - "react-test-renderer"
           - "typescript"
+    ignore:
+      # RN 0.86 pins its toolchain to Babel 7 (@react-native/babel-preset)
+      # and Jest 29 (@react-native/jest-preset bundles jest-environment-node
+      # 29). The major bumps break `npm test` (Babel 8 fails assertVersion;
+      # Jest 30 runtime calls clearMocksOnScope on the preset's Jest-29 mock).
+      # Bump these only together with a React Native upgrade.
+      - dependency-name: "@babel/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "jest"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/jest"
+        update-types: ["version-update:semver-major"]
     commit-message:
       # No `include: scope` — the prefix already carries the scope, so
       # adding it would double it into `chore(deps)(deps-dev):` (invalid
