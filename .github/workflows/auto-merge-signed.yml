@@ -102,47 +102,60 @@ jobs:
           esac
 
       - name: Wait for the PR's other checks to pass
+        env:
+          # This job's own check-run name on the PR head — excluded from
+          # the wait so the step never blocks on itself.
+          SELF_CHECK: rebase, sign and fast-forward into main
         run: |
           set -euo pipefail
-          # IMPORTANT: this very workflow shows up in the PR's check
-          # rollup as a pending CheckRun, so we must NOT `gh pr checks
-          # --watch` (it would wait on itself forever). Instead we poll
-          # the rollup and ignore every CheckRun produced by THIS
-          # workflow (`workflowName == "auto-merge-signed"`), requiring
-          # all the rest to be green.
+          # We poll the REST check-runs + commit-status APIs for the PR
+          # head SHA — NOT `gh pr view --json statusCheckRollup`. The
+          # GraphQL rollup resolves each check's app/team metadata
+          # (login / name / slug), which needs the `read:org` scope; the
+          # RELEASE_PAT (classic PAT: repo, write:packages) doesn't have
+          # it, so the GraphQL query fails. REST check-runs only needs
+          # `repo`. We exclude THIS job's own check-run by name so the
+          # wait can't deadlock on itself.
           #
-          # jq classifies each rollup entry:
-          #   CheckRun     -> has a `conclusion`; ok iff COMPLETED and
-          #                   conclusion in SUCCESS / NEUTRAL / SKIPPED.
-          #   StatusContext-> has a `state`;      ok iff state == SUCCESS.
-          rollup_bad() {
-            gh pr view "$PR" --json statusCheckRollup --jq '
-              [ .statusCheckRollup[]
-                | select((.workflowName // "") != "auto-merge-signed")
-                | if has("conclusion")
-                  then (.status != "COMPLETED")
-                       or ([.conclusion] | inside(["SUCCESS","NEUTRAL","SKIPPED"]) | not)
-                  else (.state != "SUCCESS") end
-                | select(.) ] | length'
-          }
+          # Per check-run, emit "<status>|<conclusion>", excluding this
+          # job's own check (matched via jq's env.SELF_CHECK). `--paginate`
+          # streams one line per run across all pages, so we aggregate in
+          # bash — robust when the repo has more check-runs than one page.
           deadline=$(( SECONDS + 25*60 ))
           while :; do
-            bad=$(rollup_bad)
-            # Distinguish "failed" from "still pending": a failed/cancelled
-            # conclusion is terminal, so bail immediately instead of
-            # waiting out the timeout.
-            failed=$(gh pr view "$PR" --json statusCheckRollup --jq '
-              [ .statusCheckRollup[]
-                | select((.workflowName // "") != "auto-merge-signed")
-                | select(has("conclusion") and .status == "COMPLETED"
-                         and ([.conclusion] | inside(["SUCCESS","NEUTRAL","SKIPPED"]) | not))
-              ] | length')
+            pending=0; failed=0
+            runs=$(gh api --paginate \
+              "repos/$GH_REPO/commits/$HEAD_SHA/check-runs?per_page=100" \
+              --jq '.check_runs[] | select(.name != env.SELF_CHECK) | "\(.status)|\(.conclusion // "")"')
+            while IFS='|' read -r status conclusion; do
+              [ -z "$status" ] && continue
+              if [ "$status" != "completed" ]; then
+                pending=$((pending+1))
+              else
+                case "$conclusion" in
+                  success|neutral|skipped) ;;
+                  *) failed=$((failed+1)) ;;
+                esac
+              fi
+            done <<< "$runs"
+            # Legacy commit statuses (external CI posting via the Status
+            # API rather than check-runs). Only consult when some exist —
+            # the combined endpoint reports "pending" for an empty set.
+            nstatus=$(gh api "repos/$GH_REPO/commits/$HEAD_SHA/status" --jq '.statuses | length')
+            if [ "$nstatus" -gt 0 ]; then
+              sstate=$(gh api "repos/$GH_REPO/commits/$HEAD_SHA/status" --jq '.state')
+              case "$sstate" in
+                success) ;;
+                failure|error) failed=$((failed+1)) ;;
+                *) pending=$((pending+1)) ;;
+              esac
+            fi
             if [ "$failed" -gt 0 ]; then
               gh pr comment "$PR" --body "🚫 auto-merge-signed: a required check failed; not merging. Fix CI and re-apply the \`$MERGE_LABEL\` label."
               gh pr edit "$PR" --remove-label "$MERGE_LABEL" || true
               exit 1
             fi
-            if [ "$bad" -eq 0 ]; then
+            if [ "$pending" -eq 0 ]; then
               echo "All other checks green."
               break
             fi
@@ -151,7 +164,7 @@ jobs:
               gh pr edit "$PR" --remove-label "$MERGE_LABEL" || true
               exit 1
             fi
-            echo "$bad check(s) still pending; re-checking in 30s…"
+            echo "$pending check(s) still pending; re-checking in 30s…"
             sleep 30
           done
 
