@@ -77,3 +77,26 @@ ignore:
       name: py3-pip-wheel
       version: 26.1.2-r0
       type: apk
+
+  # CVE-2026-11940 (High) — Chainguard python-3.14 apk on the pinned base.
+  # Newly surfaced on 3.14.6-r0; grype reports no "fixed in" yet, so no
+  # patched build exists to bump to. Accepted on the pinned base, scoped
+  # by the version pin so any base-image bump trips the mismatch and
+  # forces a fresh review. Re-evaluate by the expiry.
+  # expires: 2026-07-12
+  - vulnerability: CVE-2026-11940
+    reason: "Upstream Chainguard python-3.14 apk on the pinned base; no patched build yet."
+    package:
+      name: python-3.14
+      version: 3.14.6-r0
+      type: apk
+
+  # CVE-2026-11972 (High) — same upstream python-3.14 apk on the pinned
+  # base, also no upstream fix yet. Same review cadence as CVE-2026-11940.
+  # expires: 2026-07-12
+  - vulnerability: CVE-2026-11972
+    reason: "Upstream Chainguard python-3.14 apk on the pinned base; no patched build yet."
+    package:
+      name: python-3.14
+      version: 3.14.6-r0
+      type: apk
