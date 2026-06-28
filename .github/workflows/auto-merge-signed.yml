@@ -87,7 +87,7 @@ jobs:
         run: |
           set -euo pipefail
           fail() { gh pr comment "$PR" --body "🚫 auto-merge-signed: $1"; \
-                   gh pr edit "$PR" --remove-label "$MERGE_LABEL" || true; exit 1; }
+                   gh api -X DELETE "repos/$GH_REPO/issues/$PR/labels/$MERGE_LABEL" >/dev/null 2>&1 || true; exit 1; }
 
           if [ -z "$GPG_PRIVATE_KEY" ] || [ -z "$GPG_PASSPHRASE" ]; then
             fail "GPG_PRIVATE_KEY / GPG_PASSPHRASE are not configured, so commits can't be signed with the maintainer key. Set the secrets and retry."
@@ -152,7 +152,7 @@ jobs:
             fi
             if [ "$failed" -gt 0 ]; then
               gh pr comment "$PR" --body "🚫 auto-merge-signed: a required check failed; not merging. Fix CI and re-apply the \`$MERGE_LABEL\` label."
-              gh pr edit "$PR" --remove-label "$MERGE_LABEL" || true
+              gh api -X DELETE "repos/$GH_REPO/issues/$PR/labels/$MERGE_LABEL" >/dev/null 2>&1 || true
               exit 1
             fi
             if [ "$pending" -eq 0 ]; then
@@ -161,7 +161,7 @@ jobs:
             fi
             if [ "$SECONDS" -ge "$deadline" ]; then
               gh pr comment "$PR" --body "🚫 auto-merge-signed: timed out waiting for checks to finish. Re-apply the \`$MERGE_LABEL\` label once CI is green."
-              gh pr edit "$PR" --remove-label "$MERGE_LABEL" || true
+              gh api -X DELETE "repos/$GH_REPO/issues/$PR/labels/$MERGE_LABEL" >/dev/null 2>&1 || true
               exit 1
             fi
             echo "$pending check(s) still pending; re-checking in 30s…"
@@ -220,7 +220,7 @@ jobs:
           if ! git -c "gpg.program=gpg" rebase --force-rebase origin/main; then
             git rebase --abort || true
             gh pr comment "$PR" --body "🚫 auto-merge-signed: the PR does not rebase cleanly onto \`main\` (conflicts). Rebase locally, push, and re-apply the \`$MERGE_LABEL\` label."
-            gh pr edit "$PR" --remove-label "$MERGE_LABEL" || true
+            gh api -X DELETE "repos/$GH_REPO/issues/$PR/labels/$MERGE_LABEL" >/dev/null 2>&1 || true
             exit 1
           fi
           echo "Signature of new HEAD:"
@@ -237,7 +237,7 @@ jobs:
           #    let the maintainer re-label to retry on a fresh base.
           if ! git push origin HEAD:main; then
             gh pr comment "$PR" --body "🚫 auto-merge-signed: \`main\` advanced during the merge; the fast-forward was rejected. Re-apply the \`$MERGE_LABEL\` label to retry on the new base."
-            gh pr edit "$PR" --remove-label "$MERGE_LABEL" || true
+            gh api -X DELETE "repos/$GH_REPO/issues/$PR/labels/$MERGE_LABEL" >/dev/null 2>&1 || true
             exit 1
           fi
 
