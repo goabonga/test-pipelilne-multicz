@@ -110,6 +110,12 @@ jobs:
         uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
         with:
           python-version: "3.12"
+          # uv is only used for an occasional `uv lock` inside the rebase
+          # loop; most bumps (JS / Actions / Docker) never touch it, so
+          # there's nothing to cache and the post-job `cache prune` fails
+          # the whole job with "Cache path … does not exist". Disable the
+          # cache to drop that spurious failure.
+          enable-cache: false
 
       - name: Configure GPG and git identity from the imported key
         if: steps.gate.outputs.skip != 'true'
