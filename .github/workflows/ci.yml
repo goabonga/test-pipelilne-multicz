@@ -2738,7 +2738,7 @@ jobs:
     needs: [app-test]
     if: '!failure() && !cancelled() && needs.app-test.result == ''success'''
     # First macOS runner in the graph — free on this public repo.
-    runs-on: macos-latest
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v7
         with:
@@ -2777,7 +2777,7 @@ jobs:
   app-ios-e2e:
     needs: [app-ios-build]
     if: '!failure() && !cancelled() && needs.app-ios-build.result == ''success'''
-    runs-on: macos-latest
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v7
         with:
@@ -3439,7 +3439,7 @@ jobs:
       !failure() && !cancelled() &&
       needs.release-bump.outputs.app_version != '' &&
       needs.release-app-gate.outputs.apple == 'yes'
-    runs-on: macos-latest
+    runs-on: macos-15
     permissions:
       contents: read
     env:
