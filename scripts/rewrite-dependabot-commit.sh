@@ -26,7 +26,13 @@ set -euo pipefail
 
 changed=$(git show --name-only --pretty='' HEAD)
 subject=$(git log -1 --pretty=%s HEAD)
-body=$(git log -1 --pretty=%b HEAD | sed '/^[Cc]o-authored-by:/d')
+# Strip trailers we don't want carried into the rewritten commit:
+#   - Co-authored-by:            house style keeps commits single-author
+#   - Signed-off-by: dependabot  the bot's DCO sign-off is meaningless once
+#                                the commit is re-authored + GPG-signed as
+#                                the maintainer.
+body=$(git log -1 --pretty=%b HEAD \
+    | sed -e '/^[Cc]o-authored-by:/d' -e '/^Signed-off-by: dependabot\[bot\]/d')
 
 # Drop any leading conventional prefix Dependabot already added. The
 # `(\([^)]*\))*` quantifier matches zero or more paren groups, so the
