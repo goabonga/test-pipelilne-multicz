@@ -100,3 +100,15 @@ ignore:
       name: python-3.14
       version: 3.14.6-r0
       type: apk
+
+  # CVE-2026-15308 (High) — newly surfaced on the same pinned python-3.14
+  # apk; grype reports no "fixed in", so there is no patched build to bump
+  # to. Third High CVE on this base in as many weeks: the recurring churn
+  # here is what the grype-allowlist-sweep automation is meant to absorb.
+  # expires: 2026-07-28
+  - vulnerability: CVE-2026-15308
+    reason: "Upstream Chainguard python-3.14 apk on the pinned base; no patched build yet."
+    package:
+      name: python-3.14
+      version: 3.14.6-r0
+      type: apk
