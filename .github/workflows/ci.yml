@@ -406,7 +406,10 @@ jobs:
           # push time via cosign in `.github/actions/publish-image`.
           tags: api:ci
           cache-from: type=gha,scope=api
-          cache-to: type=gha,mode=max,scope=api
+          # ignore-error: the GHA cache export can fail to reserve its key
+          # even when the image built fine (see ssr). A cache miss must not
+          # fail a green build — degrade to "no cache written" instead.
+          cache-to: type=gha,mode=max,scope=api,ignore-error=true
       - name: Save image tarball
         run: docker save api:ci -o /tmp/api.tar
       - uses: actions/upload-artifact@v7
@@ -690,7 +693,7 @@ jobs:
           # See api-container: attestations done via cosign post-push.
           tags: job:ci
           cache-from: type=gha,scope=job
-          cache-to: type=gha,mode=max,scope=job
+          cache-to: type=gha,mode=max,scope=job,ignore-error=true
       - name: Save image tarball
         run: docker save job:ci -o /tmp/job.tar
       - uses: actions/upload-artifact@v7
@@ -963,7 +966,7 @@ jobs:
           # See api-container: attestations done via cosign post-push.
           tags: ssr:ci
           cache-from: type=gha,scope=ssr
-          cache-to: type=gha,mode=max,scope=ssr
+          cache-to: type=gha,mode=max,scope=ssr,ignore-error=true
       - name: Save image tarball
         run: docker save ssr:ci -o /tmp/ssr.tar
       - uses: actions/upload-artifact@v7
@@ -1487,7 +1490,7 @@ jobs:
           load: true
           tags: migrations:ci
           cache-from: type=gha,scope=migrations
-          cache-to: type=gha,mode=max,scope=migrations
+          cache-to: type=gha,mode=max,scope=migrations,ignore-error=true
       - name: Save image tarball
         run: docker save migrations:ci -o /tmp/migrations.tar
       - uses: actions/upload-artifact@v7
