@@ -1,6 +1,6 @@
 [project]
 name = "shomer-job"
-version = "1.1.1"
+version = "1.2.0"
 description = "Shomer background job (token cleanup, audit replication)."
 requires-python = ">=3.11"
 # Celery worker with a Redis broker + result backend. The `redis` extra

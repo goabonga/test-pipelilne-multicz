@@ -3,6 +3,6 @@ name: shomer-migrations
 description: Shomer database migrations — a Job running alembic upgrade head 
   against the (managed) database. Run before the app via GitOps sync-waves.
 type: application
-version: 0.1.1
-appVersion: "0.1.1"
+version: 0.2.0
+appVersion: "0.2.0"
 icon: https://raw.githubusercontent.com/goabonga/shomer/main/assets/shomer.svg

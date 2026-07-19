@@ -2,6 +2,16 @@
 
 All notable changes to this component are documented here.
 
+## [1.0.6] - 2026-07-19
+
+### Fixes
+
+- **chart-job**: raise job memory limit to 256Mi (`c1ac65c`)
+
+### Dependencies
+
+- Track `job` `1.2.0`
+
 ## [1.0.5] - 2026-06-21
 
 ### Dependencies

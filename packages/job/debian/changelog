@@ -1,3 +1,9 @@
+shomer-job (1.2.0-1) unstable; urgency=medium
+
+  * feat: Cut a synchronized release baseline across all components
+
+ -- Chris <goabonga@pm.me>  Sun, 19 Jul 2026 19:32:14 +0000
+
 shomer-job (1.1.1-1) unstable; urgency=medium
 
   * fix(job): Write the celery beat schedule to a writable path

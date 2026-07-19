@@ -1,3 +1,9 @@
+shomer-api (0.3.0-1) unstable; urgency=medium
+
+  * feat: Cut a synchronized release baseline across all components
+
+ -- Chris <goabonga@pm.me>  Sun, 19 Jul 2026 19:32:14 +0000
+
 shomer-api (0.2.5-1) unstable; urgency=medium
 
   * fix(api): Bump chainguard/python in /packages/api

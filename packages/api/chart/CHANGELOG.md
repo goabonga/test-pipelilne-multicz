@@ -2,6 +2,16 @@
 
 All notable changes to this component are documented here.
 
+## [1.1.0] - 2026-07-19
+
+### Features
+
+- cut a synchronized release baseline across all components (`eb7f6d3`)
+
+### Dependencies
+
+- Track `api` `0.3.0`
+
 ## [1.0.8] - 2026-06-21
 
 ### Dependencies

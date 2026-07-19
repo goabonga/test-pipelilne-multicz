@@ -2,6 +2,12 @@
 
 All notable changes to this component are documented here.
 
+## [0.5.0] - 2026-07-19
+
+### Features
+
+- cut a synchronized release baseline across all components (`eb7f6d3`)
+
 ## [0.4.0] - 2026-06-21
 
 ### Features

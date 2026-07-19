@@ -1,6 +1,6 @@
 {
   "name": "shomer-web",
-  "version": "1.2.3",
+  "version": "1.3.0",
   "description": "Source for shomer-ssr's React islands / CSS / Jinja templates. Built outputs land in packages/ssr/src/shomer_ssr/{static,templates}/.",
   "private": true,
   "type": "module",

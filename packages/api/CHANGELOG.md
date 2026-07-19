@@ -2,6 +2,16 @@
 
 All notable changes to this component are documented here.
 
+## [0.3.0] - 2026-07-19
+
+### Features
+
+- cut a synchronized release baseline across all components (`eb7f6d3`)
+
+### Dependencies
+
+- Track `database` `0.2.0`
+
 ## [0.2.5] - 2026-06-21
 
 ### Fixes

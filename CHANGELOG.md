@@ -3,6 +3,45 @@
 All notable changes across components, aggregated per release.
 Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
+## 2026-07-19
+
+### Releases
+
+- **api** minor — 0.2.5 → 0.3.0  _(cascade from database 0.2.0)_
+- **app** minor — 0.1.4 → 0.2.0  _(cascade from lib 0.5.0)_
+- **chart-api** minor — 1.0.8 → 1.1.0  _(cascade from api 0.3.0)_
+- **chart-job** patch — 1.0.5 → 1.0.6  _(cascade from job 1.2.0)_
+- **chart-migrations** minor — 0.1.1 → 0.2.0  _(cascade from migrations 0.2.0)_
+- **chart-ssr** minor — 1.0.9 → 1.1.0  _(cascade from ssr 1.2.0)_
+- **cli** minor — 0.1.2 → 0.2.0
+- **database** minor — 0.1.0 → 0.2.0
+- **docs** minor — 1.0.10 → 1.1.0  _(cascade from api 0.3.0)_
+- **job** minor — 1.1.1 → 1.2.0  _(cascade from database 0.2.0)_
+- **lib** minor — 0.4.0 → 0.5.0
+- **migrations** minor — 0.1.1 → 0.2.0  _(cascade from database 0.2.0)_
+- **ssr** minor — 1.1.3 → 1.2.0  _(cascade from web 1.3.0)_
+- **web** minor — 1.2.3 → 1.3.0  _(cascade from lib 0.5.0)_
+
+### Features
+
+- **api**: cut a synchronized release baseline across all components (`eb7f6d3`)
+- **app**: cut a synchronized release baseline across all components (`eb7f6d3`)
+- **chart-api**: cut a synchronized release baseline across all components (`eb7f6d3`)
+- **chart-migrations**: cut a synchronized release baseline across all components (`eb7f6d3`)
+- **chart-ssr**: cut a synchronized release baseline across all components (`eb7f6d3`)
+- **cli**: cut a synchronized release baseline across all components (`eb7f6d3`)
+- **database**: cut a synchronized release baseline across all components (`eb7f6d3`)
+- **docs**: cut a synchronized release baseline across all components (`eb7f6d3`)
+- **job**: cut a synchronized release baseline across all components (`eb7f6d3`)
+- **lib**: cut a synchronized release baseline across all components (`eb7f6d3`)
+- **migrations**: cut a synchronized release baseline across all components (`eb7f6d3`)
+- **ssr**: cut a synchronized release baseline across all components (`eb7f6d3`)
+- **web**: cut a synchronized release baseline across all components (`eb7f6d3`)
+
+### Fixes
+
+- **chart-job**: raise job memory limit to 256Mi (`c1ac65c`)
+
 ## 2026-06-27
 
 ### Releases

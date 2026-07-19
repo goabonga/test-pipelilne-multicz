@@ -2,6 +2,16 @@
 
 All notable changes to this component are documented here.
 
+## [1.1.0] - 2026-07-19
+
+### Features
+
+- cut a synchronized release baseline across all components (`eb7f6d3`)
+
+### Dependencies
+
+- Track `ssr` `1.2.0`
+
 ## [1.0.9] - 2026-06-21
 
 ### Dependencies
