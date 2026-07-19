@@ -101,6 +101,27 @@ ignore:
       version: 3.14.6-r0
       type: apk
 
+  # CVE-2026-11940 (High) — same CVE on the python-3.14-base subpackage;
+  # the entry above only pins python-3.14, so the -base finding slips past
+  # --fail-on high. Fixed in 3.14.6-r3; the version pin auto-resolves this
+  # once the base image is bumped.
+  # expires: 2026-08-02
+  - vulnerability: CVE-2026-11940
+    reason: "Upstream Chainguard python-3.14-base apk on the pinned base; fixed in 3.14.6-r3, pending a base-image bump."
+    package:
+      name: python-3.14-base
+      version: 3.14.6-r0
+      type: apk
+
+  # CVE-2026-11972 (High) — python-3.14-base subpackage, same upstream.
+  # expires: 2026-08-02
+  - vulnerability: CVE-2026-11972
+    reason: "Upstream Chainguard python-3.14-base apk on the pinned base; fixed in 3.14.6-r3, pending a base-image bump."
+    package:
+      name: python-3.14-base
+      version: 3.14.6-r0
+      type: apk
+
   # CVE-2026-15308 (High) — newly surfaced on the same pinned python-3.14
   # apk; grype reports no "fixed in", so there is no patched build to bump
   # to. Third High CVE on this base in as many weeks: the recurring churn
