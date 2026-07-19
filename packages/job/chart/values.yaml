@@ -8,7 +8,9 @@ replicaCount: 1
 resources:
   requests:
     cpu: 50m
-    memory: 64Mi
+    memory: 128Mi
   limits:
     cpu: 250m
-    memory: 128Mi
+    # 128Mi OOMKilled the worker on startup (CI kind smoke); align the
+    # ceiling with the api chart, which runs the same Python runtime.
+    memory: 256Mi
