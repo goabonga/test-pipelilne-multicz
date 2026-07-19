@@ -16,6 +16,7 @@
 #      again under --fail-on high.
 
 ignore:
+  # RESOLVED upstream: CVE-2026-7210 no longer reported by grype on the bumped base image. Block kept for history; safe to delete once verified on main.
   # CVE-2026-7210 (Critical) — upstream Chainguard python-3.14 in
   # cgr.dev/chainguard/python:3.14.6-r0 (now explicitly pinned in the
   # Dockerfile next door, no more :latest drift). The CVE has been
@@ -25,96 +26,104 @@ ignore:
   # image, so any Dependabot bump of the FROM line will trip the
   # mismatch and force a fresh review.
   # expires: 2026-06-27
-  - vulnerability: CVE-2026-7210
-    reason: "Upstream Chainguard python apk on the pinned base; awaiting patched build."
-    package:
-      name: python-3.14
-      version: 3.14.6-r0
-      type: apk
+  # - vulnerability: CVE-2026-7210
+    # reason: "Upstream Chainguard python apk on the pinned base; awaiting patched build."
+    # package:
+      # name: python-3.14
+      # version: 3.14.6-r0
+      # type: apk
 
+  # RESOLVED upstream: CVE-2026-9669 no longer reported by grype on the bumped base image. Block kept for history; safe to delete once verified on main.
   # CVE-2026-9669 (High) — surfaced when Chainguard re-built the apk
   # at 3.14.6-r0. Same upstream as CVE-2026-7210, same review cadence;
   # the weekly grype-allowlist-sweep workflow will flag both the
   # moment the version pin no longer matches what's in the image.
   # expires: 2026-06-27
-  - vulnerability: CVE-2026-9669
-    reason: "Upstream Chainguard python apk on the pinned base; awaiting patched build."
-    package:
-      name: python-3.14
-      version: 3.14.6-r0
-      type: apk
+  # - vulnerability: CVE-2026-9669
+    # reason: "Upstream Chainguard python apk on the pinned base; awaiting patched build."
+    # package:
+      # name: python-3.14
+      # version: 3.14.6-r0
+      # type: apk
 
+  # RESOLVED upstream: CVE-2026-7210 no longer reported by grype on the bumped base image. Block kept for history; safe to delete once verified on main.
   # CVE-2026-7210 (High) — same upstream CVE, but grype now reports it
   # on the python-3.14-base subpackage (the entry above only pins the
   # python-3.14 package, so the -base finding slipped past --fail-on
   # high). Fixed in 3.14.6-r1; the version pin auto-resolves the ignore
   # once the base image is bumped.
   # expires: 2026-06-27
-  - vulnerability: CVE-2026-7210
-    reason: "Upstream Chainguard python-3.14-base apk on the pinned base; fixed in 3.14.6-r1, pending a base-image bump."
-    package:
-      name: python-3.14-base
-      version: 3.14.6-r0
-      type: apk
+  # - vulnerability: CVE-2026-7210
+    # reason: "Upstream Chainguard python-3.14-base apk on the pinned base; fixed in 3.14.6-r1, pending a base-image bump."
+    # package:
+      # name: python-3.14-base
+      # version: 3.14.6-r0
+      # type: apk
 
+  # RESOLVED upstream: CVE-2026-9669 no longer reported by grype on the bumped base image. Block kept for history; safe to delete once verified on main.
   # CVE-2026-9669 (High) — python-3.14-base subpackage, same upstream.
   # expires: 2026-06-27
-  - vulnerability: CVE-2026-9669
-    reason: "Upstream Chainguard python-3.14-base apk on the pinned base; fixed in 3.14.6-r1, pending a base-image bump."
-    package:
-      name: python-3.14-base
-      version: 3.14.6-r0
-      type: apk
+  # - vulnerability: CVE-2026-9669
+    # reason: "Upstream Chainguard python-3.14-base apk on the pinned base; fixed in 3.14.6-r1, pending a base-image bump."
+    # package:
+      # name: python-3.14-base
+      # version: 3.14.6-r0
+      # type: apk
 
+  # RESOLVED upstream: CVE-2026-44432 no longer reported by grype on the bumped base image. Block kept for history; safe to delete once verified on main.
   # CVE-2026-44432 (High) — Chainguard py3-pip-wheel apk on the pinned base.
   # Fixed upstream in 26.1.2-r1; the version pin below auto-resolves this
   # ignore the moment the base image is bumped to ship it (Dependabot /
   # grype-allowlist-sweep). Short expiry to force that bump.
   # expires: 2026-07-02
-  - vulnerability: CVE-2026-44432
-    reason: "Chainguard py3-pip-wheel apk on the pinned base; fixed in 26.1.2-r1, pending a base-image bump."
-    package:
-      name: py3-pip-wheel
-      version: 26.1.2-r0
-      type: apk
+  # - vulnerability: CVE-2026-44432
+    # reason: "Chainguard py3-pip-wheel apk on the pinned base; fixed in 26.1.2-r1, pending a base-image bump."
+    # package:
+      # name: py3-pip-wheel
+      # version: 26.1.2-r0
+      # type: apk
 
+  # RESOLVED upstream: CVE-2026-11940 no longer reported by grype on the bumped base image. Block kept for history; safe to delete once verified on main.
   # CVE-2026-11940 (High) — Chainguard python-3.14 apk on the pinned base;
   # fixed in 3.14.6-r3, pending a base-image bump. The version pin auto-
   # resolves this once the base is bumped.
   # expires: 2026-08-02
-  - vulnerability: CVE-2026-11940
-    reason: "Upstream Chainguard python-3.14 apk on the pinned base; fixed in 3.14.6-r3, pending a base-image bump."
-    package:
-      name: python-3.14
-      version: 3.14.6-r0
-      type: apk
+  # - vulnerability: CVE-2026-11940
+    # reason: "Upstream Chainguard python-3.14 apk on the pinned base; fixed in 3.14.6-r3, pending a base-image bump."
+    # package:
+      # name: python-3.14
+      # version: 3.14.6-r0
+      # type: apk
 
+  # RESOLVED upstream: CVE-2026-11940 no longer reported by grype on the bumped base image. Block kept for history; safe to delete once verified on main.
   # CVE-2026-11940 (High) — python-3.14-base subpackage, same upstream.
   # expires: 2026-08-02
-  - vulnerability: CVE-2026-11940
-    reason: "Upstream Chainguard python-3.14-base apk on the pinned base; fixed in 3.14.6-r3, pending a base-image bump."
-    package:
-      name: python-3.14-base
-      version: 3.14.6-r0
-      type: apk
+  # - vulnerability: CVE-2026-11940
+    # reason: "Upstream Chainguard python-3.14-base apk on the pinned base; fixed in 3.14.6-r3, pending a base-image bump."
+    # package:
+      # name: python-3.14-base
+      # version: 3.14.6-r0
+      # type: apk
 
+  # RESOLVED upstream: CVE-2026-11972 no longer reported by grype on the bumped base image. Block kept for history; safe to delete once verified on main.
   # CVE-2026-11972 (High) — Chainguard python-3.14 apk on the pinned base.
   # expires: 2026-08-02
-  - vulnerability: CVE-2026-11972
-    reason: "Upstream Chainguard python-3.14 apk on the pinned base; fixed in 3.14.6-r3, pending a base-image bump."
-    package:
-      name: python-3.14
-      version: 3.14.6-r0
-      type: apk
+  # - vulnerability: CVE-2026-11972
+    # reason: "Upstream Chainguard python-3.14 apk on the pinned base; fixed in 3.14.6-r3, pending a base-image bump."
+    # package:
+      # name: python-3.14
+      # version: 3.14.6-r0
+      # type: apk
 
+  # RESOLVED upstream: CVE-2026-11972 no longer reported by grype on the bumped base image. Block kept for history; safe to delete once verified on main.
   # CVE-2026-11972 (High) — python-3.14-base subpackage, same upstream.
   # expires: 2026-08-02
-  - vulnerability: CVE-2026-11972
-    reason: "Upstream Chainguard python-3.14-base apk on the pinned base; fixed in 3.14.6-r3, pending a base-image bump."
-    package:
-      name: python-3.14-base
-      version: 3.14.6-r0
-      type: apk
+  # - vulnerability: CVE-2026-11972
+    # reason: "Upstream Chainguard python-3.14-base apk on the pinned base; fixed in 3.14.6-r3, pending a base-image bump."
+    # package:
+      # name: python-3.14-base
+      # version: 3.14.6-r0
+      # type: apk
 
   # CVE-2026-15308 (High) — Chainguard python-3.14 apk on the pinned base;
   # no upstream fix yet.
@@ -123,5 +132,5 @@ ignore:
     reason: "Upstream Chainguard python-3.14 apk on the pinned base; no patched build yet."
     package:
       name: python-3.14
-      version: 3.14.6-r0
+      version: 3.14.6-r3
       type: apk
