@@ -295,7 +295,7 @@ def open_pr(result: dict, *, issue: int | None, dry_run: bool) -> str | None:
                 "--body",
                 body,
                 "--label",
-                "dependencies,ci",
+                "dependencies,ci,grype",
             ],
             capture_output=True,
         ).stdout.strip()
@@ -334,7 +334,7 @@ def ensure_issue(results: list[dict], issue: int | None, dry_run: bool) -> int |
             "--body",
             body,
             "--label",
-            "grype-allowlist-expired,ci",
+            "grype-allowlist-expired,ci,grype",
         ],
         capture_output=True,
     ).stdout.strip()

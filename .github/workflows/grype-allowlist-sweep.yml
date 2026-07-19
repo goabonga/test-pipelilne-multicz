@@ -131,6 +131,7 @@ jobs:
           labels: |
             ci
             dependencies
+            grype
 
       - name: Ensure tracking label exists
         if: steps.sweep.outputs.to_review != '0'
@@ -185,7 +186,7 @@ jobs:
           else
             url=$(gh issue create \
               --title "grype allowlist: $count expired entr$( [ "$count" -eq 1 ] && echo 'y' || echo 'ies' ) need review" \
-              --label "$ISSUE_LABEL,ci" \
+              --label "$ISSUE_LABEL,ci,grype" \
               --body-file /tmp/issue-body.md)
             echo "$url"
             number=$(printf '%s' "$url" | sed -nE 's#.*/issues/([0-9]+).*#\1#p')

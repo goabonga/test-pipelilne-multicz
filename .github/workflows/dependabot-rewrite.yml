@@ -182,7 +182,7 @@ jobs:
           title=$(gh pr view "$PR_NUMBER" --json title --jq '.title')
           issue=$(gh issue create \
             --title "track: $title" \
-            --label "dependencies" \
+            --label "dependencies,dependabot" \
             --body "$(printf 'Tracking the Dependabot update in #%s.\n\nThe PR commits were re-authored and GPG-signed on their branch by `dependabot-rewrite`. Close this issue when the PR is merged or dropped.' "$PR_NUMBER")")
           gh pr comment "$PR_NUMBER" \
             --body "$(printf '%s\nTracking issue: %s' "$marker" "$issue")"
