@@ -14,7 +14,7 @@
 # DRIVER selects the DB driver. postgres (psycopg) and mysql (PyMySQL) work on
 # distroless; mssql/pyodbc needs system unixODBC + a different base.
 
-FROM cgr.dev/chainguard/python:latest-dev@sha256:d45c16a1807036a402f2101a1e82863468c923d85a2ed4817b2b12b2f0ee54dd AS builder
+FROM cgr.dev/chainguard/python:latest-dev@sha256:31d318170df60ddec4b04ed595cbe79c33eeb2cf94f9676db6f9eaf46542e6be AS builder
 
 ARG DRIVER=postgres
 
@@ -25,7 +25,7 @@ COPY migrations ./migrations
 RUN python -m venv /app/venv \
  && /app/venv/bin/pip install --no-cache-dir "./database[${DRIVER}]" ./migrations
 
-FROM cgr.dev/chainguard/python:latest@sha256:6a9e1eed2c9f3ea955a63455c0417a2177f5ce669d2587da6f7d01d738c683d6
+FROM cgr.dev/chainguard/python:latest@sha256:2c6a2e8bdeb1336cd8545d3586d1c1e5b4f7564ef00924b0447ebfbe57a549ee
 
 COPY --from=builder /app/venv /app/venv
 ENV PATH="/app/venv/bin:$PATH"
