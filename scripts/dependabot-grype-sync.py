@@ -256,6 +256,19 @@ def rewrite_grype_yaml(
             ):
                 lines[idx] = lines[idx].replace(entry.package_version, new_version)
                 break
+        # A re-pinned entry is a *fresh* state: a new apk build that still
+        # carries the CVE. Reset its `# expires:` marker to the future too,
+        # otherwise it keeps the old (already-past) date and the weekly
+        # sweep re-flags it as expired on the very next run.
+        for idx in range(entry.start_line, entry.end_line):
+            m = re.match(
+                r"^(?P<pre>\s*#\s*expires:\s*)\d{4}-\d{2}-\d{2}(?P<post>\s*)$",
+                lines[idx],
+                re.IGNORECASE,
+            )
+            if m:
+                lines[idx] = f"{m['pre']}{expires}{m['post']}"
+                break
 
     # Comment out resolved entries (process descending so indices stay
     # valid after splicing).
