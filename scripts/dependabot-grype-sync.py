@@ -202,29 +202,6 @@ def render_entry(finding: Finding, *, expires: str, todo: bool = False) -> str:
     return "\n".join(header_lines) + "\n" + body
 
 
-def comment_out_block(lines: list[str], start: int, end: int, note: str) -> list[str]:
-    """Replace lines[start:end] with the same block, every line
-    prefixed by `#`, and a leading note line explaining why.
-
-    Used for "resolved" entries: keep the historical context (which
-    CVE we used to ignore, what version we pinned to) but neutralise
-    the YAML so grype doesn't re-pick it up.
-    """
-
-    out: list[str] = []
-    out.append(f"  # {note}")
-    for line in lines[start:end]:
-        stripped = line.lstrip()
-        indent = line[: len(line) - len(stripped)]
-        if not stripped:
-            out.append(line)
-        elif stripped.startswith("#"):
-            out.append(line)
-        else:
-            out.append(f"{indent}# {stripped}")
-    return out
-
-
 def rewrite_grype_yaml(
     path: Path,
     *,
@@ -270,20 +247,21 @@ def rewrite_grype_yaml(
                 lines[idx] = f"{m['pre']}{expires}{m['post']}"
                 break
 
-    # Comment out resolved entries (process descending so indices stay
-    # valid after splicing).
+    # Delete resolved entries outright — the CVE is gone from the bumped
+    # image, so the ignore is dead weight; git history keeps the record.
+    # Process descending so earlier deletions don't shift later offsets.
     for entry in sorted(entries, key=lambda e: -e.start_line):
         if entry.cve not in resolved_cves:
             continue
-        commented = comment_out_block(
-            lines,
-            entry.start_line,
-            entry.end_line,
-            f"RESOLVED upstream: {entry.cve} no longer reported by grype on"
-            f" the bumped base image. Block kept for history; safe to"
-            f" delete once verified on main.",
-        )
-        lines[entry.start_line : entry.end_line] = commented
+        del lines[entry.start_line : entry.end_line]
+        # Collapse a double blank line the deletion may have left behind.
+        start = entry.start_line
+        if (
+            0 < start < len(lines)
+            and not lines[start - 1].strip()
+            and not lines[start].strip()
+        ):
+            del lines[start]
 
     # Append new entries at the end of the ignore list.
     new_blocks = [render_entry(f, expires=expires, todo=True) for f in new_entries]
@@ -328,7 +306,7 @@ def render_summary(
             out.append(
                 f"- **{entry.cve}** — `{entry.package_name}`"
                 f" `{entry.package_version}` no longer reported on the new"
-                f" image. Entry commented out for history."
+                f" image. Entry removed."
             )
         out.append("")
     if new:
