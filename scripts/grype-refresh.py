@@ -46,7 +46,14 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parent
-COMPONENTS = ["api", "job", "ssr"]
+COMPONENTS = ["api", "job", "ssr", "migrations"]
+# Most components live at packages/<c> and build from that same dir.
+# migrations is the exception: it sits under packages/bdd/migrations and its
+# Dockerfile COPYs the sibling `database`, so its build context is the
+# packages/bdd parent. Map the exceptions here; everything else is derived.
+COMPONENT_PATHS = {
+    "migrations": ("packages/bdd/migrations", "packages/bdd"),
+}
 BASE_IMAGE = "cgr.dev/chainguard/python"
 # Match `FROM cgr.dev/chainguard/python:<tag>@sha256:<digest>` so we can
 # swap just the digest while leaving the human-readable tag in place.
@@ -127,10 +134,18 @@ def bump_base_digests(dockerfile: Path) -> list[tuple[str, str, str]]:
     return moved
 
 
+def component_dirs(component: str) -> tuple[Path, Path]:
+    """Return (component_dir, docker_build_context) for a component."""
+    rel, ctx = COMPONENT_PATHS.get(
+        component, (f"packages/{component}", f"packages/{component}")
+    )
+    return REPO / rel, REPO / ctx
+
+
 def reconcile(component: str, image_tag: str) -> tuple[str, bool]:
     """Diff the built image's grype findings against the component's
     allowlist and rewrite it. Returns (markdown_summary, changed?)."""
-    grype_yaml = REPO / "packages" / component / ".grype.yaml"
+    grype_yaml = component_dirs(component)[0] / ".grype.yaml"
     findings = sync.grype_findings(image_tag)
     entries = sync.parse_grype_yaml(grype_yaml)
 
@@ -173,7 +188,7 @@ def reconcile(component: str, image_tag: str) -> tuple[str, bool]:
 def process(component: str, *, bump_base: bool) -> dict | None:
     """Run the full refresh for one component. Returns a result dict when
     something changed (so the caller can open a PR), else None."""
-    cdir = REPO / "packages" / component
+    cdir, context = component_dirs(component)
     dockerfile = cdir / "Dockerfile"
     grype_yaml = cdir / ".grype.yaml"
     if not dockerfile.is_file() or not grype_yaml.is_file():
@@ -191,7 +206,7 @@ def process(component: str, *, bump_base: bool) -> dict | None:
 
     image_tag = f"grype-refresh-{component}:check"
     run(
-        ["docker", "build", "-t", image_tag, "-f", str(dockerfile), str(cdir)],
+        ["docker", "build", "-t", image_tag, "-f", str(dockerfile), str(context)],
         stdout=subprocess.DEVNULL,
     )
 
