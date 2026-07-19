@@ -47,6 +47,12 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: true
+          # RELEASE_PAT (not GITHUB_TOKEN) so the branches grype-refresh
+          # pushes below surface as the maintainer and — crucially — the
+          # PRs it opens actually trigger CI. Branches/PRs created with
+          # GITHUB_TOKEN are deliberately barred from triggering further
+          # workflow runs, which would leave the refresh PRs un-checked.
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
 
       - uses: actions/setup-python@v6
         with:
@@ -56,6 +62,11 @@ jobs:
         run: |
           curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh \
             | sh -s -- -b /usr/local/bin
+
+      # grype-refresh builds each component's Dockerfile locally, so the
+      # sweep job needs a buildx builder (the to_review path only).
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435  # v3.11.1
 
       - name: Log in to GHCR so grype can pull private images
         # grype shells out to the OCI distribution APIs and re-uses
@@ -132,6 +143,7 @@ jobs:
             || true
 
       - name: Open or update review issue
+        id: review-issue
         if: steps.sweep.outputs.to_review != '0'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -169,11 +181,57 @@ jobs:
           if [ -n "$existing" ]; then
             gh issue comment "$existing" --body-file /tmp/issue-body.md
             echo "Updated issue #$existing"
+            number="$existing"
           else
-            gh issue create \
+            url=$(gh issue create \
               --title "grype allowlist: $count expired entr$( [ "$count" -eq 1 ] && echo 'y' || echo 'ies' ) need review" \
               --label "$ISSUE_LABEL,ci" \
-              --body-file /tmp/issue-body.md
+              --body-file /tmp/issue-body.md)
+            echo "$url"
+            number=$(printf '%s' "$url" | sed -nE 's#.*/issues/([0-9]+).*#\1#p')
+          fi
+          echo "number=$number" >> "$GITHUB_OUTPUT"
+
+      # For each component with an expired-but-unverifiable entry, build
+      # the Dockerfile locally, bump the Chainguard base digest, reconcile
+      # the allowlist and open ONE signed PR per component — linked back to
+      # the review issue above. This is what turns the issue from "here's a
+      # list, go fix it by hand" into actionable, CI-checked PRs.
+      # grype-refresh skips any component whose allowlist is already in sync.
+      - name: Open per-component refresh PRs
+        if: steps.sweep.outputs.to_review != '0'
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          REVIEW_ISSUE: ${{ steps.review-issue.outputs.number }}
+        run: |
+          set -euo pipefail
+          # Start from a clean tree: the to_remove path above may have left
+          # .grype.yaml edits in the working copy, and grype-refresh needs
+          # to branch off a pristine main.
+          git reset --hard
+          # Sign the refresh commits with the maintainer key when the
+          # secrets are present (same setup as dependabot-rewrite / the
+          # release job); otherwise fall back to an unsigned bot identity.
+          if [ -n "$GPG_PRIVATE_KEY" ] && [ -n "$GPG_PASSPHRASE" ]; then
+            echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+            echo test | gpg --batch --yes --passphrase "$GPG_PASSPHRASE" \
+              --pinentry-mode loopback --sign > /dev/null
+            KEY_ID=$(gpg --list-secret-keys --with-colons | awk -F: '/^sec/{print $5; exit}')
+            UID_LINE=$(gpg --list-keys --with-colons "$KEY_ID" | awk -F: '/^uid/{print $10; exit}')
+            git config user.name  "${UID_LINE%% <*}"
+            git config user.email "$(printf '%s' "$UID_LINE" | sed -nE 's/.*<([^>]+)>.*/\1/p')"
+            git config user.signingkey "$KEY_ID"
+            git config commit.gpgsign true
+          else
+            git config user.name  "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+          fi
+          if [ -n "$REVIEW_ISSUE" ]; then
+            python scripts/grype-refresh.py --all --issue "$REVIEW_ISSUE"
+          else
+            python scripts/grype-refresh.py --all
           fi
 
       - name: Job summary
