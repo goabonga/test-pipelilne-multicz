@@ -253,24 +253,50 @@ def open_pr(result: dict, *, issue: int | None, dry_run: bool) -> str | None:
     run(["git", "-C", str(REPO), "add", *result["files"]])
     run(["git", "-C", str(REPO), "commit", "-m", subject, "-m", result["summary"]])
     run(["git", "-C", str(REPO), "push", "--force-with-lease", "-u", "origin", branch])
-    out = run(
+    # Idempotent: a PR for this branch may already be open (weekly re-run
+    # of the sweep, or a prior manual run). The force-push above already
+    # refreshed its contents, so only `gh pr create` when none exists —
+    # otherwise gh errors out with "a pull request already exists".
+    existing = subprocess.run(
         [
             "gh",
             "pr",
-            "create",
+            "list",
             "--head",
             branch,
-            "--title",
-            subject,
-            "--body",
-            body,
-            "--label",
-            "dependencies,ci",
+            "--state",
+            "open",
+            "--json",
+            "url",
+            "--jq",
+            ".[0].url // empty",
         ],
+        check=True,
+        text=True,
         capture_output=True,
     ).stdout.strip()
+    if existing:
+        out = existing
+        print(f"[{comp}] PR already open, refreshed: {out}")
+    else:
+        out = run(
+            [
+                "gh",
+                "pr",
+                "create",
+                "--head",
+                branch,
+                "--title",
+                subject,
+                "--body",
+                body,
+                "--label",
+                "dependencies,ci",
+            ],
+            capture_output=True,
+        ).stdout.strip()
+        print(f"[{comp}] PR: {out}")
     run(["git", "-C", str(REPO), "checkout", "-"])
-    print(f"[{comp}] PR: {out}")
     return out
 
 
