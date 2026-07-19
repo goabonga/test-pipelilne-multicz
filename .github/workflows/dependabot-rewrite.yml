@@ -159,6 +159,35 @@ jobs:
         run: |
           git push --force-with-lease origin "HEAD:$HEAD_REF"
 
+      # File a tracking issue for the bump and cross-link it to the PR, so
+      # dependency updates are visible on the issue board and not only as
+      # PRs. Idempotent: keyed off a hidden marker in a PR comment, so
+      # Dependabot re-runs / re-pushes (each of which retriggers this
+      # rewrite) don't pile up duplicate issues.
+      - name: Open a tracking issue linked to the PR
+        if: steps.gate.outputs.skip != 'true'
+        env:
+          # RELEASE_PAT so the issue + comment surface as the maintainer,
+          # consistent with the re-authored commits.
+          GH_TOKEN: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
+        run: |
+          set -euo pipefail
+          marker="<!-- dependabot-tracking -->"
+          if gh pr view "$PR_NUMBER" --json comments --jq '.comments[].body' \
+               | grep -qF "$marker"; then
+            echo "PR #$PR_NUMBER already has a tracking issue; nothing to do"
+            exit 0
+          fi
+          title=$(gh pr view "$PR_NUMBER" --json title --jq '.title')
+          issue=$(gh issue create \
+            --title "track: $title" \
+            --label "dependencies" \
+            --body "$(printf 'Tracking the Dependabot update in #%s.\n\nThe PR commits were re-authored and GPG-signed on their branch by `dependabot-rewrite`. Close this issue when the PR is merged or dropped.' "$PR_NUMBER")")
+          gh pr comment "$PR_NUMBER" \
+            --body "$(printf '%s\nTracking issue: %s' "$marker" "$issue")"
+          echo "opened tracking issue $issue for PR #$PR_NUMBER"
+
       # Docker bump PRs: build the new image, run grype against it, and
       # reconcile the per-component .grype.yaml so the next CI run is
       # actionable rather than a wall of fresh CVE noise. The human still
