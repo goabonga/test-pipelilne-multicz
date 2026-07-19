@@ -252,7 +252,11 @@ def open_pr(result: dict, *, issue: int | None, dry_run: bool) -> str | None:
     run(["git", "-C", str(REPO), "checkout", "-B", branch])
     run(["git", "-C", str(REPO), "add", *result["files"]])
     run(["git", "-C", str(REPO), "commit", "-m", subject, "-m", result["summary"]])
-    run(["git", "-C", str(REPO), "push", "--force-with-lease", "-u", "origin", branch])
+    # Plain --force (not --force-with-lease): the branch is recreated from
+    # main each run and machine-owned, and checkout -B leaves no accurate
+    # remote-tracking ref for the lease to compare against (it would fail
+    # with "stale info" against commits a prior run/workflow pushed).
+    run(["git", "-C", str(REPO), "push", "--force", "-u", "origin", branch])
     # Idempotent: a PR for this branch may already be open (weekly re-run
     # of the sweep, or a prior manual run). The force-push above already
     # refreshed its contents, so only `gh pr create` when none exists —
