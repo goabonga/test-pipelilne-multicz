@@ -22,3 +22,5 @@ migration:
     limits:
       cpu: 500m
       memory: 256Mi
+
+# Part of the 2026-07 synchronized release baseline.

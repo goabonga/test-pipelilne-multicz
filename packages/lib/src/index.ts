@@ -17,3 +17,5 @@ export {
   sanitizeCredentials,
   validateCredentials,
 } from "./credentials";
+
+// Part of the 2026-07 synchronized release baseline.

@@ -24,3 +24,5 @@ build-backend = "hatchling.build"
 # Re-declaring them in force-include made pybuild's installer module
 # trip on the duplicate when building the .deb.
 packages = ["src/shomer_ssr"]
+
+# Part of the 2026-07 synchronized release baseline.

@@ -75,3 +75,5 @@ multicz graph      # cascade DAG (api → chart-api, etc.)
 ```
 
 See `multicz.toml` for the per-component configuration.
+
+<!-- Part of the 2026-07 synchronized release baseline. -->

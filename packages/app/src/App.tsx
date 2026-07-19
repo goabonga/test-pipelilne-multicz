@@ -81,3 +81,5 @@ const styles = StyleSheet.create({
     minHeight: 20,
   },
 });
+
+// Part of the 2026-07 synchronized release baseline.

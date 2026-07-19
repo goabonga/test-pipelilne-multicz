@@ -33,3 +33,5 @@ export function readConfig(): AppConfig {
     return DEFAULT_CONFIG;
   }
 }
+
+// Part of the 2026-07 synchronized release baseline.

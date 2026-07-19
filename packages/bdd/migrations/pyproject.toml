@@ -26,3 +26,5 @@ build-backend = "hatchling.build"
 # The revision tree (migrations/env.py, *.mako, versions/*) ships in this
 # wheel so `shomer-migrate` runs from the installed package in the image.
 packages = ["src/shomer_migrations"]
+
+# Part of the 2026-07 synchronized release baseline.

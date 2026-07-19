@@ -16,3 +16,5 @@ resources:
   limits:
     cpu: 250m
     memory: 128Mi
+
+# Part of the 2026-07 synchronized release baseline.
