@@ -184,12 +184,37 @@ jobs:
             exit 0
           fi
           title=$(gh pr view "$PR_NUMBER" --json title --jq '.title')
+          body=$(gh pr view "$PR_NUMBER" --json body --jq '.body')
+          # Scope = the Conventional-Commits prefix the rewrite assigned
+          # (e.g. `chore(deps)`); headline = the subject without it. Mirror
+          # the grype-sync template: `## <emoji> … — \`scope\`` + sections.
+          scope=$(printf '%s' "$title" | sed -nE 's/^([a-z]+(\([^)]*\))?)!?:.*/\1/p')
+          [ -z "$scope" ] && scope="deps"
+          headline=$(printf '%s' "$title" | sed -E 's/^[a-z]+(\([^)]*\))?!?:[[:space:]]*//')
+          # Dependabot's body carries a `| Package | From | To |` table for
+          # grouped bumps; lift those rows verbatim into a details block.
+          table=$(printf '%s' "$body" | grep -E '^\|' | head -40 || true)
+
+          {
+            printf '## 📦 Dependabot update — `%s`\n\n' "$scope"
+            printf 'Filed by `dependabot-rewrite` for #%s. The PR commits were re-authored and GPG-signed as the maintainer with a Conventional-Commits scope.\n\n' "$PR_NUMBER"
+            printf '### 🔼 Bump\n\n%s\n\n' "$headline"
+            if [ -n "$table" ]; then
+              printf '<details><summary>Packages</summary>\n\n%s\n\n</details>\n\n' "$table"
+            fi
+            printf -- '---\nClose this issue when #%s is merged or dropped.\n' "$PR_NUMBER"
+          } > /tmp/dependabot-issue.md
           issue=$(gh issue create \
             --title "track: $title" \
             --label "dependencies,dependabot" \
-            --body "$(printf 'Tracking the Dependabot update in #%s.\n\nThe PR commits were re-authored and GPG-signed on their branch by `dependabot-rewrite`. Close this issue when the PR is merged or dropped.' "$PR_NUMBER")")
-          gh pr comment "$PR_NUMBER" \
-            --body "$(printf '%s\nTracking issue: %s' "$marker" "$issue")"
+            --body-file /tmp/dependabot-issue.md)
+
+          {
+            printf '%s\n' "$marker"
+            printf '## 📦 Tracking issue\n\n'
+            printf '📌 Filed %s to track this update on the issue board.\n' "$issue"
+          } > /tmp/dependabot-comment.md
+          gh pr comment "$PR_NUMBER" --body-file /tmp/dependabot-comment.md
           echo "opened tracking issue $issue for PR #$PR_NUMBER"
 
       # Docker bump PRs: build the new image, run grype against it, and
