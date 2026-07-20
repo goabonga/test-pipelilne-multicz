@@ -104,6 +104,16 @@ def parse_grype_yaml(path: Path) -> list[Entry]:
                     block_data.setdefault(m.group(1), m.group(2).strip())
                 j += 1
 
+            # The forward scan stops at the next `- vulnerability:` line, so
+            # it has swallowed the trailing blank line AND the *next* entry's
+            # leading comment block. Walk end back over those so this entry's
+            # range covers only its own lines — otherwise consecutive entries
+            # overlap and deleting one corrupts the next (empties the file).
+            while j > i + 1 and (
+                not lines[j - 1].strip() or lines[j - 1].lstrip().startswith("#")
+            ):
+                j -= 1
+
             entries.append(
                 Entry(
                     cve=block_data.get("vulnerability", ""),
