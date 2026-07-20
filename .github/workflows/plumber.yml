@@ -60,6 +60,16 @@ jobs:
           # genuinely gates merges; the first PR after this lands is
           # expected to be red until the findings are addressed.
           threshold: 100
+          # Authenticated reads for the third-party-action resolution
+          # (ISSUE-707 "must pin commits that exist upstream"). Without a
+          # token Plumber reads anonymously (60 req/h) and, with ~94
+          # SHA-pinned actions here, rate-limits and *skips* the check —
+          # which the min-points-100 gate counts as a failure. This bit
+          # Dependabot `ci-actions` PRs specifically (each introduces a
+          # batch of fresh SHAs to resolve at once). github.token is
+          # read-only on Dependabot PRs but still gets the 5000 req/h
+          # authenticated limit, which is all this check needs.
+          metadata-token: ${{ github.token }}
           # SARIF upload to Code Scanning is on by default — keep it
           # explicit so the workflow's intent is self-documenting.
           upload-sarif: true
