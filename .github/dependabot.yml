@@ -9,7 +9,7 @@
 # The prefixes below match what the rewrite would emit, so PRs read sensibly
 # even before the rewrite runs (e.g. on a fresh fork without GPG secrets).
 
-# Re-scan trigger: manual refresh 2026-07-20
+# Re-scan trigger: manual refresh 2026-07-21
 
 version: 2
 
