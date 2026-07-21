@@ -16,7 +16,7 @@
   "dependencies": {
     "@shomer/lib": "*",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0",
+    "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.0"
   },
   "devDependencies": {
