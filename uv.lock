@@ -1377,7 +1377,7 @@ wheels = [
 
 [[package]]
 name = "shomer-api"
-version = "0.3.0"
+version = "0.3.1"
 source = { editable = "packages/api" }
 dependencies = [
     { name = "fastapi" },

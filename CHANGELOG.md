@@ -3,6 +3,18 @@
 All notable changes across components, aggregated per release.
 Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
+## 2026-07-28
+
+### Releases
+
+- **api** patch — 0.3.0 → 0.3.1
+- **chart-api** patch — 1.1.0 → 1.1.1  _(cascade from api 0.3.1)_
+- **docs** patch — 1.1.0 → 1.1.1  _(cascade from api 0.3.1)_
+
+### Fixes
+
+- **api**: refresh grype allowlist against the current base image (`4f52e87`)
+
 ## 2026-07-19
 
 ### Releases
