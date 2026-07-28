@@ -7,6 +7,18 @@ Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
 ### Releases
 
+- **chart-job** patch — 1.0.6 → 1.0.7  _(cascade from job 1.2.1)_
+- **docs** patch — 1.1.1 → 1.1.2  _(cascade from job 1.2.1)_
+- **job** patch — 1.2.0 → 1.2.1
+
+### Fixes
+
+- **job**: refresh grype allowlist against the current base image (`38cb5d1`)
+
+## 2026-07-28
+
+### Releases
+
 - **api** patch — 0.3.0 → 0.3.1
 - **chart-api** patch — 1.1.0 → 1.1.1  _(cascade from api 0.3.1)_
 - **docs** patch — 1.1.0 → 1.1.1  _(cascade from api 0.3.1)_

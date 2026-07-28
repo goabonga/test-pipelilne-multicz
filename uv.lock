@@ -1435,7 +1435,7 @@ provides-extras = ["postgres", "mysql", "mssql"]
 
 [[package]]
 name = "shomer-job"
-version = "1.2.0"
+version = "1.2.1"
 source = { editable = "packages/job" }
 dependencies = [
     { name = "celery", extra = ["redis"] },
