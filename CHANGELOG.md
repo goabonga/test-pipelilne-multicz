@@ -7,6 +7,17 @@ Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
 ### Releases
 
+- **app** patch — 0.2.0 → 0.2.1
+- **docs** patch — 1.1.4 → 1.1.5  _(cascade from app 0.2.1)_
+
+### Fixes
+
+- **app**: clear the high-severity advisories in the app dependency tree (`00ffff5`)
+
+## 2026-07-29
+
+### Releases
+
 - **chart-ssr** patch — 1.1.1 → 1.1.2  _(cascade from ssr 1.2.2)_
 - **docs** patch — 1.1.3 → 1.1.4  _(cascade from ssr 1.2.2)_
 - **ssr** patch — 1.2.1 → 1.2.2  _(cascade from web 1.3.1)_

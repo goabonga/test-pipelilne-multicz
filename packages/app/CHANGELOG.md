@@ -2,6 +2,12 @@
 
 All notable changes to this component are documented here.
 
+## [0.2.1] - 2026-07-29
+
+### Fixes
+
+- **deps**: clear the high-severity advisories in the app dependency tree (`00ffff5`)
+
 ## [0.2.0] - 2026-07-19
 
 ### Features
