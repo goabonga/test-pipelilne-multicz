@@ -7,6 +7,19 @@ Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
 ### Releases
 
+- **chart-ssr** patch — 1.1.1 → 1.1.2  _(cascade from ssr 1.2.2)_
+- **docs** patch — 1.1.3 → 1.1.4  _(cascade from ssr 1.2.2)_
+- **ssr** patch — 1.2.1 → 1.2.2  _(cascade from web 1.3.1)_
+- **web** patch — 1.3.0 → 1.3.1
+
+### Fixes
+
+- **web**: bump react-dom from 19.2.7 to 19.2.8 (`a1f4b10`)
+
+## 2026-07-29
+
+### Releases
+
 - **chart-migrations** patch — 0.2.0 → 0.2.1  _(cascade from migrations 0.2.1)_
 - **chart-ssr** patch — 1.1.0 → 1.1.1  _(cascade from ssr 1.2.1)_
 - **docs** patch — 1.1.2 → 1.1.3  _(cascade from migrations 0.2.1)_

@@ -2,6 +2,12 @@
 
 All notable changes to this component are documented here.
 
+## [1.2.2] - 2026-07-29
+
+### Dependencies
+
+- Track `web` `1.3.1`
+
 ## [1.2.1] - 2026-07-29
 
 ### Fixes

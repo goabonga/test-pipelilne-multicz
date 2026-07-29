@@ -2,6 +2,12 @@
 
 All notable changes to this component are documented here.
 
+## [1.3.1] - 2026-07-29
+
+### Fixes
+
+- **deps**: bump react-dom from 19.2.7 to 19.2.8 (`a1f4b10`)
+
 ## [1.3.0] - 2026-07-19
 
 ### Features
