@@ -5,7 +5,6 @@ import sys
 from pathlib import Path
 
 import pytest
-
 from shomer_migrations import __version__, migrate
 from shomer_migrations.migrate import _config
 

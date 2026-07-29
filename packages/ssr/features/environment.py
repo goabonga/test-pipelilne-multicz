@@ -34,19 +34,19 @@ import httpx
 from playwright.sync_api import sync_playwright
 
 
-def before_all(context):  # noqa: ANN001
+def before_all(context):
     context.base_url = os.environ.get("SHOMER_SSR_URL", "http://localhost:8080")
     context.client = httpx.Client(base_url=context.base_url, timeout=10.0)
     context.playwright = sync_playwright().start()
     context.browser = context.playwright.chromium.launch()
 
 
-def before_scenario(context, scenario):  # noqa: ANN001, ARG001
+def before_scenario(context, scenario):
     context.browser_context = context.browser.new_context(base_url=context.base_url)
     context.page = context.browser_context.new_page()
 
 
-def after_scenario(context, scenario):  # noqa: ANN001, ARG001
+def after_scenario(context, scenario):
     page = getattr(context, "page", None)
     if page is not None:
         page.close()
@@ -55,7 +55,7 @@ def after_scenario(context, scenario):  # noqa: ANN001, ARG001
         browser_context.close()
 
 
-def after_all(context):  # noqa: ANN001
+def after_all(context):
     client = getattr(context, "client", None)
     if client is not None:
         client.close()

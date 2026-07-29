@@ -3,9 +3,8 @@
 
 import httpx
 import pytest
-from typer.testing import CliRunner
-
 from shomer_cli import __version__, main
+from typer.testing import CliRunner
 
 
 def _ok_response(url: str, body: str = '{"status":"ok"}') -> httpx.Response:

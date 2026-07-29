@@ -16,7 +16,7 @@ __all__ = [
     "Database",
     "DatabaseSettings",
     "Dialect",
+    "__version__",
     "build_url",
     "create_engine_from_settings",
-    "__version__",
 ]

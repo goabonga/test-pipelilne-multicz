@@ -2,9 +2,8 @@
 # Copyright (c) 2026 Chris <goabonga@pm.me>
 
 import pytest
-from sqlalchemy import text
-
 from shomer_database import Database, DatabaseSettings, build_url
+from sqlalchemy import text
 
 
 @pytest.mark.parametrize(
@@ -95,9 +94,8 @@ def test_database_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_session_rolls_back_on_error() -> None:
     db = Database(DatabaseSettings(dialect="postgresql", url="sqlite://"))
-    with pytest.raises(RuntimeError, match="boom"):
-        with db.session():
-            raise RuntimeError("boom")
+    with pytest.raises(RuntimeError, match="boom"), db.session():
+        raise RuntimeError("boom")
     db.dispose()
 
 

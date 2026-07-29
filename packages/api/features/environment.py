@@ -19,12 +19,12 @@ import os
 import httpx
 
 
-def before_all(context):  # noqa: ANN001 — behave fixes this signature
+def before_all(context):
     context.base_url = os.environ.get("SHOMER_API_URL", "http://localhost:8000")
     context.client = httpx.Client(base_url=context.base_url, timeout=10.0)
 
 
-def after_all(context):  # noqa: ANN001 — behave fixes this signature
+def after_all(context):
     client = getattr(context, "client", None)
     if client is not None:
         client.close()

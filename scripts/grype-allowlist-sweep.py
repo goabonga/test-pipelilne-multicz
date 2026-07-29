@@ -33,7 +33,7 @@ import re
 import subprocess
 import sys
 from collections.abc import Iterator
-from datetime import date
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 # Only matches lines that are *purely* a marker comment (case-insensitive,
@@ -63,7 +63,7 @@ def parse(path: Path) -> Iterator[dict]:
     sweep's contract.
     """
     lines = path.read_text().splitlines()
-    today = date.today()
+    today = datetime.now(UTC).date()
 
     pending_expires: date | None = None
     pending_block_start: int | None = None
@@ -164,7 +164,7 @@ def _grype_finds(image: str, cve: str) -> bool | None:
 
 def cmd_check(args: argparse.Namespace) -> int:
     report = {
-        "generated": date.today().isoformat(),
+        "generated": datetime.now(UTC).date().isoformat(),
         "to_remove": [],
         "to_review": [],
     }

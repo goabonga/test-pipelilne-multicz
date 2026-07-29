@@ -128,4 +128,4 @@ def run() -> None:
     import uvicorn
 
     # Container / systemd service must listen on all interfaces.
-    uvicorn.run("shomer_ssr.app:app", host="0.0.0.0", port=8080)  # noqa: S104  # nosec B104
+    uvicorn.run("shomer_ssr.app:app", host="0.0.0.0", port=8080)  # nosec B104

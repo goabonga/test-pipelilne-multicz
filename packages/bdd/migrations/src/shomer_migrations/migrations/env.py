@@ -12,11 +12,10 @@ revisions. Resolves the URL (precedence: ``-x url=...`` > ``sqlalchemy.url`` >
 from __future__ import annotations
 
 from alembic import context
-from sqlalchemy import engine_from_config, pool
-
 from shomer_database.config import DatabaseSettings
 from shomer_database.engine import build_url
 from shomer_database.models import Base
+from sqlalchemy import engine_from_config, pool
 
 config = context.config
 target_metadata = Base.metadata

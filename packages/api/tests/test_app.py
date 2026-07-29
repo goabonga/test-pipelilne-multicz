@@ -3,7 +3,6 @@
 
 import pytest
 from fastapi.testclient import TestClient
-
 from shomer_api import __version__
 from shomer_api.app import app
 

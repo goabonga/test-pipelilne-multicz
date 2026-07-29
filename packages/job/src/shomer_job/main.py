@@ -45,7 +45,7 @@ app.conf.beat_schedule = {
 # CELERYBEAT_SCHEDULE if a deployment wants durable state on a volume.
 app.conf.beat_schedule_filename = os.environ.get(
     "CELERYBEAT_SCHEDULE",
-    "/tmp/celerybeat-schedule",  # noqa: S108  # nosec B108
+    "/tmp/celerybeat-schedule",  # nosec B108
 )
 
 

@@ -154,7 +154,7 @@ def grype_findings(image_tag: str) -> list[Finding]:
     error and propagated to the workflow.
     """
 
-    result = subprocess.run(  # noqa: PLW1510
+    result = subprocess.run(
         ["grype", image_tag, "-o", "json"],
         capture_output=True,
         text=True,
@@ -191,8 +191,10 @@ def render_entry(finding: Finding, *, expires: str, todo: bool = False) -> str:
     """
 
     header_lines = [
-        f"  # {finding.cve} ({finding.severity}) — surfaced by"
-        f" dependabot-grype-sync on the bumped Dockerfile.",
+        (
+            f"  # {finding.cve} ({finding.severity}) — surfaced by"
+            f" dependabot-grype-sync on the bumped Dockerfile."
+        ),
     ]
     if todo:
         header_lines.append(
@@ -296,8 +298,10 @@ def render_summary(
     out = [
         f"## 🛡️ grype allowlist sync — `{component}`",
         "",
-        f"Built `packages/{component}/Dockerfile` and scanned the resulting"
-        f" image with grype. Updated `packages/{component}/.grype.yaml`:",
+        (
+            f"Built `packages/{component}/Dockerfile` and scanned the resulting"
+            f" image with grype. Updated `packages/{component}/.grype.yaml`:"
+        ),
         "",
     ]
     if bumped:
@@ -393,9 +397,9 @@ def main() -> int:
 
     # Default expiry: 14 days out from today (computed at the runner —
     # the rewrite workflow doesn't need git's date hooks).
-    from datetime import date, timedelta
+    from datetime import UTC, datetime, timedelta
 
-    expires = (date.today() + timedelta(days=14)).isoformat()
+    expires = (datetime.now(UTC).date() + timedelta(days=14)).isoformat()
 
     rewrite_grype_yaml(
         grype_yaml,

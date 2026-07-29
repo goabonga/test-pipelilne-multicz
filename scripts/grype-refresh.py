@@ -41,7 +41,7 @@ import importlib.util
 import re
 import subprocess
 import sys
-from datetime import date, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -86,7 +86,7 @@ sync = _load_sync_module()
 def run(cmd: list[str], **kw) -> subprocess.CompletedProcess:
     """Thin `subprocess.run` wrapper that echoes the command for auditability."""
     print(f"  $ {' '.join(cmd)}")
-    return subprocess.run(cmd, check=True, text=True, **kw)  # noqa: PLW1510
+    return subprocess.run(cmd, check=True, text=True, **kw)
 
 
 def latest_digest(tag: str) -> str:
@@ -168,7 +168,7 @@ def reconcile(component: str, image_tag: str) -> tuple[str, bool]:
             bumped_pins[entry.cve] = finding.package_version
 
     new = [f for f in findings if f.cve not in entry_cves]
-    expires = (date.today() + timedelta(days=14)).isoformat()
+    expires = (datetime.now(UTC).date() + timedelta(days=14)).isoformat()
 
     before = grype_yaml.read_text()
     sync.rewrite_grype_yaml(
