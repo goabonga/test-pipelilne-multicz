@@ -2,6 +2,12 @@
 
 All notable changes to this component are documented here.
 
+## [0.3.2] - 2026-07-29
+
+### Fixes
+
+- **deps**: bump fastapi from 0.137.0 to 0.141.0 (`16c4ca4`)
+
 ## [0.3.1] - 2026-07-28
 
 ### Fixes

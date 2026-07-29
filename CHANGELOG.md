@@ -7,6 +7,21 @@ Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
 ### Releases
 
+- **api** patch — 0.3.1 → 0.3.2
+- **chart-api** patch — 1.1.1 → 1.1.2  _(cascade from api 0.3.2)_
+- **chart-ssr** patch — 1.1.2 → 1.1.3  _(cascade from ssr 1.2.3)_
+- **docs** patch — 1.1.5 → 1.1.6  _(cascade from api 0.3.2)_
+- **ssr** patch — 1.2.2 → 1.2.3
+
+### Fixes
+
+- **api**: bump fastapi from 0.137.0 to 0.141.0 (`16c4ca4`)
+- **ssr**: bump fastapi from 0.137.0 to 0.141.0 (`16c4ca4`)
+
+## 2026-07-29
+
+### Releases
+
 - **app** patch — 0.2.0 → 0.2.1
 - **docs** patch — 1.1.4 → 1.1.5  _(cascade from app 0.2.1)_
 
