@@ -3471,7 +3471,7 @@ jobs:
         working-directory: packages/app/ios
         run: pod install
       - name: Import signing certificate
-        uses: apple-actions/import-codesign-certs@b2e261033a9e248f91a9b57201e8d1e12b15a24e  # v7.0.0
+        uses: apple-actions/import-codesign-certs@5142e029c445c10ffc7149d172e540235a065466  # v7.0.0
         with:
           p12-file-base64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
           p12-password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -3513,7 +3513,7 @@ jobs:
           xcodebuild -exportArchive -archivePath /tmp/ShomerApp.xcarchive \
             -exportOptionsPlist /tmp/ExportOptions.plist -exportPath /tmp/export
       - name: Upload to TestFlight
-        uses: apple-actions/upload-testflight-build@41bb718fb7b8e0c9824fa3fbe8cd7e6018839a4c  # v5.2.1
+        uses: apple-actions/upload-testflight-build@1ad58030672057aa084b4e96beb6f7a8c627f9e6  # v5.2.1
         with:
           app-path: /tmp/export/ShomerApp.ipa
           issuer-id: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
