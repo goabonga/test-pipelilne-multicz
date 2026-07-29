@@ -1,3 +1,9 @@
+shomer-ssr (1.2.1-1) unstable; urgency=medium
+
+  * fix(ssr): Refresh grype allowlist against the current base image
+
+ -- Chris <goabonga@pm.me>  Wed, 29 Jul 2026 11:31:10 +0000
+
 shomer-ssr (1.2.0-1) unstable; urgency=medium
 
   * feat: Cut a synchronized release baseline across all components

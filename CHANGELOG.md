@@ -3,6 +3,21 @@
 All notable changes across components, aggregated per release.
 Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
+## 2026-07-29
+
+### Releases
+
+- **chart-migrations** patch — 0.2.0 → 0.2.1  _(cascade from migrations 0.2.1)_
+- **chart-ssr** patch — 1.1.0 → 1.1.1  _(cascade from ssr 1.2.1)_
+- **docs** patch — 1.1.2 → 1.1.3  _(cascade from migrations 0.2.1)_
+- **migrations** patch — 0.2.0 → 0.2.1
+- **ssr** patch — 1.2.0 → 1.2.1
+
+### Fixes
+
+- **migrations**: refresh grype allowlist against the current base image (`869685a`)
+- **ssr**: refresh grype allowlist against the current base image (`c808b5f`)
+
 ## 2026-07-28
 
 ### Releases

@@ -2,6 +2,12 @@
 
 All notable changes to this component are documented here.
 
+## [0.2.1] - 2026-07-29
+
+### Fixes
+
+- **migrations**: refresh grype allowlist against the current base image (`869685a`)
+
 ## [0.2.0] - 2026-07-19
 
 ### Features
