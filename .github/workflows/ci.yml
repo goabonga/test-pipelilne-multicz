@@ -903,6 +903,16 @@ jobs:
 
   ssr-bandit:
     needs: [ssr-test]
+    # Explicit gate — NOT the implicit `success()`. `ssr-test` overrides
+    # its own default gate to survive a skipped `web-build` (web
+    # unchanged), but the implicit gate on a child evaluates over the
+    # TRANSITIVE needs closure, where `web-build` is still skipped. Left
+    # bare, this job skipped on an ssr-only commit and cascade-skipped
+    # ssr-container -> ssr-deb -> ssr-deb-validate, which made
+    # release-bump's `ssr changed => ssr-deb-validate succeeded` gate
+    # false and dropped the whole release (runs 30399596663 /
+    # 30433088863: ssr + migrations both went unbumped).
+    if: "!failure() && !cancelled() && needs.ssr-test.result == 'success'"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
