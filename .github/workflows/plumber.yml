@@ -53,7 +53,7 @@ jobs:
       # via Dependabot (covered by the ci-actions group; see
       # .github/dependabot.yml).
       - name: Run Plumber compliance audit
-        uses: getplumber/plumber@4d04d1cacca6625bc0e3f08f61f16f9d0367cd27   # v0.3.76
+        uses: getplumber/plumber@b6fe9f309d4242b82ce83e6e69c563c09792ca97   # v0.4.22
         with:
           # Fail the job the moment any single control reports a
           # finding. We pick the strict bar from day one so the audit
