@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+name: setup terragrunt
+description: |
+  Install a pinned terragrunt on PATH, verifying the binary against a
+  pinned SHA256 before installing it.
+
+  Replaces `autero1/action-terragrunt@v3`, which was three problems at
+  once: a third-party action on a mutable tag (Plumber ISSUE-701), still
+  targeting Node 20 after its deprecation on GitHub runners, and driven by
+  `terragrunt-version: latest` — an unpinned tool, so an upstream release
+  could change CI behaviour with no commit here to explain it.
+
+  Downloading the release binary directly fixes all three and drops a
+  dependency: there is no action to keep up to date, only a version and a
+  checksum, both dependabot-invisible but explicit in the diff.
+
+inputs:
+  version:
+    required: false
+    default: v1.1.2
+    description: terragrunt release tag.
+  sha256:
+    required: false
+    default: 534070d5b261a0e65b3f490479f602a8f80a0ae115e399a3786802cce658aeaa
+    description: SHA256 of terragrunt_linux_amd64 for `version`.
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        TG_VERSION: ${{ inputs.version }}
+        TG_SHA256: ${{ inputs.sha256 }}
+      run: |
+        set -euo pipefail
+        curl -sSfLo /tmp/terragrunt \
+          "https://github.com/gruntwork-io/terragrunt/releases/download/${TG_VERSION}/terragrunt_linux_amd64"
+        echo "${TG_SHA256}  /tmp/terragrunt" | sha256sum -c -
+        sudo install /tmp/terragrunt /usr/local/bin/terragrunt
+        terragrunt --version

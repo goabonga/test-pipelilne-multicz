@@ -29,8 +29,8 @@ deploy changelog), and runs `multicz validate --strict`. Then:
 2. replace the placeholder in `tests/` with real assertions;
 3. consume it from a unit under `../services/`, behind the `enabled`
    toggle;
-4. add that unit's block to `../configs/config.staging.yaml` and
-   `../configs/config.production.yaml`.
+4. add that unit's block to `../configs/staging/config.yaml` and
+   `../configs/production/config.yaml`.
 
 `_template/` is not a real module. It is deliberately **not** registered as
 its own multicz component — it ships as part of `infra`, alongside the

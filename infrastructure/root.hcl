@@ -40,7 +40,7 @@ locals {
 #   if_exists = "overwrite_terragrunt"
 #   contents  = <<EOF
 # provider "<name>" {
-#   # ... driven by local.config.provider.* in configs/config.<env>.yaml
+#   # ... driven by local.config.provider.* in configs/<env>/config.yaml
 # }
 # EOF
 # }
