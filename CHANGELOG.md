@@ -3,6 +3,20 @@
 All notable changes across components, aggregated per release.
 Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
+## 2026-07-30
+
+### Releases
+
+- **docs** minor — 1.1.6 → 1.2.0  _(cascade from infra 0.1.0)_
+- **infra** minor — 0.0.0 → 0.1.0
+- **infra-modules-example** minor — 0.0.0 → 0.1.0
+
+### Features
+
+- **docs**: terragrunt landing zone with per-environment deploy gating (`9d50feb`)
+- **infra**: terragrunt landing zone with per-environment deploy gating (`9d50feb`)
+- **infra-modules-example**: terragrunt landing zone with per-environment deploy gating (`9d50feb`)
+
 ## 2026-07-29
 
 ### Releases
