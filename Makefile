@@ -2,7 +2,8 @@
         release-status release-plan release-validate release-config release-graph \
         release-dry-run release kind-up kind-down kind-status kind-logs \
         kind-forward infra-fmt infra-fmt-check infra-test infra-plan \
-        infra-new-module infra-docs infra-docs-check infra-clean clean
+        infra-new-module infra-docs infra-docs-check infra-checkov \
+        infra-clean clean
 
 VENV     := .venv
 UV       := uv
@@ -52,7 +53,8 @@ help:
 	@echo "Infrastructure (terragrunt):"
 	@echo "  make infra-fmt         terraform fmt + terragrunt hcl format, in place"
 	@echo "  make infra-fmt-check   same, non-mutating (what CI runs)"
-	@echo "  make infra-test        terraform test in every module with a tests/ dir"
+	@echo "  make infra-test        terraform test on the modules (M=<name> for one)"
+	@echo "  make infra-checkov     checkov on the modules (M=<name> for one)"
 	@echo "  make infra-plan        terragrunt plan for one env (ENV=staging by default)"
 	@echo "  make infra-docs        regenerate every module README with terraform-docs"
 	@echo "  make infra-docs-check  verify those READMEs are up to date (what CI runs)"
@@ -165,15 +167,31 @@ infra-fmt-check:
 	terraform fmt -check -recursive $(INFRA_DIR)/modules
 	terragrunt --working-dir $(INFRA_DIR) hcl format --check
 
+# M selects one module: `make infra-test M=example`. Empty means all of
+# them, which is the useful default locally; CI passes M so it only
+# exercises the modules multicz reports as changed.
+MODULES = $(if $(M),$(INFRA_DIR)/modules/$(M)/,$(wildcard $(INFRA_DIR)/modules/*/))
+
 # `mock_provider` intercepts every provider call, so this needs no
 # credentials and no network — which is why the CI job has no cloud login.
 infra-test:
 	@set -eu; \
-	for dir in $(INFRA_DIR)/modules/*/; do \
+	for dir in $(MODULES); do \
 		if [ -d "$${dir}tests" ]; then \
 			echo "==> terraform test $${dir}"; \
 			(cd "$${dir}" && terraform init -backend=false -input=false >/dev/null && terraform test); \
 		fi; \
+	done
+
+# Same scan CI runs through bridgecrewio/checkov-action. Falls back to uvx
+# so it works without installing checkov, like MULTICZ above.
+CHECKOV := $(shell command -v checkov 2>/dev/null || echo uvx checkov)
+
+infra-checkov:
+	@set -eu; \
+	for dir in $(MODULES); do \
+		echo "==> checkov $${dir}"; \
+		$(CHECKOV) -d "$${dir}" --framework terraform --quiet --compact; \
 	done
 
 # ENV picks the configs/<env>/config.yaml the units read: make infra-plan ENV=production
@@ -189,7 +207,7 @@ infra-plan:
 # matching the code that was tagged.
 infra-docs:
 	@set -eu; \
-	for dir in $(INFRA_DIR)/modules/*/; do \
+	for dir in $(MODULES); do \
 		if [ -f "$${dir}.terraform-docs.yml" ]; then \
 			terraform-docs -c "$${dir}.terraform-docs.yml" "$${dir}"; \
 		fi; \
@@ -197,7 +215,7 @@ infra-docs:
 
 infra-docs-check:
 	@set -eu; \
-	for dir in $(INFRA_DIR)/modules/*/; do \
+	for dir in $(MODULES); do \
 		if [ -f "$${dir}.terraform-docs.yml" ]; then \
 			echo "==> terraform-docs --output-check $${dir}"; \
 			terraform-docs -c "$${dir}.terraform-docs.yml" --output-check "$${dir}"; \

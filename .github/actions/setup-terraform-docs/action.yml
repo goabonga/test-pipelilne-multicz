@@ -1,0 +1,49 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+name: setup terraform-docs
+description: |
+  Install terraform-docs on PATH, verifying the release tarball against a
+  pinned SHA256 before unpacking it.
+
+  Needed by two different jobs, for two different reasons:
+    - `infra-docs` runs `terraform-docs --output-check` to catch a module
+      README that no longer matches its variables;
+    - `release-bump` runs it indirectly — every `infra-modules-*` component
+      carries a `post_bump` hook that regenerates its README, and multicz
+      shells out to it from inside the bump.
+
+  That second one is easy to miss: the tool is not mentioned anywhere in
+  release-bump's own steps, and the failure surfaces as a FileNotFoundError
+  raised from multicz halfway through a release.
+
+inputs:
+  version:
+    required: false
+    default: v0.24.0
+    description: terraform-docs release tag.
+  sha256:
+    required: false
+    default: 9005daf969de0b50134493a2c00078b49f5f5b39d021cda7c89bf4d4f3d776d3
+    description: SHA256 of the linux-amd64 tarball for `version`.
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        TFDOCS_VERSION: ${{ inputs.version }}
+        TFDOCS_SHA256: ${{ inputs.sha256 }}
+      run: |
+        set -euo pipefail
+        if command -v terraform-docs >/dev/null 2>&1; then
+          echo "terraform-docs already on PATH: $(terraform-docs --version)"
+          exit 0
+        fi
+        ASSET="terraform-docs-${TFDOCS_VERSION}-linux-amd64.tar.gz"
+        curl -sSfLo "/tmp/${ASSET}" \
+          "https://github.com/terraform-docs/terraform-docs/releases/download/${TFDOCS_VERSION}/${ASSET}"
+        echo "${TFDOCS_SHA256}  /tmp/${ASSET}" | sha256sum -c -
+        tar -xzf "/tmp/${ASSET}" -C /tmp terraform-docs
+        sudo install /tmp/terraform-docs /usr/local/bin/terraform-docs
+        terraform-docs --version
