@@ -1,7 +1,8 @@
 .PHONY: help install hooks lint format test header headers-check docs docs-dev \
         release-status release-plan release-validate release-config release-graph \
         release-dry-run release kind-up kind-down kind-status kind-logs \
-        kind-forward clean
+        kind-forward infra-fmt infra-fmt-check infra-test infra-plan \
+        infra-new-module infra-docs infra-docs-check infra-clean clean
 
 VENV     := .venv
 UV       := uv
@@ -47,6 +48,16 @@ help:
 	@echo "  make kind-status     Show what is running in the cluster"
 	@echo "  make kind-logs C=api Tail one component (api|job|ssr|migrations|postgres)"
 	@echo "  make kind-down       Delete the cluster"
+	@echo ""
+	@echo "Infrastructure (terragrunt):"
+	@echo "  make infra-fmt         terraform fmt + terragrunt hcl format, in place"
+	@echo "  make infra-fmt-check   same, non-mutating (what CI runs)"
+	@echo "  make infra-test        terraform test in every module with a tests/ dir"
+	@echo "  make infra-plan        terragrunt plan for one env (ENV=staging by default)"
+	@echo "  make infra-docs        regenerate every module README with terraform-docs"
+	@echo "  make infra-docs-check  verify those READMEs are up to date (what CI runs)"
+	@echo "  make infra-new-module NAME=<name>  scaffold + register a Terraform module"
+	@echo "  make infra-clean       drop .terragrunt-cache / lockfiles / generated *.tf"
 	@echo ""
 	@echo "Misc:"
 	@echo "  make clean           Remove caches, build artefacts and ./site"
@@ -136,6 +147,71 @@ kind-logs:
 
 kind-forward:
 	$(KIND_DEV) forward
+
+# ─────────────────────────── infrastructure ───────────────────────────
+# Terragrunt lives under infrastructure/; the shell helpers that wrap the
+# CLI for interactive use are in scripts/terragrunt.sh (source it, don't
+# execute it). These targets are the non-interactive equivalents CI runs.
+INFRA_DIR := infrastructure
+# `?=` so `make infra-plan ENV=production` wins, and an ENV already
+# exported in the shell (e.g. after `switch_env`) is honoured too.
+ENV ?= staging
+
+infra-fmt:
+	terraform fmt -recursive $(INFRA_DIR)/modules
+	terragrunt --working-dir $(INFRA_DIR) hcl format
+
+infra-fmt-check:
+	terraform fmt -check -recursive $(INFRA_DIR)/modules
+	terragrunt --working-dir $(INFRA_DIR) hcl format --check
+
+# `mock_provider` intercepts every provider call, so this needs no
+# credentials and no network — which is why the CI job has no cloud login.
+infra-test:
+	@set -eu; \
+	for dir in $(INFRA_DIR)/modules/*/; do \
+		if [ -d "$${dir}tests" ]; then \
+			echo "==> terraform test $${dir}"; \
+			(cd "$${dir}" && terraform init -backend=false -input=false >/dev/null && terraform test); \
+		fi; \
+	done
+
+# ENV picks the configs/<env>/config.yaml the units read: make infra-plan ENV=production
+infra-plan:
+	ENV=$(ENV) terragrunt --non-interactive --working-dir $(INFRA_DIR)/services \
+		run --all -- plan -input=false
+
+# Each module carries its own .terraform-docs.yml and records its version
+# in README.md (there is no VERSION file) — `mode: inject` only rewrites
+# what sits between the BEGIN_TF_DOCS / END_TF_DOCS markers, so the
+# **Version:** line and any hand-written prose survive. multicz runs the
+# same command as a post_bump hook, so a released module always ships docs
+# matching the code that was tagged.
+infra-docs:
+	@set -eu; \
+	for dir in $(INFRA_DIR)/modules/*/; do \
+		if [ -f "$${dir}.terraform-docs.yml" ]; then \
+			terraform-docs -c "$${dir}.terraform-docs.yml" "$${dir}"; \
+		fi; \
+	done
+
+infra-docs-check:
+	@set -eu; \
+	for dir in $(INFRA_DIR)/modules/*/; do \
+		if [ -f "$${dir}.terraform-docs.yml" ]; then \
+			echo "==> terraform-docs --output-check $${dir}"; \
+			terraform-docs -c "$${dir}.terraform-docs.yml" --output-check "$${dir}"; \
+		fi; \
+	done
+
+infra-new-module:
+	@test -n "$(NAME)" || { echo "usage: make infra-new-module NAME=<name>"; exit 1; }
+	scripts/new-terraform-module.sh $(NAME)
+
+infra-clean:
+	find $(INFRA_DIR) -type d -name ".terragrunt-cache" -prune -exec rm -rf {} + 2>/dev/null || true
+	find $(INFRA_DIR) -type f -name ".terraform.lock.hcl" -delete
+	find $(INFRA_DIR) -type f -name "generated_*.tf" -delete
 
 clean:
 	rm -rf site/ build/ dist/

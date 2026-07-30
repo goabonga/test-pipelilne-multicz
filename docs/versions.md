@@ -29,4 +29,25 @@ The currently-released version of every Shomer component.
 | component | version                           |
 |-----------|-----------------------------------|
 | `docs`    | {{ config.extra.versions.docs }}  |
+
+## Infrastructure
+
+Terragrunt/Terraform under `infrastructure/`. Modules and the Terragrunt
+root are libraries, released on every push to `main`.
+
+| component                | version                                              |
+|--------------------------|------------------------------------------------------|
+| terragrunt root (`infra`) | {{ config.extra.versions.infra }}                    |
+| `modules/example`         | {{ config.extra.versions.infra_modules_example }}    |
+
+### Deployed environments
+
+Unlike everything above, these are **deployed** versions: each one is
+bumped only after a successful `terragrunt apply`, so the number below is
+what is actually live in that environment.
+
+| environment  | deployed version                                |
+|--------------|--------------------------------------------------|
+| `staging`    | {{ config.extra.versions.configs_staging }}      |
+| `production` | {{ config.extra.versions.configs_production }}   |
 </content>

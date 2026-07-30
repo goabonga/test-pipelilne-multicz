@@ -1,0 +1,216 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Runs `terragrunt plan` for every environment whenever something that can
+# affect deployed state lands on `main` (infrastructure/**). If a plan has
+# changes, opens (or updates) a PR from `main` into `deploy/<env>`; merging
+# that PR — once approved per the branch's protection rules — triggers
+# infra-apply.yml.
+#
+# NO CLOUD PROVIDER IS WIRED YET (see infrastructure/services/terragrunt.hcl).
+# Two consequences, both marked TODO below:
+#   - there is no login step, so nothing authenticates anywhere;
+#   - state is local to the job, so every plan starts from nothing.
+# Until both are fixed a plan is always empty and this workflow never opens
+# a PR. That is the intended resting state: the wiring is proven, and
+# nothing can be applied by accident.
+
+name: infra-plan
+
+# Deliberately NO `paths:` filter. multicz is the single source of truth
+# for what changed: `discover-envs` asks it which `configs-<env>` components
+# have undeployed changes and plans exactly those. A path filter would be a
+# second, silently diverging answer to the same question — it already did
+# diverge once, because scripts/terragrunt.sh and
+# scripts/new-terraform-module.sh belong to the `infra` component but sit
+# outside infrastructure/, so touching them bumped infra, cascaded a patch
+# onto both environments, and never triggered a plan to resolve it.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: infra-plan-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  discover-envs:
+    name: discover-envs
+    runs-on: ubuntu-latest
+    outputs:
+      envs: ${{ steps.list.outputs.envs }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0   # multicz compares against each component's last tag
+      - uses: goabonga/multicz-action@95e90628797bc7dec0d2ad7d9abc6278f3465ed2  # v1
+      - id: changed
+        run: |
+          set -euo pipefail
+          multicz changed --output json | tee /tmp/changed.json
+      - id: list
+        # An environment is planned when its `configs-<env>` component has
+        # undeployed changes — which is exactly the question this workflow
+        # exists to answer, and one multicz already computes. It covers the
+        # indirect cases for free: a module or a services/** change cascades
+        # onto every configs-<env> through depends_on, so all of them get
+        # planned; a change to one environment's config.yaml marks only
+        # that one.
+        #
+        # Note release-bump never bumps configs-*, so after a release the
+        # environments stay pending here — that pending state IS the signal
+        # that a deploy is owed, and it clears only when infra-apply.yml
+        # applies.
+        run: |
+          set -euo pipefail
+          envs=$(jq -c '[
+            .changed[]
+            | select(startswith("configs-"))
+            | sub("^configs-"; "")
+          ]' /tmp/changed.json)
+          # Guard against a component whose config directory was deleted
+          # without removing the multicz component: terragrunt would fail
+          # deep inside the plan with a confusing "file not found".
+          for e in $(echo "$envs" | jq -r '.[]'); do
+            if [ ! -f "infrastructure/configs/${e}/config.yaml" ]; then
+              echo "::error::component configs-${e} has no infrastructure/configs/${e}/config.yaml"
+              exit 1
+            fi
+          done
+          echo "envs=$envs" >> "$GITHUB_OUTPUT"
+          echo "environments with pending changes: $envs"
+
+  plan:
+    name: plan (${{ matrix.env }})
+    needs: [discover-envs]
+    # GitHub errors out on an empty matrix vector ("does not contain any
+    # values") rather than skipping, so nothing-pending has to be caught
+    # here — that is the common case on a push that touches no infra.
+    if: needs.discover-envs.outputs.envs != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        env: ${{ fromJson(needs.discover-envs.outputs.envs) }}
+    runs-on: ubuntu-latest
+    # A GitHub Environment separate from the apply one, so protecting the
+    # apply environment with required reviewers does not block this
+    # automatic plan. Once a provider is wired, give it its own read-only
+    # credentials — a genuinely separate identity, not the apply
+    # credentials behind a different name.
+    environment: ${{ matrix.env }}-plan
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_wrapper: false
+      - uses: autero1/action-terragrunt@v3
+        with:
+          terragrunt-version: latest
+          token: ${{ github.token }}
+
+      # TODO(provider): add the cloud login here (OIDC, no long-lived
+      # secret) with READ-ONLY permissions — plan must not be able to
+      # mutate anything, including acquiring a state lock.
+
+      - name: Terragrunt plan
+        id: tg
+        env:
+          ENV: ${{ matrix.env }}
+        run: |
+          set +e
+          # Output goes to a file, never straight to the log: job logs are
+          # public on a public repo and a real plan carries resource names
+          # and attributes. Only the "Plan: N to add, ..." lines are echoed
+          # below.
+          terragrunt --non-interactive --working-dir infrastructure/services \
+            run --all -- plan -detailed-exitcode -no-color -input=false \
+            > "plan-${ENV}.txt" 2>&1
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Show plan summary
+        run: |
+          grep -E '^Plan: ' "plan-${{ matrix.env }}.txt" \
+            || echo "(no summary line — see exit code / job status)"
+
+      - name: Show plan error
+        # Without this a real error is invisible: it went to the file and
+        # the summary grep finds nothing. Terraform/HCL error text carries
+        # no resource detail, so it is safe to print.
+        if: steps.tg.outputs.exit_code == '1'
+        run: cat "plan-${{ matrix.env }}.txt"
+
+      - name: Fail on plan error
+        if: steps.tg.outputs.exit_code == '1'
+        run: exit 1
+
+      - name: Upload full plan
+        if: steps.tg.outputs.exit_code == '2'
+        # WARNING: on a public repo, workflow artifacts are downloadable by
+        # anyone who can read the repo. This is tolerable only while no
+        # unit declares real resources.
+        # TODO(provider): move this to a private object-storage container
+        # and post no bearer link — reviewers fetch it with their own
+        # credentials.
+        uses: actions/upload-artifact@v7
+        with:
+          name: plan-${{ matrix.env }}
+          path: plan-${{ matrix.env }}.txt
+          retention-days: 7
+
+      - name: Open or update the deploy PR
+        if: steps.tg.outputs.exit_code == '2'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ENV_NAME: ${{ matrix.env }}
+        run: |
+          set -euo pipefail
+          BASE="deploy/${ENV_NAME}"
+          if ! gh api "repos/${{ github.repository }}/branches/${BASE}" >/dev/null 2>&1; then
+            echo "::error::branch ${BASE} does not exist — create it once from main, then protect it (required reviewers)"
+            exit 1
+          fi
+
+          SUMMARY=$(grep -E '^Plan: ' "plan-${ENV_NAME}.txt" || echo "(no per-unit summary line found)")
+          BODY_FILE=$(mktemp)
+          {
+            echo "Terragrunt detected pending changes for **${ENV_NAME}**."
+            echo "Merging this PR (once approved) triggers \`terragrunt apply\` for ${ENV_NAME}"
+            echo "and bumps the \`configs-${ENV_NAME}\` component."
+            echo
+            echo "**Summary**"
+            echo '```'
+            echo "$SUMMARY"
+            echo '```'
+            echo
+            echo "The full plan is attached to run [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) as the \`plan-${ENV_NAME}\` artifact."
+          } > "$BODY_FILE"
+
+          PR_NUMBER=$(gh pr list --base "$BASE" --head main --state open --json number --jq '.[0].number // empty')
+          if [ -z "$PR_NUMBER" ]; then
+            gh pr create --base "$BASE" --head main \
+              --title "deploy(${ENV_NAME}): apply pending terragrunt plan" \
+              --body-file "$BODY_FILE"
+          else
+            gh pr comment "$PR_NUMBER" --body-file "$BODY_FILE"
+          fi
+
+      - name: Close stale deploy PR (plan is clean)
+        if: steps.tg.outputs.exit_code == '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ENV_NAME: ${{ matrix.env }}
+        run: |
+          set -euo pipefail
+          BASE="deploy/${ENV_NAME}"
+          PR_NUMBER=$(gh pr list --base "$BASE" --head main --state open --json number --jq '.[0].number // empty')
+          if [ -n "$PR_NUMBER" ]; then
+            gh pr comment "$PR_NUMBER" --body "Plan is now clean (no pending changes) — closing."
+            gh pr close "$PR_NUMBER"
+          fi

@@ -377,5 +377,114 @@ bump_files = [
 depends_on = [
     "api", "job", "cli", "database", "migrations", "ssr", "web", "lib", "app",
     "chart-api", "chart-job", "chart-ssr", "chart-migrations",
+    # Infrastructure. configs-* only bump from infra-apply.yml, and that
+    # runs `multicz bump --component configs-<env>`, which does NOT drag
+    # this cascade along — so the site picks the new deployed version up on
+    # the next push to main rather than at apply time. One cycle late, by
+    # construction.
+    "infra", "infra-modules-example", "configs-staging", "configs-production",
 ]
 bump_rules = { docs = "patch" }
+
+# ═══════════════════════════ infrastructure ═══════════════════════════
+#
+# Terragrunt / Terraform, under infrastructure/. Three kinds of component,
+# and the difference between them is the whole point of this section:
+#
+#   infra                  the Terragrunt root wiring (services/**, the
+#                          module template, terragrunt.sh). A library.
+#   infra-modules-<name>   one per Terraform module. Libraries too —
+#                          registered by scripts/new-terraform-module.sh,
+#                          no edit here by hand.
+#   configs-<env>          what is ACTUALLY APPLIED in an environment. Not
+#                          a library: bumped only by infra-apply.yml after
+#                          a successful `terragrunt apply`, never by the
+#                          push-to-main release-bump job — which filters
+#                          out every component whose name starts with
+#                          `configs-`. Renaming that prefix breaks the
+#                          deploy gate.
+#
+# `_template/` is deliberately NOT its own component: it is scaffolding
+# shipped with `infra`, not something a unit consumes in production.
+#
+# Like every other component, these write their version into zensical.toml's
+# `[project.extra.versions]` and sit in `docs`' depends_on, so docs/versions.md
+# ships current numbers. For `configs-<env>` that number is the DEPLOYED
+# version — what is actually live in that environment — which is the one
+# genuinely worth publishing.
+#
+# It lands one cycle late on purpose: infra-apply.yml bumps with
+# `--component configs-<env>`, which does not drag the docs cascade along,
+# so the site catches up on the next push to main rather than during the
+# apply. Keeping the apply job to a single tagged component is worth more
+# than a same-second docs refresh.
+
+# Surfaces upstream (`depends_on`) commits in a downstream component's
+# changelog and release notes — here, which `infra` / `infra-modules-*`
+# changes a given environment's deploy actually shipped. Project-scoped:
+# it also enriches the existing api/job/ssr/docs changelogs, which already
+# carry depends_on.
+[plugins.upstream-notes]
+max_commits         = 30
+include_prereleases = false
+
+[components.infra]
+# modules/_template/** is in here on purpose: it means a change to the
+# template is a detected change, so CI actually formats and tests it.
+paths      = [
+    "infrastructure/root.hcl",
+    "infrastructure/services/**",
+    "infrastructure/modules/_template/**",
+    "infrastructure/modules/README.md",
+    "infrastructure/README.md",
+    # The two helpers live in the repo-wide scripts/ dir, which is not a
+    # tracked component — listed one by one so the grype/dependabot
+    # scripts sitting next to them don't get swept into infra's history.
+    "scripts/terragrunt.sh",
+    "scripts/new-terraform-module.sh",
+]
+bump_files = [
+    { file = "infrastructure/VERSION" },
+    { file = "zensical.toml", key = "project.extra.versions.infra" },
+]
+changelog  = "infrastructure/CHANGELOG.md"
+
+[components.configs-staging]
+paths      = ["infrastructure/configs/staging/**"]
+# The version lives inside config.yaml itself — no VERSION file beside it,
+# so the file that describes the environment also states which version of
+# it is deployed.
+bump_files = [
+    { file = "infrastructure/configs/staging/config.yaml", key = "version" },
+    { file = "zensical.toml", key = "project.extra.versions.configs_staging" },
+]
+changelog  = "infrastructure/configs/staging/CHANGELOG.md"
+# Whatever this environment deploys. new-terraform-module.sh appends each new
+# infra-modules-* here so upstream-notes can resolve it.
+depends_on = ["infra", "infra-modules-example"]
+
+[components.configs-production]
+paths      = ["infrastructure/configs/production/**"]
+# The version lives inside config.yaml itself — no VERSION file beside it,
+# so the file that describes the environment also states which version of
+# it is deployed.
+bump_files = [
+    { file = "infrastructure/configs/production/config.yaml", key = "version" },
+    { file = "zensical.toml", key = "project.extra.versions.configs_production" },
+]
+changelog  = "infrastructure/configs/production/CHANGELOG.md"
+depends_on = ["infra", "infra-modules-example"]
+
+[components.infra-modules-example]
+paths      = ["infrastructure/modules/example/**"]
+# The version lives in README.md — there is no VERSION file. post_bump
+# regenerates the terraform-docs block right after the rewrite, so a
+# released module always ships docs matching the code that was tagged;
+# `mode: inject` only touches what sits between the BEGIN/END markers, so
+# the **Version:** line survives.
+bump_files = [
+    { file = "infrastructure/modules/example/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
+    { file = "zensical.toml", key = "project.extra.versions.infra_modules_example" },
+]
+changelog  = "infrastructure/modules/example/CHANGELOG.md"
+post_bump  = ["terraform-docs -c infrastructure/modules/example/.terraform-docs.yml infrastructure/modules/example"]
