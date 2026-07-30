@@ -2853,10 +2853,12 @@ jobs:
   # module added by scripts/new-terraform-module.sh is picked up with no
   # edit here.
   #
-  # `_template` is not a component of its own (it ships inside `infra`), so
-  # it is appended whenever `infra` itself changed — otherwise a broken
-  # template would sail through, and every module scaffolded from it would
-  # inherit the breakage.
+  # `_template` is deliberately NOT in this list. It is a scaffold, not a
+  # module: no unit consumes it, it declares no resources, and it has no
+  # component or version of its own. Scanning and unit-testing it produces
+  # noise about code that never runs anywhere. It is still covered by
+  # infra-fmt, which is repo-wide, and scripts/new-terraform-module.sh
+  # regenerates the copy's README at scaffold time.
   infra-modules-matrix:
     needs: [detect, headers]
     if: contains(join(fromJson(needs.detect.outputs.changed).changed, ','), 'infra')
@@ -2871,7 +2873,6 @@ jobs:
           set -euo pipefail
           modules=$(echo "$CHANGED" | jq -c '
             [ .changed[] | select(startswith("infra-modules-")) | sub("^infra-modules-"; "") ]
-            + (if (.changed | index("infra")) then ["_template"] else [] end)
           ')
           echo "modules=$modules" >> "$GITHUB_OUTPUT"
           echo "modules to check: $modules"

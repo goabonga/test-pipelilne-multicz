@@ -170,7 +170,11 @@ infra-fmt-check:
 # M selects one module: `make infra-test M=example`. Empty means all of
 # them, which is the useful default locally; CI passes M so it only
 # exercises the modules multicz reports as changed.
-MODULES = $(if $(M),$(INFRA_DIR)/modules/$(M)/,$(wildcard $(INFRA_DIR)/modules/*/))
+# _template is excluded from the default sweep: it is a scaffold, not a
+# module — nothing consumes it and it declares no resources, so testing and
+# scanning it is noise. `M=_template` still targets it explicitly.
+MODULES = $(if $(M),$(INFRA_DIR)/modules/$(M)/,\
+            $(filter-out %/_template/,$(wildcard $(INFRA_DIR)/modules/*/)))
 
 # `mock_provider` intercepts every provider call, so this needs no
 # credentials and no network — which is why the CI job has no cloud login.
