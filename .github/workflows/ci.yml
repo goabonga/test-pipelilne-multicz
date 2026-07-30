@@ -3157,8 +3157,15 @@ jobs:
           # apply`. Releasing them from here would tag a deploy that never
           # happened. The rule is the name prefix, so a new environment
           # needs no edit in this file.
-          COMPONENTS=$(jq -r '.bumps | keys[] | select(startswith("configs-") | not)' /tmp/plan.json)
-          DEFERRED=$(jq -r '.bumps | keys[] | select(startswith("configs-"))' /tmp/plan.json | paste -sd, -)
+          # `-s` and `.bumps // {}`: multicz emits TWO json documents here,
+          # the plan itself and a trailing `{"advice": ...}` object. A bare
+          # `.bumps | keys[]` dies on the second one with "null has no
+          # keys" — and the `.bumps | length` this replaced was no better,
+          # it printed one number per document and compared "N\n0" against
+          # "0", so it read as "something to release" no matter what.
+          BUMPS=$(jq -s '[.[] | .bumps // {}] | add' /tmp/plan.json)
+          COMPONENTS=$(echo "$BUMPS" | jq -r 'keys[] | select(startswith("configs-") | not)')
+          DEFERRED=$(echo "$BUMPS" | jq -r 'keys[] | select(startswith("configs-"))' | paste -sd, -)
           if [ -n "$DEFERRED" ]; then
             echo "[release-bump] deploy-gated, not released here: $DEFERRED"
           fi
