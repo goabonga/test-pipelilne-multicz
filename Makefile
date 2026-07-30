@@ -1,6 +1,7 @@
 .PHONY: help install hooks lint format test header headers-check docs docs-dev \
         release-status release-plan release-validate release-config release-graph \
-        release-dry-run release clean
+        release-dry-run release kind-up kind-down kind-status kind-logs \
+        kind-forward clean
 
 VENV     := .venv
 UV       := uv
@@ -39,6 +40,13 @@ help:
 	@echo "  make release-graph    Render the cascade DAG (api/job -> charts)"
 	@echo "  make release-dry-run  Compute the bump but write nothing"
 	@echo "  make release          Apply versions, commit and tag (no push)"
+	@echo ""
+	@echo "Local cluster (kind):"
+	@echo "  make kind-up         Build the images and deploy the full stack on kind"
+	@echo "  make kind-forward    Port-forward api (:8000) and ssr (:8080) to localhost"
+	@echo "  make kind-status     Show what is running in the cluster"
+	@echo "  make kind-logs C=api Tail one component (api|job|ssr|migrations|postgres)"
+	@echo "  make kind-down       Delete the cluster"
 	@echo ""
 	@echo "Misc:"
 	@echo "  make clean           Remove caches, build artefacts and ./site"
@@ -105,6 +113,29 @@ release-dry-run:
 # release commit looks right.
 release:
 	$(MULTICZ) bump --commit --tag
+
+# Local kind cluster running the same charts CI deploys, with images
+# built from the working tree instead of pulled from ghcr. Needs docker,
+# kind, kubectl and helm on PATH — `kind-up` checks and says which are
+# missing. Override the cluster name with KIND_CLUSTER=... if `shomer-dev`
+# collides with something you already have.
+KIND_DEV := scripts/kind-dev.sh
+
+kind-up:
+	$(KIND_DEV) up
+
+kind-down:
+	$(KIND_DEV) down
+
+kind-status:
+	$(KIND_DEV) status
+
+# C selects the component: `make kind-logs C=api`.
+kind-logs:
+	$(KIND_DEV) logs $(C)
+
+kind-forward:
+	$(KIND_DEV) forward
 
 clean:
 	rm -rf site/ build/ dist/
