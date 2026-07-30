@@ -1,11 +1,10 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Chris <goabonga@pm.me>
 
-# Runs `terragrunt plan` for every environment whenever something that can
-# affect deployed state lands on `main` (infrastructure/**). If a plan has
-# changes, opens (or updates) a PR from `main` into `deploy/<env>`; merging
-# that PR — once approved per the branch's protection rules — triggers
-# infra-apply.yml.
+# Runs `terragrunt plan` for every environment that owes a deploy. If a plan
+# has changes, opens (or updates) a PR from `main` into `deploy/<env>`;
+# merging that PR — once approved per the branch's protection rules —
+# triggers infra-apply.yml.
 #
 # NO CLOUD PROVIDER IS WIRED YET (see infrastructure/services/terragrunt.hcl).
 # Two consequences, both marked TODO below:
@@ -17,17 +16,18 @@
 
 name: infra-plan
 
-# Deliberately NO `paths:` filter. multicz is the single source of truth
-# for what changed: `discover-envs` asks it which `configs-<env>` components
-# have undeployed changes and plans exactly those. A path filter would be a
-# second, silently diverging answer to the same question — it already did
-# diverge once, because scripts/terragrunt.sh and
+# Dispatch only — ci.yml's release-bump is the single entry point, and it
+# fires this when multicz reports a `configs-<env>` component with
+# undeployed changes.
+#
+# There is deliberately no `push` trigger. A `paths:` filter would be a
+# second, silently diverging answer to "did the infrastructure change" — it
+# already did diverge once, because scripts/terragrunt.sh and
 # scripts/new-terraform-module.sh belong to the `infra` component but sit
-# outside infrastructure/, so touching them bumped infra, cascaded a patch
-# onto both environments, and never triggered a plan to resolve it.
+# outside infrastructure/. And a push trigger without a filter is worse
+# still: `configs-*` only clear on apply, so they stay pending and every
+# single commit on main would drag a full plan matrix behind it, forever.
 on:
-  push:
-    branches: [main]
   workflow_dispatch: {}
 
 concurrency:
@@ -61,10 +61,11 @@ jobs:
         # planned; a change to one environment's config.yaml marks only
         # that one.
         #
-        # Note release-bump never bumps configs-*, so after a release the
-        # environments stay pending here — that pending state IS the signal
-        # that a deploy is owed, and it clears only when infra-apply.yml
-        # applies.
+        # release-bump never bumps configs-*, so an environment stays
+        # pending here from the moment something lands until an apply
+        # clears it — that pending state IS the ledger of what is owed.
+        # It is also why this workflow must not run on every push: the
+        # signal never goes quiet on its own.
         run: |
           set -euo pipefail
           envs=$(jq -c '[
@@ -89,7 +90,8 @@ jobs:
     needs: [discover-envs]
     # GitHub errors out on an empty matrix vector ("does not contain any
     # values") rather than skipping, so nothing-pending has to be caught
-    # here — that is the common case on a push that touches no infra.
+    # here. ci.yml only dispatches when a configs-* is pending, but a
+    # manual dispatch has no such filter.
     if: needs.discover-envs.outputs.envs != '[]'
     strategy:
       fail-fast: false

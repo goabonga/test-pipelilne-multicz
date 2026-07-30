@@ -3200,20 +3200,25 @@ jobs:
           echo "repo=${{ github.event.repository.name }}" >> "$GITHUB_OUTPUT"
 
       - name: Trigger infra-plan
-        # The release commit is pushed with RELEASE_PAT when it exists, and
-        # a PAT push DOES fire other workflows' `push` triggers — so today
-        # infra-plan.yml already sees it. This dispatch is the belt to that
-        # brace: without a PAT the push falls back to GITHUB_TOKEN, whose
-        # anti-recursion rule fires nothing, and infra-plan would silently
-        # stop running after every release. The failure mode is nasty
-        # precisely because it looks like success — no deploy PR reads
-        # identically to "the plan found nothing to do".
+        # infra-plan.yml has no push trigger — this is its only entry
+        # point, so the decision to plan lives here, next to `detect`.
         #
-        # workflow_dispatch via the API is a deliberate one-off call, not a
-        # cascading event, so it is not subject to that restriction.
-        # Re-running the plan when it already ran is harmless: it is
-        # read-only, and it opens a PR only on a real diff.
-        if: steps.plan.outputs.release == 'true'
+        # The signal is a `configs-*` component in the changed set. multicz
+        # marks an environment changed both when its own config.yaml is
+        # edited and when infra/** or a module cascades onto it through
+        # depends_on, so one condition covers a config edit, a module
+        # change and a services/** change alike.
+        #
+        # NOT gated on steps.plan.outputs.release: a config-only change
+        # bumps nothing in this job (configs-* are deploy-gated and
+        # filtered out of the bump), so `release` would be 'false' and the
+        # plan would never fire — on precisely the change that most needs
+        # one.
+        #
+        # Dispatch rather than relying on the release commit's own push
+        # event: that push uses RELEASE_PAT when set, and falls back to
+        # GITHUB_TOKEN, whose anti-recursion rule fires nothing at all.
+        if: contains(join(fromJson(needs.detect.outputs.changed).changed, ','), 'configs-')
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run infra-plan.yml --ref main
