@@ -210,7 +210,22 @@ cat <<EOF
   Next:
     1. declare the resources in infrastructure/modules/${NAME}/main.tf
     2. write real assertions in infrastructure/modules/${NAME}/tests/
-    3. consume it from a unit:
+    3. add its CI jobs to .github/workflows/ci.yml — one job per check, the
+       same shape as api-* / chart-*. Paste this next to the other
+       infra-modules-* jobs, plus a release-infra-modules-${NAME} job
+       modelled on release-infra-modules-example, and add them to
+       release-bump's needs / gate / outputs:
+
+         infra-modules-${NAME}-fmt:
+           needs: [detect, headers]
+           if: contains(fromJson(needs.detect.outputs.changed).changed, 'infra-modules-${NAME}')
+           ...  run: make infra-fmt-check M=${NAME}
+
+         infra-modules-${NAME}-test      -> make infra-test M=${NAME}
+         infra-modules-${NAME}-checkov   -> checkov-action, directory: infrastructure/modules/${NAME}
+         infra-modules-${NAME}-docs      -> make infra-docs-check M=${NAME}
+
+    4. consume it from a unit:
 
          # infrastructure/services/<unit>/terragrunt.hcl
          terraform {
@@ -222,6 +237,6 @@ cat <<EOF
            actions = ["all"]
          }
 
-    4. add that unit's block to configs/staging/config.yaml and
+    5. add that unit's block to configs/staging/config.yaml and
        configs/production/config.yaml
 EOF

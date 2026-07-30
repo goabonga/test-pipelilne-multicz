@@ -2818,20 +2818,23 @@ jobs:
 
   # ─────────────────────── infrastructure (terragrunt) ───────────────────────
   #
-  # Gated on the whole infra component family, matched by prefix on the
-  # JOINED changed list — `contains()` on an array is exact-match, and
-  # substring-matching the raw `detect.outputs.changed` JSON would also hit
-  # the `unchanged` array. Joining first means a module added by
-  # scripts/new-terraform-module.sh (component `infra-modules-<name>`) is
-  # picked up with no edit here.
+  # One job per component, gated on multicz's changed set — the same shape
+  # every uv-workspace package uses (api-lint / api-test / api-bandit …).
+  # No matrix: a module is a component like any other, so it gets its own
+  # named jobs, and a red badge says which module broke without expanding
+  # anything.
   #
-  # `configs-staging` / `configs-production` are deliberately NOT in this
-  # gate: a config-only change deploys through infra-plan.yml, and there is
-  # nothing to format or unit-test in a values file.
+  # Adding a module therefore means adding its four jobs here.
+  # scripts/new-terraform-module.sh prints the block to paste.
+  #
+  # `_template` has no jobs of its own: it is a scaffold, nothing consumes
+  # it and it declares no resources, so testing or scanning it reports on
+  # code that never runs. Its formatting rides along with `infra`, which is
+  # the component it ships in.
 
   infra-fmt:
     needs: [detect, headers]
-    if: contains(join(fromJson(needs.detect.outputs.changed).changed, ','), 'infra')
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'infra')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -2839,110 +2842,38 @@ jobs:
         with:
           terraform_wrapper: false
       - uses: ./.github/actions/setup-terragrunt
-      - run: make infra-fmt-check
+      - run: make infra-fmt-check-root
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
           title: infra-fmt
-          body: '`terraform fmt -check` on `infrastructure/modules/` + `terragrunt hcl format --check` on `infrastructure/`.'
+          body: '`terragrunt hcl format --check` on `infrastructure/` + `terraform fmt -check` on the module template.'
 
-  # Which modules to exercise. multicz already tracks each one as its own
-  # `infra-modules-<name>` component, so "which modules changed" is a
-  # question it has answered — no need to re-derive it from paths, and a
-  # module added by scripts/new-terraform-module.sh is picked up with no
-  # edit here.
-  #
-  # `_template` is deliberately NOT in this list. It is a scaffold, not a
-  # module: no unit consumes it, it declares no resources, and it has no
-  # component or version of its own. Scanning and unit-testing it produces
-  # noise about code that never runs anywhere. It is still covered by
-  # infra-fmt, which is repo-wide, and scripts/new-terraform-module.sh
-  # regenerates the copy's README at scaffold time.
-  infra-modules-matrix:
+  # ── infra-modules-example ──────────────────────────────────────────────
+
+  infra-modules-example-fmt:
     needs: [detect, headers]
-    if: contains(join(fromJson(needs.detect.outputs.changed).changed, ','), 'infra')
-    runs-on: ubuntu-latest
-    outputs:
-      modules: ${{ steps.list.outputs.modules }}
-    steps:
-      - id: list
-        env:
-          CHANGED: ${{ needs.detect.outputs.changed }}
-        run: |
-          set -euo pipefail
-          modules=$(echo "$CHANGED" | jq -c '
-            [ .changed[] | select(startswith("infra-modules-")) | sub("^infra-modules-"; "") ]
-          ')
-          echo "modules=$modules" >> "$GITHUB_OUTPUT"
-          echo "modules to check: $modules"
-
-  infra-checkov:
-    # Static security scan on the Terraform, mirroring what chart-*-checkov
-    # does for the Helm charts — same action, same pin, `--framework
-    # terraform` instead of helm.
-    needs: [infra-fmt, infra-modules-matrix]
-    if: >-
-      !failure() && !cancelled() &&
-      needs.infra-fmt.result == 'success' &&
-      needs.infra-modules-matrix.outputs.modules != '[]'
-    strategy:
-      fail-fast: false
-      matrix:
-        module: ${{ fromJson(needs.infra-modules-matrix.outputs.modules) }}
+    if: contains(fromJson(needs.detect.outputs.changed).changed, 'infra-modules-example')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: bridgecrewio/checkov-action@7b972723c44fb3d256283fac96fae5d7c1894bb7  # v12
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e  # v4
         with:
-          directory: infrastructure/modules/${{ matrix.module }}
-          framework: terraform
-          quiet: true
-          output_format: cli
-          soft_fail: false
+          terraform_wrapper: false
+      - run: make infra-fmt-check M=example
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
-          title: infra-checkov (${{ matrix.module }})
-          body: '`checkov --framework terraform` on `infrastructure/modules/${{ matrix.module }}/`.'
+          title: infra-modules-example-fmt
+          body: '`terraform fmt -check` on `infrastructure/modules/example/`.'
 
-  infra-docs:
-    # A module records its version in README.md and gets its terraform-docs
-    # block regenerated by a multicz post_bump hook. Add a variable without
-    # re-running `make infra-docs` and the next release publishes a README
-    # describing the previous interface — silently. This catches it on the PR.
-    needs: [infra-fmt, infra-modules-matrix]
+  infra-modules-example-test:
+    needs: [infra-modules-example-fmt]
     if: >-
       !failure() && !cancelled() &&
-      needs.infra-fmt.result == 'success' &&
-      needs.infra-modules-matrix.outputs.modules != '[]'
-    strategy:
-      fail-fast: false
-      matrix:
-        module: ${{ fromJson(needs.infra-modules-matrix.outputs.modules) }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/setup-terraform-docs
-      - run: make infra-docs-check M=${{ matrix.module }}
-      - name: Summary
-        if: always()
-        uses: ./.github/actions/summary
-        with:
-          title: infra-docs (${{ matrix.module }})
-          body: '`terraform-docs --output-check` on `infrastructure/modules/${{ matrix.module }}/README.md`.'
-
-  infra-test:
-    needs: [infra-fmt, infra-modules-matrix]
-    if: >-
-      !failure() && !cancelled() &&
-      needs.infra-fmt.result == 'success' &&
-      needs.infra-modules-matrix.outputs.modules != '[]'
-    strategy:
-      fail-fast: false
-      matrix:
-        module: ${{ fromJson(needs.infra-modules-matrix.outputs.modules) }}
+      needs.infra-modules-example-fmt.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -2951,13 +2882,58 @@ jobs:
           terraform_wrapper: false
       # No cloud login: the tests use `mock_provider`, which intercepts
       # every provider call. They never reach a real API.
-      - run: make infra-test M=${{ matrix.module }}
+      - run: make infra-test M=example
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
-          title: infra-test (${{ matrix.module }})
-          body: '`terraform test` on `infrastructure/modules/${{ matrix.module }}/tests/` (offline, `mock_provider`).'
+          title: infra-modules-example-test
+          body: '`terraform test` on `infrastructure/modules/example/tests/` (offline, `mock_provider`).'
+
+  infra-modules-example-checkov:
+    # Same action and pin the chart-*-checkov jobs use, `--framework
+    # terraform` instead of helm.
+    needs: [infra-modules-example-fmt]
+    if: >-
+      !failure() && !cancelled() &&
+      needs.infra-modules-example-fmt.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: bridgecrewio/checkov-action@7b972723c44fb3d256283fac96fae5d7c1894bb7  # v12
+        with:
+          directory: infrastructure/modules/example
+          framework: terraform
+          quiet: true
+          output_format: cli
+          soft_fail: false
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: infra-modules-example-checkov
+          body: '`checkov --framework terraform` on `infrastructure/modules/example/`.'
+
+  infra-modules-example-docs:
+    # The module records its version in README.md and gets its
+    # terraform-docs block regenerated by a multicz post_bump hook. Add a
+    # variable without re-running `make infra-docs` and the next release
+    # publishes a README describing the previous interface — silently.
+    needs: [infra-modules-example-fmt]
+    if: >-
+      !failure() && !cancelled() &&
+      needs.infra-modules-example-fmt.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-terraform-docs
+      - run: make infra-docs-check M=example
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: infra-modules-example-docs
+          body: '`terraform-docs --output-check` on `infrastructure/modules/example/README.md`.'
 
   release-bump:
     # Single bump stage that the whole CI graph funnels into. multicz
@@ -2995,9 +2971,11 @@ jobs:
       - app-mobsfscan
       - app-secrets
       - app-audit
-      - infra-checkov
-      - infra-docs
-      - infra-test
+      - infra-fmt
+      - infra-modules-example-fmt
+      - infra-modules-example-test
+      - infra-modules-example-checkov
+      - infra-modules-example-docs
     # Per-component success-required gate. The earlier
     # `!failure() && !cancelled() && main && !chore(release)` shape
     # was too permissive: it accepted skipped upstreams as "fine",
@@ -3046,10 +3024,12 @@ jobs:
         needs.app-mobsfscan.result == 'success' &&
         needs.app-secrets.result == 'success' &&
         needs.app-audit.result == 'success')) &&
-      (!contains(join(fromJson(needs.detect.outputs.changed).changed, ','), 'infra') ||
-       (needs.infra-checkov.result == 'success' &&
-        needs.infra-docs.result == 'success' &&
-        needs.infra-test.result == 'success'))
+      (!contains(fromJson(needs.detect.outputs.changed).changed, 'infra') ||
+       needs.infra-fmt.result == 'success') &&
+      (!contains(fromJson(needs.detect.outputs.changed).changed, 'infra-modules-example') ||
+       (needs.infra-modules-example-test.result == 'success' &&
+        needs.infra-modules-example-checkov.result == 'success' &&
+        needs.infra-modules-example-docs.result == 'success'))
     runs-on: ubuntu-latest
     permissions:
       contents: write   # push release commit + tags
@@ -3066,6 +3046,8 @@ jobs:
       chart_migrations_version: ${{ steps.bump.outputs.chart_migrations_version }}
       docs_version: ${{ steps.bump.outputs.docs_version }}
       app_version: ${{ steps.bump.outputs.app_version }}
+      infra_version: ${{ steps.bump.outputs.infra_version }}
+      infra_modules_example_version: ${{ steps.bump.outputs.infra_modules_example_version }}
       owner: ${{ steps.owner.outputs.value }}
       repo: ${{ steps.names.outputs.repo }}
 
@@ -3228,6 +3210,8 @@ jobs:
           CHART_MIGRATIONS=$(jq -r '.bumps["chart-migrations"].next_version // empty' /tmp/release.json)
           DOCS=$(jq -r         '.bumps.docs.next_version          // empty' /tmp/release.json)
           APP=$(jq -r          '.bumps.app.next_version           // empty' /tmp/release.json)
+          INFRA=$(jq -r        '.bumps.infra.next_version         // empty' /tmp/release.json)
+          INFRA_MOD_EXAMPLE=$(jq -r '.bumps["infra-modules-example"].next_version // empty' /tmp/release.json)
           # Surface what we extracted so the workflow log makes the
           # downstream skip/run decision auditable without having to
           # re-resolve via gh api.
@@ -3244,6 +3228,8 @@ jobs:
           echo "chart_migrations_version=$CHART_MIGRATIONS" >> "$GITHUB_OUTPUT"
           echo "docs_version=$DOCS"                 >> "$GITHUB_OUTPUT"
           echo "app_version=$APP"                   >> "$GITHUB_OUTPUT"
+          echo "infra_version=$INFRA"               >> "$GITHUB_OUTPUT"
+          echo "infra_modules_example_version=$INFRA_MOD_EXAMPLE" >> "$GITHUB_OUTPUT"
 
       - name: Compute lowercase owner
         id: owner
@@ -3963,6 +3949,79 @@ jobs:
             Pushed `oci://ghcr.io/${{ needs.release-bump.outputs.owner }}/charts/${{ needs.release-bump.outputs.repo }}-migrations:${{ needs.release-bump.outputs.chart_migrations_version }}`,
             cut GitHub Release `chart-migrations-v${{ needs.release-bump.outputs.chart_migrations_version }}`.
             CI artifact (`chart-migrations-tgz`) deleted post-publish.
+
+  # ── infrastructure GitHub Releases ─────────────────────────────────────
+  #
+  # release-bump tags every component it bumps, but a tag is not a Release:
+  # the Release object, with the multicz-generated notes, is cut by a
+  # per-component job — which the infrastructure components were missing,
+  # so infra-v0.1.0 and infra-modules-example-v0.1.0 existed as tags with
+  # nothing on the Releases page.
+  #
+  # Neither ships an artifact: terragrunt units and local modules are
+  # consumed from the repo, not downloaded. The Release is the changelog
+  # entry, and for `infra` it is also where upstream-notes surfaces what a
+  # given deploy shipped.
+
+  release-infra:
+    needs: [release-bump]
+    if: |
+      !failure() && !cancelled() &&
+      needs.release-bump.outputs.infra_version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # gh release create
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+      - uses: goabonga/multicz-action@95e90628797bc7dec0d2ad7d9abc6278f3465ed2  # v1
+      - name: gh release create infra-v${{ needs.release-bump.outputs.infra_version }}
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="infra-v${{ needs.release-bump.outputs.infra_version }}"
+          multicz release-notes --tag "$TAG" \
+            | gh release create "$TAG" --title "$TAG" --notes-file -
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: release-infra
+          body: 'GitHub Release for the terragrunt root wiring.'
+
+  release-infra-modules-example:
+    needs: [release-bump]
+    if: |
+      !failure() && !cancelled() &&
+      needs.release-bump.outputs.infra_modules_example_version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # gh release create
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+      - uses: goabonga/multicz-action@95e90628797bc7dec0d2ad7d9abc6278f3465ed2  # v1
+      - name: gh release create infra-modules-example-v${{ needs.release-bump.outputs.infra_modules_example_version }}
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="infra-modules-example-v${{ needs.release-bump.outputs.infra_modules_example_version }}"
+          multicz release-notes --tag "$TAG" \
+            | gh release create "$TAG" --title "$TAG" --notes-file -
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: release-infra-modules-example
+          body: 'GitHub Release for the `example` Terraform module.'
 
   release-docs:
     # Consume the already-built `docs-site` artifact (produced by

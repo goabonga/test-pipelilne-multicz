@@ -3,6 +3,7 @@
         release-dry-run release kind-up kind-down kind-status kind-logs \
         kind-forward infra-fmt infra-fmt-check infra-test infra-plan \
         infra-new-module infra-docs infra-docs-check infra-checkov \
+        infra-fmt-check-root \
         infra-clean clean
 
 VENV     := .venv
@@ -159,13 +160,33 @@ INFRA_DIR := infrastructure
 # exported in the shell (e.g. after `switch_env`) is honoured too.
 ENV ?= staging
 
+# M=<name> narrows every infra target to one module. Without it they sweep
+# the whole tree, which is the useful local default; CI passes M so each
+# component gets its own job, the same way api-* / job-* / chart-* do.
 infra-fmt:
-	terraform fmt -recursive $(INFRA_DIR)/modules
-	terragrunt --working-dir $(INFRA_DIR) hcl format
+	@set -eu; \
+	if [ -n "$(M)" ]; then \
+		terraform fmt -recursive $(INFRA_DIR)/modules/$(M); \
+	else \
+		terraform fmt -recursive $(INFRA_DIR)/modules; \
+		terragrunt --working-dir $(INFRA_DIR) hcl format; \
+	fi
 
 infra-fmt-check:
-	terraform fmt -check -recursive $(INFRA_DIR)/modules
+	@set -eu; \
+	if [ -n "$(M)" ]; then \
+		terraform fmt -check -recursive $(INFRA_DIR)/modules/$(M); \
+	else \
+		terraform fmt -check -recursive $(INFRA_DIR)/modules; \
+		terragrunt --working-dir $(INFRA_DIR) hcl format --check; \
+	fi
+
+# The `infra` component's own share of the formatting: the terragrunt
+# wiring plus the scaffold. Each module checks itself through
+# `infra-fmt-check M=<name>`.
+infra-fmt-check-root:
 	terragrunt --working-dir $(INFRA_DIR) hcl format --check
+	terraform fmt -check -recursive $(INFRA_DIR)/modules/_template
 
 # M selects one module: `make infra-test M=example`. Empty means all of
 # them, which is the useful default locally; CI passes M so it only
