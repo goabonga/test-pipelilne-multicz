@@ -2,6 +2,12 @@
 
 All notable changes to this component are documented here.
 
+## [0.4.1] - 2026-07-31
+
+### Dependencies
+
+- Track `migrations` `0.4.0`
+
 ## [0.4.0] - 2026-07-31
 
 ### Features

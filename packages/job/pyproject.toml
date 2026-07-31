@@ -1,6 +1,6 @@
 [project]
 name = "shomer-job"
-version = "1.3.0"
+version = "1.4.0"
 description = "Shomer background job (token cleanup, audit replication)."
 requires-python = ">=3.11"
 license = "MIT"

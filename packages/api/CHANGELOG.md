@@ -2,6 +2,12 @@
 
 All notable changes to this component are documented here.
 
+## [0.5.0] - 2026-07-31
+
+### Features
+
+- **api,job,ssr,migrations**: declare the OCI annotations in the Dockerfiles (`7a1e881`)
+
 ## [0.4.0] - 2026-07-31
 
 ### Features

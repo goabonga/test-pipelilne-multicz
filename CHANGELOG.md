@@ -7,6 +7,27 @@ Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
 ### Releases
 
+- **api** minor — 0.4.0 → 0.5.0
+- **chart-api** patch — 1.3.0 → 1.3.1  _(cascade from api 0.5.0)_
+- **chart-job** patch — 1.2.0 → 1.2.1  _(cascade from job 1.4.0)_
+- **chart-migrations** patch — 0.4.0 → 0.4.1  _(cascade from migrations 0.4.0)_
+- **chart-ssr** patch — 1.3.0 → 1.3.1  _(cascade from ssr 1.4.0)_
+- **docs** patch — 1.2.8 → 1.2.9  _(cascade from api 0.5.0)_
+- **job** minor — 1.3.0 → 1.4.0
+- **migrations** minor — 0.3.0 → 0.4.0
+- **ssr** minor — 1.3.0 → 1.4.0
+
+### Features
+
+- **api**: declare the OCI annotations in the Dockerfiles (`7a1e881`)
+- **job**: declare the OCI annotations in the Dockerfiles (`7a1e881`)
+- **migrations**: declare the OCI annotations in the Dockerfiles (`7a1e881`)
+- **ssr**: declare the OCI annotations in the Dockerfiles (`7a1e881`)
+
+## 2026-07-31
+
+### Releases
+
 - **docs** patch — 1.2.7 → 1.2.8  _(cascade from configs-staging)_
 
 ## 2026-07-31

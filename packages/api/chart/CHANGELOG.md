@@ -2,6 +2,12 @@
 
 All notable changes to this component are documented here.
 
+## [1.3.1] - 2026-07-31
+
+### Dependencies
+
+- Track `api` `0.5.0`
+
 ## [1.3.0] - 2026-07-31
 
 ### Features

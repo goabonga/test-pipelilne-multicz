@@ -1,3 +1,9 @@
+shomer-job (1.4.0-1) unstable; urgency=medium
+
+  * feat(api,job,ssr,migrations): Declare the OCI annotations in the Dockerfiles
+
+ -- Chris <goabonga@pm.me>  Fri, 31 Jul 2026 11:51:23 +0000
+
 shomer-job (1.3.0-1) unstable; urgency=medium
 
   * feat(job): Publish package metadata and a PEP 561 marker
