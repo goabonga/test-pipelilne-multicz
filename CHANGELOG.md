@@ -7,6 +7,12 @@ Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
 ### Releases
 
+- **docs** patch — 1.2.10 → 1.2.11  _(cascade from configs-staging)_
+
+## 2026-07-31
+
+### Releases
+
 - **chart-api** minor — 1.3.1 → 1.4.0
 - **chart-job** minor — 1.2.1 → 1.3.0
 - **chart-migrations** minor — 0.4.1 → 0.5.0
