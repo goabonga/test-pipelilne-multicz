@@ -433,10 +433,12 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
       - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c  # v4
-      # OCI annotations, so `docker inspect` answers "which commit and which
-      # version is this?" without trusting the registry tag — the tag is
-      # mutable, the image is not. bump-preview has already rewritten
-      # VERSION to the version this build will be released as.
+      # The three OCI annotation values that cannot be static. The rest
+      # are LABELs in the Dockerfile itself, so a local `docker build`
+      # carries them too and — the Dockerfile being in the component's
+      # multicz paths — editing them actually releases an image that has
+      # them. bump-preview has already rewritten VERSION to the version
+      # this build will be released as.
       - name: OCI image metadata
         id: meta
         run: |
@@ -454,17 +456,10 @@ jobs:
           # exporter). Provenance + SBOM attestation are attached at
           # push time via cosign in `.github/actions/publish-image`.
           tags: api:ci
-          labels: |
-            org.opencontainers.image.title=shomer-api
-            org.opencontainers.image.description=Shomer authorization HTTP API (FastAPI + uvicorn).
-            org.opencontainers.image.version=${{ steps.meta.outputs.version }}
-            org.opencontainers.image.revision=${{ github.sha }}
-            org.opencontainers.image.created=${{ steps.meta.outputs.created }}
-            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-            org.opencontainers.image.url=${{ github.server_url }}/${{ github.repository }}
-            org.opencontainers.image.documentation=${{ github.server_url }}/${{ github.repository }}
-            org.opencontainers.image.licenses=MIT
-            org.opencontainers.image.vendor=goabonga
+          build-args: |
+            VERSION=${{ steps.meta.outputs.version }}
+            REVISION=${{ github.sha }}
+            CREATED=${{ steps.meta.outputs.created }}
           cache-from: type=gha,scope=api
           # ignore-error: the GHA cache export can fail to reserve its key
           # even when the image built fine (see ssr). A cache miss must not
@@ -753,10 +748,12 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
       - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c  # v4
-      # OCI annotations, so `docker inspect` answers "which commit and which
-      # version is this?" without trusting the registry tag — the tag is
-      # mutable, the image is not. bump-preview has already rewritten
-      # VERSION to the version this build will be released as.
+      # The three OCI annotation values that cannot be static. The rest
+      # are LABELs in the Dockerfile itself, so a local `docker build`
+      # carries them too and — the Dockerfile being in the component's
+      # multicz paths — editing them actually releases an image that has
+      # them. bump-preview has already rewritten VERSION to the version
+      # this build will be released as.
       - name: OCI image metadata
         id: meta
         run: |
@@ -771,17 +768,10 @@ jobs:
           load: true
           # See api-container: attestations done via cosign post-push.
           tags: job:ci
-          labels: |
-            org.opencontainers.image.title=shomer-job
-            org.opencontainers.image.description=Shomer background job worker (Celery).
-            org.opencontainers.image.version=${{ steps.meta.outputs.version }}
-            org.opencontainers.image.revision=${{ github.sha }}
-            org.opencontainers.image.created=${{ steps.meta.outputs.created }}
-            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-            org.opencontainers.image.url=${{ github.server_url }}/${{ github.repository }}
-            org.opencontainers.image.documentation=${{ github.server_url }}/${{ github.repository }}
-            org.opencontainers.image.licenses=MIT
-            org.opencontainers.image.vendor=goabonga
+          build-args: |
+            VERSION=${{ steps.meta.outputs.version }}
+            REVISION=${{ github.sha }}
+            CREATED=${{ steps.meta.outputs.created }}
           cache-from: type=gha,scope=job
           cache-to: type=gha,mode=max,scope=job,ignore-error=true
       - name: Assert the OCI annotations landed
@@ -1066,10 +1056,12 @@ jobs:
         uses: actions/download-artifact@v8
         with: { name: web-dist, path: . }
       - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c  # v4
-      # OCI annotations, so `docker inspect` answers "which commit and which
-      # version is this?" without trusting the registry tag — the tag is
-      # mutable, the image is not. bump-preview has already rewritten
-      # VERSION to the version this build will be released as.
+      # The three OCI annotation values that cannot be static. The rest
+      # are LABELs in the Dockerfile itself, so a local `docker build`
+      # carries them too and — the Dockerfile being in the component's
+      # multicz paths — editing them actually releases an image that has
+      # them. bump-preview has already rewritten VERSION to the version
+      # this build will be released as.
       - name: OCI image metadata
         id: meta
         run: |
@@ -1084,17 +1076,10 @@ jobs:
           load: true
           # See api-container: attestations done via cosign post-push.
           tags: ssr:ci
-          labels: |
-            org.opencontainers.image.title=shomer-ssr
-            org.opencontainers.image.description=Shomer server-rendered frontend (FastAPI + Jinja).
-            org.opencontainers.image.version=${{ steps.meta.outputs.version }}
-            org.opencontainers.image.revision=${{ github.sha }}
-            org.opencontainers.image.created=${{ steps.meta.outputs.created }}
-            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-            org.opencontainers.image.url=${{ github.server_url }}/${{ github.repository }}
-            org.opencontainers.image.documentation=${{ github.server_url }}/${{ github.repository }}
-            org.opencontainers.image.licenses=MIT
-            org.opencontainers.image.vendor=goabonga
+          build-args: |
+            VERSION=${{ steps.meta.outputs.version }}
+            REVISION=${{ github.sha }}
+            CREATED=${{ steps.meta.outputs.created }}
           cache-from: type=gha,scope=ssr
           cache-to: type=gha,mode=max,scope=ssr,ignore-error=true
       - name: Assert the OCI annotations landed
@@ -1621,10 +1606,12 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/bump-preview
       - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c  # v4
-      # OCI annotations, so `docker inspect` answers "which commit and which
-      # version is this?" without trusting the registry tag — the tag is
-      # mutable, the image is not. bump-preview has already rewritten
-      # VERSION to the version this build will be released as.
+      # The three OCI annotation values that cannot be static. The rest
+      # are LABELs in the Dockerfile itself, so a local `docker build`
+      # carries them too and — the Dockerfile being in the component's
+      # multicz paths — editing them actually releases an image that has
+      # them. bump-preview has already rewritten VERSION to the version
+      # this build will be released as.
       - name: OCI image metadata
         id: meta
         run: |
@@ -1638,17 +1625,10 @@ jobs:
           file: packages/bdd/migrations/Dockerfile
           load: true
           tags: migrations:ci
-          labels: |
-            org.opencontainers.image.title=shomer-migrations
-            org.opencontainers.image.description=Shomer database migrations (Alembic).
-            org.opencontainers.image.version=${{ steps.meta.outputs.version }}
-            org.opencontainers.image.revision=${{ github.sha }}
-            org.opencontainers.image.created=${{ steps.meta.outputs.created }}
-            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-            org.opencontainers.image.url=${{ github.server_url }}/${{ github.repository }}
-            org.opencontainers.image.documentation=${{ github.server_url }}/${{ github.repository }}
-            org.opencontainers.image.licenses=MIT
-            org.opencontainers.image.vendor=goabonga
+          build-args: |
+            VERSION=${{ steps.meta.outputs.version }}
+            REVISION=${{ github.sha }}
+            CREATED=${{ steps.meta.outputs.created }}
           cache-from: type=gha,scope=migrations
           cache-to: type=gha,mode=max,scope=migrations,ignore-error=true
       - name: Assert the OCI annotations landed

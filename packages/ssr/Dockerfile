@@ -24,4 +24,27 @@ COPY --from=builder /app/venv /app/venv
 ENV PATH="/app/venv/bin:$PATH"
 
 EXPOSE 8080
+
+# OCI annotations. Declared here rather than in the workflow so that
+# `docker build` produces them locally too, and — since the Dockerfile is
+# in this component's multicz `paths` — so that changing them actually
+# releases a new image carrying them.
+#
+# The three values that cannot be static are passed as build args by the
+# `<component>-container` CI job; a local build simply leaves them empty.
+ARG VERSION=""
+ARG REVISION=""
+ARG CREATED=""
+
+LABEL org.opencontainers.image.title="shomer-ssr" \
+      org.opencontainers.image.description="Shomer server-rendered frontend (FastAPI + Jinja)." \
+      org.opencontainers.image.source="https://github.com/goabonga/test-pipelilne-multicz" \
+      org.opencontainers.image.url="https://github.com/goabonga/test-pipelilne-multicz" \
+      org.opencontainers.image.documentation="https://github.com/goabonga/test-pipelilne-multicz" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.vendor="goabonga" \
+      org.opencontainers.image.version="$VERSION" \
+      org.opencontainers.image.revision="$REVISION" \
+      org.opencontainers.image.created="$CREATED"
+
 ENTRYPOINT ["shomer-ssr"]
