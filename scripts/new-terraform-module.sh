@@ -188,8 +188,8 @@ if f'"{component}"' not in docs_block:
 # one row in the modules table
 vers = root / "docs" / "versions.md"
 text = vers.read_text()
-anchor = "| `modules/example`         | {{ config.extra.versions.infra_modules_example }}    |"
-row = f"| `modules/{name}` | {{{{ config.extra.versions.{zkey} }}}} |"
+anchor = "| `example`         | {{ config.extra.versions.infra_modules_example }} |"
+row = f"| `{name}` | {{{{ config.extra.versions.{zkey} }}}} |"
 if row not in text:
     vers.write_text(text.replace(anchor, anchor + "\n" + row, 1))
 ZPY

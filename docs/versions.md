@@ -44,22 +44,35 @@ Consumed by the applications above; not shipped on their own.
 
 ## Infrastructure
 
-Terragrunt/Terraform under `infrastructure/`. Modules and the Terragrunt
-root are libraries, released on every push to `main`.
+Terragrunt/Terraform under `infrastructure/`. Three kinds of version, and
+the difference between them is the point: the first two are libraries,
+released on every push to `main`; the third is deployed state.
 
-| component                | version                                              |
-|--------------------------|------------------------------------------------------|
-| terragrunt root (`infra`) | {{ config.extra.versions.infra }}                    |
-| `modules/example`         | {{ config.extra.versions.infra_modules_example }}    |
+### Terragrunt root
 
-### Deployed environments
+The shared wiring every unit includes — `root.hcl`, `services/**`, the
+module template and the helper scripts.
 
-Unlike everything above, these are **deployed** versions: each one is
-bumped only after a successful `terragrunt apply`, so the number below is
-what is actually live in that environment.
+| component | version                            |
+|-----------|-------------------------------------|
+| `infra`   | {{ config.extra.versions.infra }}   |
+
+### Terraform modules
+
+Consumed by the units under `services/`. Each is versioned, changelogged
+and tagged on its own; the version is recorded in the module's `README.md`.
+
+| module            | version                                           |
+|-------------------|---------------------------------------------------|
+| `example`         | {{ config.extra.versions.infra_modules_example }} |
+
+### Configurations (deployed environments)
+
+Unlike everything above, these are **deployed** versions. Each is bumped
+only after a successful `terragrunt apply`, so the number below is what is
+actually live in that environment — not what the repository contains.
 
 | environment  | deployed version                                |
 |--------------|--------------------------------------------------|
 | `staging`    | {{ config.extra.versions.configs_staging }}      |
 | `production` | {{ config.extra.versions.configs_production }}   |
-</content>
