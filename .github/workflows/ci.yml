@@ -61,6 +61,19 @@ on:
   push:
     branches: [main]
 
+# Cancel superseded PR runs; QUEUE the ones on main, never kill them.
+#
+# The asymmetry is deliberate. A PR run only reports, so the newest is the
+# only one worth having. A run on main publishes: release-bump tags and
+# pushes, then release-<component> jobs push images, charts, .deb and cut
+# GitHub Releases. Cancelling between those leaves a tag with no artifact —
+# which is exactly the partial state that had to be repaired twice already
+# (deb tags pushed without their commit, charts pushed unsigned with no
+# Release). Queuing costs wall-clock; cancelling costs correctness.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 # Read-only by default for every job — anything that needs to write
 # (push commits/tags, create GitHub Releases, push to GHCR, deploy
 # Pages, sign with OIDC) declares an override in its own `permissions:`
