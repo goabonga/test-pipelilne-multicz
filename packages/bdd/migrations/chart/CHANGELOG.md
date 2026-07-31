@@ -2,6 +2,16 @@
 
 All notable changes to this component are documented here.
 
+## [0.3.0] - 2026-07-31
+
+### Features
+
+- **chart-migrations**: declare home, sources and maintainers (`66c1a46`)
+
+### Dependencies
+
+- Track `migrations` `0.3.0`
+
 ## [0.2.1] - 2026-07-29
 
 ### Dependencies

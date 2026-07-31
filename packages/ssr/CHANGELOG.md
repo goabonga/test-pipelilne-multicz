@@ -2,6 +2,16 @@
 
 All notable changes to this component are documented here.
 
+## [1.3.0] - 2026-07-31
+
+### Features
+
+- **ssr**: publish package metadata and a PEP 561 marker (`a7878b3`)
+
+### Dependencies
+
+- Track `web` `1.4.0`
+
 ## [1.2.3] - 2026-07-29
 
 ### Fixes

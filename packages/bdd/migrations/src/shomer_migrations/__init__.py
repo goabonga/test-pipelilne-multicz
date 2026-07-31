@@ -3,4 +3,4 @@
 
 """Shomer database migrations (Alembic): revisions + a programmatic runner."""
 
-__version__ = "0.2.1"
+__version__ = "0.3.0"

@@ -2,6 +2,12 @@
 
 All notable changes to this component are documented here.
 
+## [0.3.0] - 2026-07-31
+
+### Features
+
+- **cli**: publish package metadata and a PEP 561 marker (`61c0347`)
+
 ## [0.2.0] - 2026-07-19
 
 ### Features

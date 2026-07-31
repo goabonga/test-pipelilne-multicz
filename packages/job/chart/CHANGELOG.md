@@ -2,6 +2,16 @@
 
 All notable changes to this component are documented here.
 
+## [1.1.0] - 2026-07-31
+
+### Features
+
+- **chart-job**: declare home, sources and maintainers (`048b482`)
+
+### Dependencies
+
+- Track `job` `1.3.0`
+
 ## [1.0.7] - 2026-07-28
 
 ### Dependencies

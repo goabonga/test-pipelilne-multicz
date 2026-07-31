@@ -1,3 +1,9 @@
+shomer-cli (0.3.0-1) unstable; urgency=medium
+
+  * feat(cli): Publish package metadata and a PEP 561 marker
+
+ -- Chris <goabonga@pm.me>  Fri, 31 Jul 2026 09:19:32 +0000
+
 shomer-cli (0.2.0-1) unstable; urgency=medium
 
   * feat: Cut a synchronized release baseline across all components

@@ -2,6 +2,16 @@
 
 All notable changes to this component are documented here.
 
+## [0.3.0] - 2026-07-31
+
+### Features
+
+- **app**: publish package metadata (`e6db771`)
+
+### Dependencies
+
+- Track `lib` `0.6.0`
+
 ## [0.2.1] - 2026-07-29
 
 ### Fixes

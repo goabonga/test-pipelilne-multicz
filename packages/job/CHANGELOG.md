@@ -2,6 +2,16 @@
 
 All notable changes to this component are documented here.
 
+## [1.3.0] - 2026-07-31
+
+### Features
+
+- **job**: publish package metadata and a PEP 561 marker (`f807ec8`)
+
+### Dependencies
+
+- Track `database` `0.3.0`
+
 ## [1.2.1] - 2026-07-28
 
 ### Fixes

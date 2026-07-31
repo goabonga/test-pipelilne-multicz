@@ -1,3 +1,9 @@
+shomer-api (0.4.0-1) unstable; urgency=medium
+
+  * feat(api): Publish package metadata and a PEP 561 marker
+
+ -- Chris <goabonga@pm.me>  Fri, 31 Jul 2026 09:19:30 +0000
+
 shomer-api (0.3.2-1) unstable; urgency=medium
 
   * fix(deps): Bump fastapi from 0.137.0 to 0.141.0

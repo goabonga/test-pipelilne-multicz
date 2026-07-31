@@ -7,6 +7,43 @@ Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
 ### Releases
 
+- **api** minor — 0.3.2 → 0.4.0  _(cascade from database 0.3.0)_
+- **app** minor — 0.2.1 → 0.3.0  _(cascade from lib 0.6.0)_
+- **chart-api** minor — 1.1.2 → 1.2.0  _(cascade from api 0.4.0)_
+- **chart-job** minor — 1.0.7 → 1.1.0  _(cascade from job 1.3.0)_
+- **chart-migrations** minor — 0.2.1 → 0.3.0  _(cascade from migrations 0.3.0)_
+- **chart-ssr** minor — 1.1.3 → 1.2.0  _(cascade from ssr 1.3.0)_
+- **cli** minor — 0.2.0 → 0.3.0
+- **database** minor — 0.2.0 → 0.3.0
+- **docs** patch — 1.2.4 → 1.2.5  _(cascade from api 0.4.0)_
+- **infra** minor — 0.2.0 → 0.3.0
+- **job** minor — 1.2.1 → 1.3.0  _(cascade from database 0.3.0)_
+- **lib** minor — 0.5.0 → 0.6.0
+- **migrations** minor — 0.2.1 → 0.3.0  _(cascade from database 0.3.0)_
+- **ssr** minor — 1.2.3 → 1.3.0  _(cascade from web 1.4.0)_
+- **web** minor — 1.3.1 → 1.4.0  _(cascade from lib 0.6.0)_
+
+### Features
+
+- **api**: publish package metadata and a PEP 561 marker (`fc90063`)
+- **app**: publish package metadata (`e6db771`)
+- **chart-api**: declare home, sources and maintainers (`29cf326`)
+- **chart-job**: declare home, sources and maintainers (`048b482`)
+- **chart-migrations**: declare home, sources and maintainers (`66c1a46`)
+- **chart-ssr**: declare home, sources and maintainers (`75333c2`)
+- **cli**: publish package metadata and a PEP 561 marker (`61c0347`)
+- **database**: publish package metadata (`118b192`)
+- **infra**: stamp the deployed config version onto resources (`6fa50f9`)
+- **job**: publish package metadata and a PEP 561 marker (`f807ec8`)
+- **lib**: publish package metadata (`9fa18a7`)
+- **migrations**: publish package metadata (`98bbd64`)
+- **ssr**: publish package metadata and a PEP 561 marker (`a7878b3`)
+- **web**: publish package metadata (`612a5fd`)
+
+## 2026-07-31
+
+### Releases
+
 - **docs** patch — 1.2.3 → 1.2.4  _(cascade from infra-modules-example 0.3.0)_
 - **infra-modules-example** minor — 0.2.0 → 0.3.0
 

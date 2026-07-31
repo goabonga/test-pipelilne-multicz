@@ -2,6 +2,16 @@
 
 All notable changes to this component are documented here.
 
+## [0.3.0] - 2026-07-31
+
+### Features
+
+- **migrations**: publish package metadata (`98bbd64`)
+
+### Dependencies
+
+- Track `database` `0.3.0`
+
 ## [0.2.1] - 2026-07-29
 
 ### Fixes

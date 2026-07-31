@@ -2,6 +2,16 @@
 
 All notable changes to this component are documented here.
 
+## [1.2.0] - 2026-07-31
+
+### Features
+
+- **chart-ssr**: declare home, sources and maintainers (`75333c2`)
+
+### Dependencies
+
+- Track `ssr` `1.3.0`
+
 ## [1.1.3] - 2026-07-29
 
 ### Dependencies

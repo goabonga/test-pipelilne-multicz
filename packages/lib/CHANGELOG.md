@@ -2,6 +2,12 @@
 
 All notable changes to this component are documented here.
 
+## [0.6.0] - 2026-07-31
+
+### Features
+
+- **lib**: publish package metadata (`9fa18a7`)
+
 ## [0.5.0] - 2026-07-19
 
 ### Features

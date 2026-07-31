@@ -2,6 +2,16 @@
 
 All notable changes to this component are documented here.
 
+## [0.4.0] - 2026-07-31
+
+### Features
+
+- **api**: publish package metadata and a PEP 561 marker (`fc90063`)
+
+### Dependencies
+
+- Track `database` `0.3.0`
+
 ## [0.3.2] - 2026-07-29
 
 ### Fixes

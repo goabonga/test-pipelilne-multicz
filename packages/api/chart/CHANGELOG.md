@@ -2,6 +2,16 @@
 
 All notable changes to this component are documented here.
 
+## [1.2.0] - 2026-07-31
+
+### Features
+
+- **chart-api**: declare home, sources and maintainers (`29cf326`)
+
+### Dependencies
+
+- Track `api` `0.4.0`
+
 ## [1.1.2] - 2026-07-29
 
 ### Dependencies

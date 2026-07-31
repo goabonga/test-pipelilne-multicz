@@ -2,6 +2,16 @@
 
 All notable changes to this component are documented here.
 
+## [1.4.0] - 2026-07-31
+
+### Features
+
+- **web**: publish package metadata (`612a5fd`)
+
+### Dependencies
+
+- Track `lib` `0.6.0`
+
 ## [1.3.1] - 2026-07-29
 
 ### Fixes
