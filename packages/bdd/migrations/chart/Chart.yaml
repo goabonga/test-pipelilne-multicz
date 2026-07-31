@@ -6,3 +6,9 @@ type: application
 version: 0.2.1
 appVersion: "0.2.1"
 icon: https://raw.githubusercontent.com/goabonga/shomer/main/assets/shomer.svg
+home: https://github.com/goabonga/test-pipelilne-multicz
+sources:
+  - https://github.com/goabonga/test-pipelilne-multicz
+maintainers:
+  - name: Chris
+    email: goabonga@pm.me
