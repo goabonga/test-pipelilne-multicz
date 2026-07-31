@@ -17,8 +17,27 @@
 # component's depends_on, see multicz.toml). The release commit and tag go
 # to `deploy/<env>` first, then fast-forward onto `main`.
 #
-# NO CLOUD PROVIDER IS WIRED YET — see infrastructure/services/terragrunt.hcl
-# and the TODO below. Until then an apply is a no-op against local state.
+# WHY NOTHING IS PUSHED TO deploy/<env>
+#
+# The bump commit goes to `main` only. Two independent reasons, either of
+# which is sufficient:
+#
+#   1. deploy/<env> is protected — changes must go through a pull request —
+#      so a bot push is declined (GH006). The branch is a gate, not a place
+#      history lives; it picks the release commit up through the next deploy
+#      PR, which is cut from main anyway.
+#
+#   2. This workflow triggers on `push` to deploy/*. Pushing here would
+#      re-trigger it, and the `--force <component>:patch` fallback below
+#      guarantees a bump every time — an unbounded apply/bump loop. It does
+#      not happen today only because GITHUB_TOKEN pushes deliberately do not
+#      fire workflow events. Swapping that checkout to a PAT to get past
+#      reason 1 would remove that guard and make the loop real, which is why
+#      the fix is to stop writing to the branch rather than to authenticate
+#      harder.
+#
+# NO CLOUD PROVIDER IS WIRED YET — see infrastructure/root.hcl and the TODO
+# below. Until then an apply is a no-op against local state.
 
 name: infra-apply
 
@@ -137,17 +156,25 @@ jobs:
           if [ "${{ steps.gpg.outputs.available }}" = "true" ]; then SIGN_FLAG="--sign"; fi
 
           PENDING=$(multicz plan --output json | jq -r --arg c "$COMPONENT" '.bumps[$c] // empty')
+          # Note: no --push. See the "why nothing is pushed to deploy/<env>"
+          # note in the workflow header.
           if [ -n "$PENDING" ]; then
-            multicz bump --component "$COMPONENT" --commit --tag --push $SIGN_FLAG --output json
+            multicz bump --component "$COMPONENT" --commit --tag $SIGN_FLAG --output json
           else
             # Nothing in configs/<env>/config.yaml itself justified a bump —
             # the apply was driven by an infra/** or modules/** change. The
             # deploy still happened, so record it.
-            multicz bump --force "${COMPONENT}:patch" --commit --tag --push $SIGN_FLAG --output json
+            multicz bump --force "${COMPONENT}:patch" --commit --tag $SIGN_FLAG --output json
           fi
 
-          # Propagate the release commit back onto main. Plain push, not
-          # forced: if main has diverged since the deploy PR merged, this
-          # fails loudly rather than rewriting someone else's history —
-          # reconcile by hand.
-          git push origin "HEAD:main"
+          # The release commit goes to main, and --follow-tags carries the
+          # release tag with it so the tag can never land without the commit
+          # that explains it. That split is not hypothetical: when the push
+          # to the protected deploy branch was declined, the tags had
+          # already gone through and left both environments tagged v0.1.0
+          # with config.yaml still reading 0.0.0.
+          #
+          # Plain push, not forced: if main has diverged since the deploy PR
+          # merged, this fails loudly rather than rewriting someone else's
+          # history — reconcile by hand.
+          git push origin "HEAD:main" --follow-tags
