@@ -2804,9 +2804,28 @@ jobs:
           unzip -q /tmp/ShomerApp-sim.app.zip -d /tmp/ios-app
           UDID=$(xcrun simctl list devices available | grep -m1 -oE '\([0-9A-F-]{36}\)' | tr -d '()')
           xcrun simctl boot "$UDID" || true
+          # Block until the device is actually usable. `simctl boot` returns
+          # as soon as the boot is *requested*, so without this the install
+          # and Maestro's XCTest driver both race a simulator that is still
+          # coming up — which is what "iOS driver not ready in time" means
+          # in practice.
+          xcrun simctl bootstatus "$UDID" -b
           xcrun simctl install "$UDID" "$(find /tmp/ios-app -maxdepth 1 -name '*.app' | head -n1)"
       - name: Maestro E2E on iOS simulator
-        run: maestro test packages/app/.maestro
+        env:
+          # Maestro's own error message names this variable. The hosted
+          # macos runner hands the XCTest driver over more slowly than the
+          # default allows, especially on a cold simulator.
+          MAESTRO_DRIVER_STARTUP_TIMEOUT: "300000"
+        run: |
+          set -euo pipefail
+          # One retry. Driver startup is the flaky part and each attempt is
+          # a fresh process, so a retry genuinely re-rolls it rather than
+          # hiding a real failure — a broken flow fails both times.
+          maestro test packages/app/.maestro || {
+            echo "::warning::maestro driver startup failed — retrying once"
+            maestro test packages/app/.maestro
+          }
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
