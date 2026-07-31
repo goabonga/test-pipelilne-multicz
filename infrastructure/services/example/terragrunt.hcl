@@ -31,5 +31,12 @@ exclude {
 
 inputs = {
   name = local.config.services.example.name
-  tags = local.config.tags
+  tags = merge(local.config.tags, {
+    # The environment's deployed config version, stamped onto the resources
+    # themselves. `terraform state show` then answers "which config version
+    # produced this?" without cross-referencing git — and since
+    # infra-apply.yml is the only thing that moves that version, the tag
+    # cannot drift from what was actually applied.
+    config-version = local.config.version
+  })
 }
