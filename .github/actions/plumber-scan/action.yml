@@ -1,0 +1,71 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+name: plumber scan
+description: |
+  Run the Plumber compliance audit over `.github/**` and fail on any
+  finding (threshold 100).
+
+  Lives here rather than inline so ci.yml and plumber.yml run byte-identical
+  configuration. ci.yml gates the whole graph on it; plumber.yml keeps the
+  weekly cron, which matters because two of the controls depend on UPSTREAM
+  state — a pinned SHA can be repointed or vanish without a commit here.
+
+  CALLER REQUIREMENTS: `security-events: write` (SARIF upload to Code
+  Scanning) and `actions: read` (Plumber parses every workflow under
+  .github/, not just the one that fired).
+
+  Note this is not a security boundary on its own: whoever can edit a
+  workflow can edit the job that scans it, in the same commit. Make it a
+  required status check in branch protection — that is what actually
+  blocks the merge.
+
+runs:
+  using: composite
+  steps:
+      # Pin by full commit SHA — Plumber's own ruleset flags tag-pinned
+      # third-party actions, so anything less than a SHA here would be
+      # the very first finding it reports against itself. Bump the SHA
+      # via Dependabot (covered by the ci-actions group; see
+      # .github/dependabot.yml).
+      - name: Run Plumber compliance audit
+        uses: getplumber/plumber@b6fe9f309d4242b82ce83e6e69c563c09792ca97   # v0.4.22
+        with:
+          # Fail the job the moment any single control reports a
+          # finding. We pick the strict bar from day one so the audit
+          # genuinely gates merges; the first PR after this lands is
+          # expected to be red until the findings are addressed.
+          threshold: 100
+          # Authenticated reads for the third-party-action resolution
+          # (ISSUE-707 "must pin commits that exist upstream"). Without a
+          # token Plumber reads anonymously (60 req/h) and, with ~94
+          # SHA-pinned actions here, rate-limits and *skips* the check —
+          # which the min-points-100 gate counts as a failure. This bit
+          # Dependabot `ci-actions` PRs specifically (each introduces a
+          # batch of fresh SHAs to resolve at once). github.token is
+          # read-only on Dependabot PRs but still gets the 5000 req/h
+          # authenticated limit, which is all this check needs.
+          metadata-token: ${{ github.token }}
+          # SARIF upload to Code Scanning is on by default — keep it
+          # explicit so the workflow's intent is self-documenting.
+          upload-sarif: true
+          # workflowMustNotUseDangerousTriggers (ISSUE-802) is suppressed
+          # for the single justifiable case in this repo:
+          # .github/workflows/dependabot-rewrite.yml, which has to
+          # check out Dependabot's PR commits in order to GPG-sign-and-
+          # rewrite them with multicz-aware Conventional-Commits scopes.
+          # The control is structurally incompatible with that workload
+          # (any "rewrite + sign" path needs both secrets AND a checkout
+          # of the PR head); Plumber currently has no per-file scoping
+          # for this control. Defence in depth we already apply on the
+          # rewrite job: signal-then-workflow_run two-step (fork-PR
+          # reachable only via the no-op signal workflow with no
+          # secrets), `trusted/` vs `pr/` checkout split so the rebase
+          # exec runs the script from main and never from the PR,
+          # head_sha pin so the rewritten commits are the exact ones
+          # the signal observed, triple `if:` gate (conclusion + event
+          # + actor.login == 'dependabot[bot]'), and contents:write +
+          # pull-requests:write as the only elevated permissions.
+          # Re-enable this skip the moment Plumber ships per-file
+          # suppression (`exclude-files` or equivalent).
+          skip-controls: workflowMustNotUseDangerousTriggers

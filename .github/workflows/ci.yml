@@ -65,6 +65,34 @@ permissions:
 jobs:
   # ─────────────────────── graph entry: validate ─ detect ─ headers + docs-build ───────────────────────
 
+  # Compliance audit over .github/** — the whole graph funnels through
+  # `detect`, which needs this, so a workflow finding stops the run before
+  # any other job spends a runner. That ordering matters beyond cost:
+  # template injection and impostor-commit findings describe cases where
+  # *running* the pipeline is itself the exploit, so gating afterwards is
+  # too late.
+  #
+  # It is not a security boundary on its own — whoever can edit a workflow
+  # can edit this job in the same commit. Make it a required status check
+  # in branch protection; that is what actually blocks a merge.
+  #
+  # ~90s, on every push and PR. plumber.yml keeps only the weekly cron.
+  plumber:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      security-events: write   # SARIF upload to Code Scanning
+      actions: read            # Plumber parses every workflow, not just this one
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/plumber-scan
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: plumber
+          body: 'Plumber compliance audit on `.github/**` (threshold 100 — any finding fails).'
+
   detect:
     # Gate on validate so a broken multicz.toml fails loudly upfront
     # rather than cryptically inside the `changed` action below.
@@ -87,7 +115,11 @@ jobs:
     #    auditable but reads as a one-page release notice.
     # 2. Anything else — run `multicz changed` to compute the real
     #    per-component diff.
-    needs: [validate]
+    # plumber runs alongside validate, not behind it: they answer
+    # independent questions and both are cheap. detect waits on both, so
+    # nothing else in the graph starts until the workflows themselves
+    # have been audited.
+    needs: [validate, plumber]
     runs-on: ubuntu-latest
     outputs:
       # `||` returns the first non-empty branch: the release-bypass
