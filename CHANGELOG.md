@@ -7,6 +7,23 @@ Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
 ### Releases
 
+- **chart-api** minor — 1.2.0 → 1.3.0
+- **chart-job** minor — 1.1.0 → 1.2.0
+- **chart-migrations** minor — 0.3.0 → 0.4.0
+- **chart-ssr** minor — 1.2.0 → 1.3.0
+- **docs** patch — 1.2.5 → 1.2.6  _(cascade from chart-api 1.3.0)_
+
+### Features
+
+- **chart-api**: sign charts and .deb, verify every signature, pin composite actions (`cedacec`)
+- **chart-job**: sign charts and .deb, verify every signature, pin composite actions (`cedacec`)
+- **chart-migrations**: sign charts and .deb, verify every signature, pin composite actions (`cedacec`)
+- **chart-ssr**: sign charts and .deb, verify every signature, pin composite actions (`cedacec`)
+
+## 2026-07-31
+
+### Releases
+
 - **api** minor — 0.3.2 → 0.4.0  _(cascade from database 0.3.0)_
 - **app** minor — 0.2.1 → 0.3.0  _(cascade from lib 0.6.0)_
 - **chart-api** minor — 1.1.2 → 1.2.0  _(cascade from api 0.4.0)_

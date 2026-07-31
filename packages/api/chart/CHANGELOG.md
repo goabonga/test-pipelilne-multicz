@@ -2,6 +2,12 @@
 
 All notable changes to this component are documented here.
 
+## [1.3.0] - 2026-07-31
+
+### Features
+
+- **ci**: sign charts and .deb, verify every signature, pin composite actions (`cedacec`)
+
 ## [1.2.0] - 2026-07-31
 
 ### Features
