@@ -37,7 +37,9 @@ inputs = {
 
 ## Providers
 
-No providers.
+| Name | Version |
+| ---- | ------- |
+| <a name="provider_terraform"></a> [terraform](#provider\_terraform) | n/a |
 
 ## Modules
 
@@ -45,7 +47,9 @@ No modules.
 
 ## Resources
 
-No resources.
+| Name | Type |
+| ---- | ---- |
+| [terraform_data.example](https://registry.terraform.io/providers/hashicorp/terraform/latest/docs/resources/data) | resource |
 
 ## Inputs
 
@@ -56,5 +60,8 @@ No resources.
 
 ## Outputs
 
-No outputs.
+| Name | Description |
+| ---- | ----------- |
+| <a name="output_id"></a> [id](#output\_id) | Identifier of the resource this module manages. |
+| <a name="output_name"></a> [name](#output\_name) | Name the module was given, echoed back for consumers. |
 <!-- END_TF_DOCS -->

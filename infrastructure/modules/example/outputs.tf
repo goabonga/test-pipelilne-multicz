@@ -1,5 +1,12 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Chris <goabonga@pm.me>
 
-# Add outputs here once main.tf declares real resources. A unit consumes
-# them through `dependency "<unit>" { config_path = "../<unit>" }`.
+output "id" {
+  description = "Identifier of the resource this module manages."
+  value       = terraform_data.example.id
+}
+
+output "name" {
+  description = "Name the module was given, echoed back for consumers."
+  value       = var.name
+}
