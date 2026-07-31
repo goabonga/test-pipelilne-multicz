@@ -66,7 +66,7 @@ runs:
         echo "target=$TARGET" >> "$GITHUB_OUTPUT"
         echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
 
-    - uses: sigstore/cosign-installer@v3.7.0
+    - uses: sigstore/cosign-installer@1aa8e0f2454b781fbf0fbf306a4c9533a0c57409  # v3.7.0
 
     - name: cosign sign (keyless via GitHub OIDC)
       shell: bash
@@ -74,6 +74,21 @@ runs:
         COSIGN_YES: "true"
       run: |
         cosign sign --yes "${{ steps.push.outputs.target }}@${{ steps.push.outputs.digest }}"
+
+    - name: cosign verify
+      # Signing without ever verifying is a gesture, not a control. Reads
+      # the signature back through Fulcio's root and the Rekor log, pinning
+      # BOTH the issuer and the workflow identity — a signature made by
+      # another repository, or by a personal account, fails here instead of
+      # in a consumer's cluster.
+      shell: bash
+      run: |
+        set -euo pipefail
+        cosign verify \
+          --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+          --certificate-identity-regexp "^https://github.com/${{ github.repository }}/" \
+          "${{ steps.push.outputs.target }}@${{ steps.push.outputs.digest }}" > /dev/null
+        echo "signature verified for ${{ steps.push.outputs.target }}@${{ steps.push.outputs.digest }}"
 
     - name: cosign attest (attach syft SBOM as SPDX predicate)
       shell: bash
@@ -84,3 +99,14 @@ runs:
           --predicate /tmp/${{ inputs.component }}.sbom.spdx.json \
           --type spdxjson \
           "${{ steps.push.outputs.target }}@${{ steps.push.outputs.digest }}"
+
+    - name: cosign verify-attestation
+      shell: bash
+      run: |
+        set -euo pipefail
+        cosign verify-attestation \
+          --type spdxjson \
+          --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+          --certificate-identity-regexp "^https://github.com/${{ github.repository }}/" \
+          "${{ steps.push.outputs.target }}@${{ steps.push.outputs.digest }}" > /dev/null
+        echo "SBOM attestation verified"

@@ -12,6 +12,11 @@ description: |
   No re-package — the CI job already built it with the correct
   version + name.
 
+  Then sign the pushed chart keylessly with cosign, exactly as
+  publish-image signs the container images: an OCI artifact is an OCI
+  artifact, and a chart is as worth signing as the image it deploys.
+  Requires `id-token: write` on the calling job.
+
 inputs:
   component:
     required: true
@@ -40,9 +45,44 @@ runs:
       run: echo "$TOKEN" | helm registry login ghcr.io -u '${{ github.actor }}' --password-stdin
 
     - name: helm push
+      id: push
       shell: bash
       run: |
         set -euo pipefail
         # One .tgz expected per chart-<X>-tgz artifact.
         TGZ=$(ls /tmp/chart/*.tgz | head -1)
-        helm push "$TGZ" "oci://ghcr.io/${{ inputs.owner }}/charts"
+        # `helm push` prints the pushed digest on stderr; capture it rather
+        # than re-deriving it, since cosign must operate on the immutable
+        # digest and not on the version tag.
+        helm push "$TGZ" "oci://ghcr.io/${{ inputs.owner }}/charts" 2>&1 | tee /tmp/helm-push.log
+        DIGEST=$(grep -oE 'sha256:[0-9a-f]{64}' /tmp/helm-push.log | head -1)
+        CHART=$(basename "$TGZ" .tgz)
+        # <name>-<semver>.tgz -> strip the trailing version to get the name.
+        NAME=${CHART%-*}
+        echo "target=ghcr.io/${{ inputs.owner }}/charts/${NAME}" >> "$GITHUB_OUTPUT"
+        echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+
+    - uses: sigstore/cosign-installer@1aa8e0f2454b781fbf0fbf306a4c9533a0c57409  # v3.7.0
+
+    - name: cosign sign (keyless via GitHub OIDC)
+      shell: bash
+      env:
+        COSIGN_YES: "true"
+      run: |
+        set -euo pipefail
+        cosign sign --yes "${{ steps.push.outputs.target }}@${{ steps.push.outputs.digest }}"
+
+    - name: cosign verify
+      # Signing without ever verifying is a gesture, not a control. This
+      # reads the signature back through Fulcio's root and the Rekor log,
+      # and pins BOTH the issuer and the workflow identity — so a signature
+      # made by some other repository, or by a personal account, fails here
+      # rather than in a consumer's cluster.
+      shell: bash
+      run: |
+        set -euo pipefail
+        cosign verify \
+          --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+          --certificate-identity-regexp "^https://github.com/${{ github.repository }}/" \
+          "${{ steps.push.outputs.target }}@${{ steps.push.outputs.digest }}" > /dev/null
+        echo "signature verified for ${{ steps.push.outputs.target }}@${{ steps.push.outputs.digest }}"

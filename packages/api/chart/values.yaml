@@ -17,4 +17,36 @@ resources:
     cpu: 500m
     memory: 256Mi
 
+# Cluster-side signature verification. Off by default: it emits a policy
+# object that only means something if the matching admission controller is
+# already installed, and a chart that silently assumes one is a chart that
+# fails in confusing ways.
+#
+# The publish pipeline signs every image keylessly (cosign + Fulcio, logged
+# in Rekor) and verifies the signature before the release is cut. That
+# protects the artefact in transit and in the registry — it proves nothing
+# about what a cluster actually admits. This is the half that closes it.
+imageVerification:
+  enabled: false
+  # kyverno            -> a NAMESPACED Kyverno Policy, scoped to this
+  #                       release's namespace. Preferred: an application
+  #                       chart has no business installing cluster-wide
+  #                       rules that outlive it.
+  # policy-controller  -> a sigstore ClusterImagePolicy. CLUSTER-SCOPED by
+  #                       design — two releases of this chart in different
+  #                       namespaces will fight over the same object name.
+  #                       Set `policyName` per release, or install it once
+  #                       outside the chart.
+  provider: kyverno
+  policyName: ""       # defaults to the release name
+  # Identity the signature must carry. Both are anchored, not just the
+  # issuer: pinning the issuer alone would accept a signature from ANY
+  # GitHub workflow, in any repository.
+  issuer: https://token.actions.githubusercontent.com
+  subjectRegExp: ""    # defaults to ^https://github.com/<owner>/<repo>/
+  # Kyverno only. Audit reports violations and admits; Enforce rejects.
+  # Start on Audit — flipping straight to Enforce on a running namespace
+  # blocks every pod whose image predates signing.
+  validationFailureAction: Audit
+
 # Part of the 2026-07 synchronized release baseline.

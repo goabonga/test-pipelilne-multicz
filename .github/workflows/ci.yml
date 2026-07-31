@@ -3367,6 +3367,12 @@ jobs:
       - uses: ./.github/actions/publish-deb
         with:
           component: api
+      # The .deb has no registry to hold its signature, so it is signed
+      # with sign-blob and ships alongside its .sig and .pem.
+      - uses: ./.github/actions/sign-blob
+        id: sign_deb
+        with:
+          path: /tmp/shomer-api_*.deb
       - name: gh release create api-v${{ needs.release-bump.outputs.api_version }}
         env:
           GH_TOKEN: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
@@ -3374,7 +3380,7 @@ jobs:
           set -euo pipefail
           TAG="api-v${{ needs.release-bump.outputs.api_version }}"
           multicz release-notes --tag "$TAG" \
-            | gh release create "$TAG" --title "$TAG" --notes-file - /tmp/shomer-api_*.deb
+            | gh release create "$TAG" --title "$TAG" --notes-file - ${{ steps.sign_deb.outputs.files }}
       # Published — the CI artifacts are now obsolete (image lives in
       # ghcr, .deb is a release asset). Drop them so the workflow
       # run page doesn't carry duplicates after retention.
@@ -3423,6 +3429,12 @@ jobs:
       - uses: ./.github/actions/publish-deb
         with:
           component: job
+      # The .deb has no registry to hold its signature, so it is signed
+      # with sign-blob and ships alongside its .sig and .pem.
+      - uses: ./.github/actions/sign-blob
+        id: sign_deb
+        with:
+          path: /tmp/shomer-job_*.deb
       - name: gh release create job-v${{ needs.release-bump.outputs.job_version }}
         env:
           GH_TOKEN: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
@@ -3430,7 +3442,7 @@ jobs:
           set -euo pipefail
           TAG="job-v${{ needs.release-bump.outputs.job_version }}"
           multicz release-notes --tag "$TAG" \
-            | gh release create "$TAG" --title "$TAG" --notes-file - /tmp/shomer-job_*.deb
+            | gh release create "$TAG" --title "$TAG" --notes-file - ${{ steps.sign_deb.outputs.files }}
       - name: Delete consumed CI artifacts
         uses: geekyeggo/delete-artifact@176a747ab7e287e3ff4787bf8a148716375ca118  # v6
         with:
@@ -3476,6 +3488,12 @@ jobs:
       - uses: ./.github/actions/publish-deb
         with:
           component: ssr
+      # The .deb has no registry to hold its signature, so it is signed
+      # with sign-blob and ships alongside its .sig and .pem.
+      - uses: ./.github/actions/sign-blob
+        id: sign_deb
+        with:
+          path: /tmp/shomer-ssr_*.deb
       - name: gh release create ssr-v${{ needs.release-bump.outputs.ssr_version }}
         env:
           GH_TOKEN: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
@@ -3483,7 +3501,7 @@ jobs:
           set -euo pipefail
           TAG="ssr-v${{ needs.release-bump.outputs.ssr_version }}"
           multicz release-notes --tag "$TAG" \
-            | gh release create "$TAG" --title "$TAG" --notes-file - /tmp/shomer-ssr_*.deb
+            | gh release create "$TAG" --title "$TAG" --notes-file - ${{ steps.sign_deb.outputs.files }}
       # Also drop the web-dist (consumed only by ssr-* jobs
       # which are now done) — no separate release-web job
       # exists since web ships through the ssr image/.deb.
@@ -3515,6 +3533,7 @@ jobs:
     permissions:
       contents: write
       actions: write
+      id-token: write   # keyless cosign signing (Fulcio/Rekor)
     steps:
       - uses: actions/checkout@v7
         with:
@@ -3525,6 +3544,12 @@ jobs:
       - uses: ./.github/actions/publish-deb
         with:
           component: cli
+      # The .deb has no registry to hold its signature, so it is signed
+      # with sign-blob and ships alongside its .sig and .pem.
+      - uses: ./.github/actions/sign-blob
+        id: sign_deb
+        with:
+          path: /tmp/shomer-cli_*.deb
       - name: gh release create cli-v${{ needs.release-bump.outputs.cli_version }}
         env:
           GH_TOKEN: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
@@ -3532,7 +3557,7 @@ jobs:
           set -euo pipefail
           TAG="cli-v${{ needs.release-bump.outputs.cli_version }}"
           multicz release-notes --tag "$TAG" \
-            | gh release create "$TAG" --title "$TAG" --notes-file - /tmp/shomer-cli_*.deb
+            | gh release create "$TAG" --title "$TAG" --notes-file - ${{ steps.sign_deb.outputs.files }}
       - name: Delete consumed CI artifact
         uses: geekyeggo/delete-artifact@176a747ab7e287e3ff4787bf8a148716375ca118  # v6
         with:
@@ -3786,6 +3811,7 @@ jobs:
       contents: write
       packages: write
       actions: write
+      id-token: write   # keyless cosign signing (Fulcio/Rekor)
     steps:
       - uses: actions/checkout@v7
         with:
@@ -3831,6 +3857,7 @@ jobs:
       contents: write
       packages: write
       actions: write
+      id-token: write   # keyless cosign signing (Fulcio/Rekor)
     steps:
       - uses: actions/checkout@v7
         with:
@@ -3876,6 +3903,7 @@ jobs:
       contents: write
       packages: write
       actions: write
+      id-token: write   # keyless cosign signing (Fulcio/Rekor)
     steps:
       - uses: actions/checkout@v7
         with:
@@ -3973,6 +4001,7 @@ jobs:
       contents: write
       packages: write
       actions: write
+      id-token: write   # keyless cosign signing (Fulcio/Rekor)
     steps:
       - uses: actions/checkout@v7
         with:

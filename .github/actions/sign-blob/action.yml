@@ -1,0 +1,72 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+name: cosign sign-blob
+description: |
+  Keylessly sign a file with cosign and verify the signature back, leaving
+  `<file>.sig` and `<file>.pem` next to it so both can be attached to the
+  GitHub Release.
+
+  Container images and OCI charts get `cosign sign`, which stores the
+  signature in the registry alongside the artifact. A `.deb` has no
+  registry to live in — it is a file on a Release — so it needs
+  `sign-blob`, where the signature and the signing certificate are
+  separate files a consumer downloads next to the package.
+
+  Verification for a consumer:
+
+    cosign verify-blob shomer-api_1.2.3-1_all.deb \
+      --signature shomer-api_1.2.3-1_all.deb.sig \
+      --certificate shomer-api_1.2.3-1_all.deb.pem \
+      --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+      --certificate-identity-regexp '^https://github.com/<owner>/<repo>/'
+
+  Requires `id-token: write` on the calling job.
+
+inputs:
+  path:
+    required: true
+    description: Glob matching exactly one file to sign.
+
+outputs:
+  files:
+    description: Space-separated list of the signed file plus its .sig and .pem.
+    value: ${{ steps.sign.outputs.files }}
+
+runs:
+  using: composite
+  steps:
+    - uses: sigstore/cosign-installer@1aa8e0f2454b781fbf0fbf306a4c9533a0c57409  # v3.7.0
+
+    - id: sign
+      shell: bash
+      env:
+        COSIGN_YES: "true"
+        BLOB_GLOB: ${{ inputs.path }}
+      run: |
+        set -euo pipefail
+        # Deliberately fail on anything other than exactly one match: a
+        # silent zero-match would publish an unsigned release, and a
+        # multi-match would sign an arbitrary one of them.
+        mapfile -t MATCHES < <(compgen -G "$BLOB_GLOB" || true)
+        if [ "${#MATCHES[@]}" -ne 1 ]; then
+          echo "::error::expected exactly one file matching '$BLOB_GLOB', found ${#MATCHES[@]}"
+          exit 1
+        fi
+        BLOB="${MATCHES[0]}"
+
+        cosign sign-blob --yes \
+          --output-signature "${BLOB}.sig" \
+          --output-certificate "${BLOB}.pem" \
+          "$BLOB"
+
+        # Read it back before publishing — same reasoning as the image and
+        # chart paths: an unverified signature is a gesture, not a control.
+        cosign verify-blob \
+          --signature "${BLOB}.sig" \
+          --certificate "${BLOB}.pem" \
+          --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+          --certificate-identity-regexp "^https://github.com/${GITHUB_REPOSITORY}/" \
+          "$BLOB"
+
+        echo "files=${BLOB} ${BLOB}.sig ${BLOB}.pem" >> "$GITHUB_OUTPUT"
