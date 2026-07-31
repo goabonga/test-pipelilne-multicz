@@ -50,7 +50,14 @@
 name: ci
 
 on:
+  # `branches: [main]` is load-bearing. Without it `pull_request` fires on
+  # PRs into ANY branch, including the main -> deploy/<env> PRs that
+  # infra-plan opens — 119 jobs re-validating content identical to main,
+  # which CI already ran on the push. It has not bitten yet only because
+  # those PRs are created with GITHUB_TOKEN, whose events do not start
+  # workflows; opening one by hand would.
   pull_request:
+    branches: [main]
   push:
     branches: [main]
 
