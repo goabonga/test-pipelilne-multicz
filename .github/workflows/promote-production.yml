@@ -1,0 +1,117 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Promote the chart versions currently running in staging to production, by
+# opening a PR that moves the production pins.
+#
+# TWO GATES, and neither of them is this file:
+#
+#   1. the `production` GitHub Environment — protect it with required
+#      reviewers and this workflow waits for a human before it even runs;
+#   2. the pull request it opens — nothing reaches production until that is
+#      reviewed and merged.
+#
+# What this workflow deliberately does NOT do is touch a cluster. Flux pulls
+# from git, so no credential here can reach production; the Environment gates
+# the PROMOTION, not the deployment. A job that ran `helm upgrade` against a
+# kubeconfig would put production one workflow injection away from CI — the
+# thing the pull model exists to prevent.
+
+name: promote-production
+
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: Why this promotion (recorded in the PR body).
+        required: false
+        default: ""
+
+concurrency:
+  group: promote-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    # First gate. Add required reviewers under Settings -> Environments.
+    environment: production
+    permissions:
+      contents: write        # push the promotion branch
+      pull-requests: write   # open / update the PR
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+
+      - name: Copy the staging pins onto production
+        id: pins
+        run: |
+          set -euo pipefail
+          # Staging is the source of truth for "what has been exercised".
+          # Promotion is therefore a copy, never a fresh version lookup —
+          # so production can only ever run something staging ran first.
+          for c in api job ssr migrations; do
+            V=$(sed -n 's/^      version: "\(.*\)"$/\1/p' "gitops/apps/staging/${c}.yaml")
+            [ -n "$V" ] || { echo "::error::no pin found for ${c} in staging"; exit 1; }
+            scripts/gitops-pin.sh production "$c" "$V"
+          done
+          if git diff --quiet -- gitops/apps/production; then
+            echo "moved=false" >> "$GITHUB_OUTPUT"
+            echo "production already matches staging — nothing to promote"
+          else
+            echo "moved=true" >> "$GITHUB_OUTPUT"
+            git diff --stat -- gitops/apps/production
+          fi
+
+      - name: Open or update the promotion PR
+        if: steps.pins.outputs.moved == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+          REASON: ${{ inputs.reason }}
+        run: |
+          set -euo pipefail
+          BRANCH="promote/production"
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$BRANCH"
+          git add gitops/apps/production
+          git commit -m "deploy(production): promote chart pins from staging"
+          git push --force-with-lease origin "$BRANCH"
+
+          BODY=$(mktemp)
+          {
+            echo "Promotes the chart versions currently pinned in **staging** to **production**."
+            echo
+            echo '```'
+            for c in api job ssr migrations; do
+              printf '%-12s %s\n' "$c" "$(sed -n 's/^      version: "\(.*\)"$/\1/p' "gitops/apps/production/${c}.yaml")"
+            done
+            echo '```'
+            echo
+            if [ -n "${REASON}" ]; then echo "Reason: ${REASON}"; echo; fi
+            echo "Merging this applies nothing on its own — Flux reconciles from \`main\`."
+            echo "The \`gitops-production\` component is bumped by the release-gitops-production"
+            echo "job once the merge lands."
+          } > "$BODY"
+
+          PR=$(gh pr list --base main --head "$BRANCH" --state open --json number --jq '.[0].number // empty')
+          if [ -z "$PR" ]; then
+            gh pr create --base main --head "$BRANCH" \
+              --title "deploy(production): promote chart pins from staging" \
+              --body-file "$BODY"
+          else
+            gh pr edit "$PR" --body-file "$BODY"
+            echo "updated existing PR #${PR}"
+          fi
+
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: promote-production
+          body: 'Copied the staging pins onto `gitops/apps/production/` and opened the promotion PR.'

@@ -4328,6 +4328,142 @@ jobs:
           title: release-infra-modules-example
           body: 'GitHub Release for the `example` Terraform module.'
 
+  # ── staging promotion ──────────────────────────────────────────────────
+  #
+  # Staging is continuous: whatever chart versions this run released are
+  # pinned and committed straight to main, no review. That commit is the
+  # audit trail a semver range would not have given.
+  #
+  # It bumps gitops-staging itself because release-bump cannot: the
+  # component is deploy-gated, filtered out by the ^(configs|gitops)- rule.
+  # Same shape as infra-apply.yml, and the same caveat — the bump attests
+  # the pins were promoted, not that Flux converged.
+  promote-staging:
+    needs: [release-bump]
+    if: |
+      !failure() && !cancelled() &&
+      (needs.release-bump.outputs.chart_api_version != '' ||
+       needs.release-bump.outputs.chart_job_version != '' ||
+       needs.release-bump.outputs.chart_ssr_version != '' ||
+       needs.release-bump.outputs.chart_migrations_version != '')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # push the pin commit + tag
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+      - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
+        with:
+          python-version: "3.12"
+      - uses: goabonga/multicz-action@95e90628797bc7dec0d2ad7d9abc6278f3465ed2  # v1
+
+      - name: Move the staging pins
+        id: pins
+        env:
+          API: ${{ needs.release-bump.outputs.chart_api_version }}
+          JOB: ${{ needs.release-bump.outputs.chart_job_version }}
+          SSR: ${{ needs.release-bump.outputs.chart_ssr_version }}
+          MIGRATIONS: ${{ needs.release-bump.outputs.chart_migrations_version }}
+        run: |
+          set -euo pipefail
+          # Only the components this run actually released; the others keep
+          # whatever they were pinned at.
+          #
+          # `if`, not `[ -n "$X" ] && cmd`: under `set -e` that form exits
+          # the script the moment a variable is empty, which is the normal
+          # case here — most runs release one chart, not four.
+          if [ -n "$API" ];        then scripts/gitops-pin.sh staging api "$API"; fi
+          if [ -n "$JOB" ];        then scripts/gitops-pin.sh staging job "$JOB"; fi
+          if [ -n "$SSR" ];        then scripts/gitops-pin.sh staging ssr "$SSR"; fi
+          if [ -n "$MIGRATIONS" ]; then scripts/gitops-pin.sh staging migrations "$MIGRATIONS"; fi
+          # gitops-pin.sh is a no-op when the pin already matches, so an
+          # unchanged tree means there is nothing to promote.
+          if git diff --quiet -- gitops/apps/staging; then
+            echo "moved=false" >> "$GITHUB_OUTPUT"
+            echo "pins already current — nothing to promote"
+          else
+            echo "moved=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Configure git
+        if: steps.pins.outputs.moved == 'true'
+        # Through env:, never interpolated into the run: body — commit
+        # author metadata is attacker-controllable.
+        env:
+          AUTHOR_NAME: ${{ github.event.head_commit.author.name }}
+          AUTHOR_EMAIL: ${{ github.event.head_commit.author.email }}
+        run: |
+          git config user.name  "${AUTHOR_NAME:-github-actions[bot]}"
+          git config user.email "${AUTHOR_EMAIL:-41898282+github-actions[bot]@users.noreply.github.com}"
+
+      - name: Commit, bump gitops-staging, push
+        if: steps.pins.outputs.moved == 'true'
+        run: |
+          set -euo pipefail
+          git add gitops/apps/staging
+          git commit -m "deploy(staging): promote chart pins"
+          # --force: the pin edit is not a conventional-commit bump of its
+          # own, but the promotion is real and must be recorded.
+          multicz bump --force gitops-staging:patch --commit --tag --output json
+          git push origin HEAD:main --follow-tags
+
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: promote-staging
+          body: 'Pinned the released chart versions into `gitops/apps/staging/` and bumped `gitops-staging`.'
+
+  # Records that a production promotion landed. The merge of the promotion
+  # PR is the deploy event: Flux reconciles from main on its own interval,
+  # so nothing here applies anything — this only bumps and tags the
+  # component so the changelog exists.
+  #
+  # Separate from release-bump because gitops-production is deploy-gated
+  # and filtered out there, for the same reason configs-<env> is.
+  release-gitops-production:
+    needs: [detect, release-bump]
+    if: |
+      !failure() && !cancelled() &&
+      contains(fromJson(needs.detect.outputs.changed).changed, 'gitops-production')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+      - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
+        with:
+          python-version: "3.12"
+      - uses: goabonga/multicz-action@95e90628797bc7dec0d2ad7d9abc6278f3465ed2  # v1
+      - name: Configure git
+        env:
+          AUTHOR_NAME: ${{ github.event.head_commit.author.name }}
+          AUTHOR_EMAIL: ${{ github.event.head_commit.author.email }}
+        run: |
+          git config user.name  "${AUTHOR_NAME:-github-actions[bot]}"
+          git config user.email "${AUTHOR_EMAIL:-41898282+github-actions[bot]@users.noreply.github.com}"
+      - name: Bump gitops-production
+        run: |
+          set -euo pipefail
+          # --force for the same reason infra-apply uses it: a pin edit is
+          # not a conventional-commit bump of its own, but the promotion is
+          # real and has to be recorded.
+          multicz bump --force gitops-production:patch --commit --tag --output json
+          git push origin HEAD:main --follow-tags
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: release-gitops-production
+          body: 'Recorded the production promotion: bumped and tagged `gitops-production`.'
+
   release-docs:
     # Consume the already-built `docs-site` artifact (produced by
     # `docs-build` earlier in this run with the same bump-previewed

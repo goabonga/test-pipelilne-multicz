@@ -51,6 +51,32 @@ anything, and then enforced in-cluster by the Kyverno policy the charts
 ship (`imageVerification.enabled`). This one is the layer that stops an
 unsigned chart from being installed at all.
 
+## The promotion workflows
+
+```
+un chart est releasé sur main
+ └─ promote-staging (job de ci.yml)
+      pins staging <- versions releasées, commit direct sur main
+      bump gitops-staging
+
+promote-production.yml  (workflow_dispatch, environment: production)
+ └─ pins production <- pins staging          ← gate 1 : required reviewers
+      ouvre la PR promote/production
+         └─ merge                             ← gate 2 : revue de la PR
+              └─ release-gitops-production (job de ci.yml)
+                   bump gitops-production
+```
+
+Production promotion is a **copy of the staging pins**, never a fresh
+version lookup. Production can therefore only ever run something staging
+ran first — the ordering is a property of the mechanism rather than a rule
+people have to remember.
+
+Neither workflow touches a cluster. The Environment gates the *promotion*;
+Flux does the deployment. A job running `helm upgrade` against a kubeconfig
+would put production one workflow injection away from CI, which is the
+thing the pull model exists to prevent.
+
 ## What the version records
 
 `gitops-<env>` is bumped when the pins are **promoted**, not when the
