@@ -2,6 +2,17 @@
   "name": "@shomer/lib",
   "version": "0.5.0",
   "description": "Shared, framework-agnostic TypeScript logic (types, validation, API helpers) consumed by shomer-web (React) and shomer-app (React Native). No react / react-native imports.",
+  "license": "MIT",
+  "author": "Chris <goabonga@pm.me>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/goabonga/test-pipelilne-multicz.git",
+    "directory": "packages/lib"
+  },
+  "bugs": {
+    "url": "https://github.com/goabonga/test-pipelilne-multicz/issues"
+  },
+  "homepage": "https://github.com/goabonga/test-pipelilne-multicz",
   "private": true,
   "type": "module",
   "main": "./src/index.ts",
