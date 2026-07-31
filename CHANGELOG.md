@@ -7,6 +7,17 @@ Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
 ### Releases
 
+- **docs** patch — 1.2.3 → 1.2.4  _(cascade from infra-modules-example 0.3.0)_
+- **infra-modules-example** minor — 0.2.0 → 0.3.0
+
+### Features
+
+- **infra-modules-example**: manage a terraform_data resource so the plan has a diff (`2cd3ad8`)
+
+## 2026-07-31
+
+### Releases
+
 - **docs** patch — 1.2.2 → 1.2.3  _(cascade from configs-staging)_
 
 ## 2026-07-31
