@@ -1,0 +1,123 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+name: chart image-verification policy check
+description: |
+  Prove that a chart's `imageVerification` policy is not inert.
+
+  `helm template` only shows that the object renders; it says nothing about
+  whether the cluster accepts it or whether it blocks anything. This
+  installs Kyverno in a throwaway kind cluster, turns the policy on in
+  Enforce, and asserts both directions:
+
+    1. an image the policy matches, carrying no signature from this
+       repository's workflow, is REJECTED at admission;
+    2. the same image with verification switched off is ADMITTED.
+
+  Step 2 is what makes step 1 mean something. Without it a rejection could
+  come from anything — a missing image, a quota, a typo in the pod spec —
+  and the check would pass while proving nothing.
+
+  The probe image is deliberately a well-known public one rather than this
+  repo's own: the images built in CI are unsigned by construction (signing
+  happens at publish time, after the release), and the published ones ARE
+  signed by this workflow, so neither can play the "matched but not ours"
+  role this test needs.
+
+  registry.k8s.io/pause is itself signed — by k8s-infra-gcr — which makes
+  it a sharper probe than an unsigned image would be: the rejection comes
+  from a subject mismatch, so this exercises the identity pinning and not
+  merely the presence of a signature.
+
+inputs:
+  chart:
+    required: true
+    description: Path to the chart directory.
+  component:
+    required: true
+    description: Component name, used for the cluster and release names.
+  kyverno-version:
+    required: false
+    default: 3.8.2
+    description: Kyverno helm chart version.
+
+runs:
+  using: composite
+  steps:
+    - uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc  # v1.14.0 (Node 24)
+      with:
+        cluster_name: policy-${{ inputs.component }}
+        wait: 60s
+
+    - uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2  # v5
+
+    - name: Install Kyverno
+      shell: bash
+      run: |
+        set -euo pipefail
+        helm repo add kyverno https://kyverno.github.io/kyverno/
+        helm repo update kyverno
+        helm install kyverno kyverno/kyverno \
+          --version "${{ inputs.kyverno-version }}" \
+          --namespace kyverno --create-namespace \
+          --wait --timeout 5m
+
+    - name: Install the chart with verification enforced
+      shell: bash
+      env:
+        # Public, pullable, and not signed by this repository's identity —
+        # which is exactly the case the policy must reject.
+        PROBE_REPO: registry.k8s.io/pause
+        PROBE_TAG: "3.9"
+      run: |
+        set -euo pipefail
+        # No --wait: in Enforce the chart's own workloads are blocked at
+        # admission too, which is the expected outcome, not a failure.
+        helm install probe "${{ inputs.chart }}" \
+          --set imageVerification.enabled=true \
+          --set imageVerification.validationFailureAction=Enforce \
+          --set image.repository="$PROBE_REPO" \
+          --set image.tag="$PROBE_TAG"
+        kubectl get policy -o name
+
+    - name: An unsigned image must be rejected
+      shell: bash
+      env:
+        PROBE_IMAGE: registry.k8s.io/pause:3.9
+      run: |
+        set -euo pipefail
+        if kubectl run denied --image="$PROBE_IMAGE" --restart=Never 2>/tmp/deny.log; then
+          echo "::error::the policy admitted an image carrying no signature from this repository"
+          kubectl delete pod denied --ignore-not-found
+          exit 1
+        fi
+        # Confirm the refusal came from the policy and not from something
+        # incidental — a rejection for the wrong reason is a false pass.
+        if ! grep -qi "verify-cosign-signature\|kyverno" /tmp/deny.log; then
+          echo "::error::pod was rejected, but not by the image-verification policy:"
+          cat /tmp/deny.log
+          exit 1
+        fi
+        echo "rejected by the policy, as expected:"
+        sed -n '1,5p' /tmp/deny.log
+
+    - name: The same image must be admitted with verification off
+      shell: bash
+      env:
+        PROBE_IMAGE: registry.k8s.io/pause:3.9
+      run: |
+        set -euo pipefail
+        helm upgrade probe "${{ inputs.chart }}" \
+          --set imageVerification.enabled=false \
+          --set image.repository=registry.k8s.io/pause \
+          --set image.tag=3.9
+        kubectl run admitted --image="$PROBE_IMAGE" --restart=Never
+        kubectl delete pod admitted --ignore-not-found
+        echo "admitted once the policy is off — the rejection above came from the policy"
+
+    - name: Cluster state on failure
+      if: failure()
+      shell: bash
+      run: |
+        kubectl get policy,clusterpolicy -A || true
+        kubectl -n kyverno logs -l app.kubernetes.io/component=admission-controller --tail=100 || true

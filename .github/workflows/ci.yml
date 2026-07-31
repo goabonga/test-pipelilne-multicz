@@ -1700,6 +1700,29 @@ jobs:
           title: chart-api-checkov
           body: '`checkov --framework helm` static security scan on `packages/api/chart/`.'
 
+  chart-api-verify-policy:
+    # Proves the chart's imageVerification policy is not inert: Kyverno in
+    # a throwaway kind cluster, Enforce on, and an image the policy matches
+    # but whose signature carries someone else's identity must be rejected
+    # — then admitted once the policy is switched off.
+    needs: [chart-api-checkov]
+    if: >-
+      !failure() && !cancelled() &&
+      needs.chart-api-checkov.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/chart-verify-policy
+        with:
+          chart: packages/api/chart
+          component: api
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: chart-api-verify-policy
+          body: 'kind + Kyverno: the `imageVerification` policy rejects a foreign-signed image and admits it when disabled.'
+
   chart-api-package:
     # Package the chart with the bumped version + rewritten name so
     # `release-chart-api` can just download + helm push — no helm
@@ -1779,6 +1802,29 @@ jobs:
           title: chart-job-checkov
           body: '`checkov --framework helm` static security scan on `packages/job/chart/`.'
 
+  chart-job-verify-policy:
+    # Proves the chart's imageVerification policy is not inert: Kyverno in
+    # a throwaway kind cluster, Enforce on, and an image the policy matches
+    # but whose signature carries someone else's identity must be rejected
+    # — then admitted once the policy is switched off.
+    needs: [chart-job-checkov]
+    if: >-
+      !failure() && !cancelled() &&
+      needs.chart-job-checkov.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/chart-verify-policy
+        with:
+          chart: packages/job/chart
+          component: job
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: chart-job-verify-policy
+          body: 'kind + Kyverno: the `imageVerification` policy rejects a foreign-signed image and admits it when disabled.'
+
   chart-job-package:
     needs: [chart-job-checkov]
     runs-on: ubuntu-latest
@@ -1851,6 +1897,29 @@ jobs:
         with:
           title: chart-ssr-checkov
           body: '`checkov --framework helm` static security scan on `packages/ssr/chart/`.'
+
+  chart-ssr-verify-policy:
+    # Proves the chart's imageVerification policy is not inert: Kyverno in
+    # a throwaway kind cluster, Enforce on, and an image the policy matches
+    # but whose signature carries someone else's identity must be rejected
+    # — then admitted once the policy is switched off.
+    needs: [chart-ssr-checkov]
+    if: >-
+      !failure() && !cancelled() &&
+      needs.chart-ssr-checkov.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/chart-verify-policy
+        with:
+          chart: packages/ssr/chart
+          component: ssr
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: chart-ssr-verify-policy
+          body: 'kind + Kyverno: the `imageVerification` policy rejects a foreign-signed image and admits it when disabled.'
 
   chart-ssr-package:
     needs: [chart-ssr-checkov]
@@ -1928,6 +1997,29 @@ jobs:
         with:
           title: chart-migrations-checkov
           body: '`checkov --framework helm` static security scan on `packages/bdd/migrations/chart/`.'
+
+  chart-migrations-verify-policy:
+    # Proves the chart's imageVerification policy is not inert: Kyverno in
+    # a throwaway kind cluster, Enforce on, and an image the policy matches
+    # but whose signature carries someone else's identity must be rejected
+    # — then admitted once the policy is switched off.
+    needs: [chart-migrations-checkov]
+    if: >-
+      !failure() && !cancelled() &&
+      needs.chart-migrations-checkov.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/chart-verify-policy
+        with:
+          chart: packages/bdd/migrations/chart
+          component: migrations
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: chart-migrations-verify-policy
+          body: 'kind + Kyverno: the `imageVerification` policy rejects a foreign-signed image and admits it when disabled.'
 
   chart-migrations-package:
     # Package the chart with the bumped version + rewritten name so
@@ -3018,10 +3110,14 @@ jobs:
       - ssr-deb-validate
       - cli-deb-validate
       - chart-api-package
+      - chart-api-verify-policy
       - chart-job-package
+      - chart-job-verify-policy
       - chart-ssr-package
+      - chart-ssr-verify-policy
       - migrations-grype
       - chart-migrations-package
+      - chart-migrations-verify-policy
       - docs-build
       - app-android-e2e
       - app-ios-e2e
@@ -3064,15 +3160,19 @@ jobs:
       (!contains(fromJson(needs.detect.outputs.changed).changed, 'cli') ||
        needs.cli-deb-validate.result == 'success') &&
       (!contains(fromJson(needs.detect.outputs.changed).changed, 'chart-api') ||
-       needs.chart-api-package.result == 'success') &&
+       (needs.chart-api-package.result == 'success' &&
+        needs.chart-api-verify-policy.result == 'success')) &&
       (!contains(fromJson(needs.detect.outputs.changed).changed, 'chart-job') ||
-       needs.chart-job-package.result == 'success') &&
+       (needs.chart-job-package.result == 'success' &&
+        needs.chart-job-verify-policy.result == 'success')) &&
       (!contains(fromJson(needs.detect.outputs.changed).changed, 'chart-ssr') ||
-       needs.chart-ssr-package.result == 'success') &&
+       (needs.chart-ssr-package.result == 'success' &&
+        needs.chart-ssr-verify-policy.result == 'success')) &&
       (!contains(fromJson(needs.detect.outputs.changed).changed, 'migrations') ||
        needs.migrations-grype.result == 'success') &&
       (!contains(fromJson(needs.detect.outputs.changed).changed, 'chart-migrations') ||
-       needs.chart-migrations-package.result == 'success') &&
+       (needs.chart-migrations-package.result == 'success' &&
+        needs.chart-migrations-verify-policy.result == 'success')) &&
       (!contains(fromJson(needs.detect.outputs.changed).changed, 'docs') ||
        needs.docs-build.result == 'success') &&
       (!contains(fromJson(needs.detect.outputs.changed).changed, 'app') ||
