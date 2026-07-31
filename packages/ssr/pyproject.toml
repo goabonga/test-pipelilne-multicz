@@ -3,12 +3,26 @@ name = "shomer-ssr"
 version = "1.2.3"
 description = "Shomer authorization ssr frontend (login pages, account UI)."
 requires-python = ">=3.11"
+license = "MIT"
+authors = [{ name = "Chris", email = "goabonga@pm.me" }]
+keywords = ["shomer", "authorization"]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Typing :: Typed",
+]
+
 dependencies = [
     "fastapi>=0.141.0",
     "jinja2>=3.1",
     "python-multipart>=0.0.32",
     "uvicorn[standard]>=0.48.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/goabonga/test-pipelilne-multicz"
+Source = "https://github.com/goabonga/test-pipelilne-multicz"
+Issues = "https://github.com/goabonga/test-pipelilne-multicz/issues"
 
 [project.scripts]
 shomer-ssr = "shomer_ssr.app:run"
