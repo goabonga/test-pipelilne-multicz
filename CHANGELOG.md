@@ -7,6 +7,23 @@ Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
 ### Releases
 
+- **chart-api** minor — 1.3.1 → 1.4.0
+- **chart-job** minor — 1.2.1 → 1.3.0
+- **chart-migrations** minor — 0.4.1 → 0.5.0
+- **chart-ssr** minor — 1.3.1 → 1.4.0
+- **docs** patch — 1.2.9 → 1.2.10  _(cascade from chart-api 1.4.0)_
+
+### Features
+
+- **chart-api**: make the Sigstore endpoints configurable (`5d9cffb`)
+- **chart-job**: make the Sigstore endpoints configurable (`5d9cffb`)
+- **chart-migrations**: make the Sigstore endpoints configurable (`5d9cffb`)
+- **chart-ssr**: make the Sigstore endpoints configurable (`5d9cffb`)
+
+## 2026-07-31
+
+### Releases
+
 - **api** minor — 0.4.0 → 0.5.0
 - **chart-api** patch — 1.3.0 → 1.3.1  _(cascade from api 0.5.0)_
 - **chart-job** patch — 1.2.0 → 1.2.1  _(cascade from job 1.4.0)_

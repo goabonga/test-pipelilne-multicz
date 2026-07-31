@@ -2,6 +2,12 @@
 
 All notable changes to this component are documented here.
 
+## [0.5.0] - 2026-07-31
+
+### Features
+
+- **chart-api,chart-job,chart-ssr,chart-migrations**: make the Sigstore endpoints configurable (`5d9cffb`)
+
 ## [0.4.1] - 2026-07-31
 
 ### Dependencies
