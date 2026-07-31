@@ -62,6 +62,45 @@ runs:
           --namespace kyverno --create-namespace \
           --wait --timeout 5m
 
+    - name: Wait for the Kyverno webhook to actually serve
+      shell: bash
+      run: |
+        set -euo pipefail
+        # `helm --wait` returns when the pods report Ready, which is earlier
+        # than when the API server can reach the policy webhook — installing
+        # a chart in that window dies with
+        #   failed calling webhook "mutate-policy.kyverno.svc": connection refused
+        #
+        # Poll the thing that actually fails rather than a proxy for it: a
+        # server-side dry-run of a Policy goes through the very webhook the
+        # next step depends on.
+        for i in $(seq 1 60); do
+          if kubectl apply --dry-run=server -f - >/dev/null 2>&1 <<'EOP'; then
+        apiVersion: kyverno.io/v1
+        kind: Policy
+        metadata:
+          name: webhook-readiness-probe
+          namespace: default
+        spec:
+          rules:
+            - name: noop
+              match:
+                any:
+                  - resources:
+                      kinds: [Pod]
+              validate:
+                message: noop
+                pattern: {}
+        EOP
+            echo "kyverno webhook serving after ${i} attempt(s)"
+            exit 0
+          fi
+          sleep 5
+        done
+        echo "::error::kyverno webhook never became reachable"
+        kubectl -n kyverno get pods,svc,endpoints
+        exit 1
+
     - name: Install the chart with verification enforced
       shell: bash
       env:

@@ -19,8 +19,14 @@ name: dependabot-rewrite-signal
 # github-actions[bot]) both skip the signal, so the downstream `if`
 # never sees a `conclusion == 'success'` for those events.
 
+# `branches: [main]` matters here for a reason that has nothing to do with
+# dependabot: infra-plan opens a long-lived main -> deploy/<env> PR, whose
+# HEAD is main. Every push to main therefore synchronizes it and fired this
+# workflow, adding a skipped run to the Actions list on each push. Dependabot
+# targets the default branch, so scoping to main loses nothing.
 on:
   pull_request:
+    branches: [main]
     types: [opened, synchronize, reopened]
 
 permissions:
