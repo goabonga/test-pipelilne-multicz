@@ -50,6 +50,12 @@ imageVerification:
   # GitHub workflow, in any repository.
   issuer: https://token.actions.githubusercontent.com
   subjectRegExp: ""    # defaults to ^https://github.com/<owner>/<repo>/
+  # Sigstore endpoints. Defaults are the public instances, which is what
+  # the release pipeline signs against. Override both when running a
+  # private Sigstore (a self-hosted Fulcio issues its own certificates and
+  # logs to its own Rekor, so a public-instance lookup finds nothing).
+  fulcioUrl: https://fulcio.sigstore.dev
+  rekorUrl: https://rekor.sigstore.dev
   # Kyverno only. Audit reports violations and admits; Enforce rejects.
   # Start on Audit — flipping straight to Enforce on a running namespace
   # blocks every pod whose image predates signing.
