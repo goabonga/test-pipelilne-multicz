@@ -38,11 +38,20 @@ runs:
 
     - uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2  # v5
 
-    - name: helm registry login
+    - name: registry login (helm and docker)
       shell: bash
       env:
         TOKEN: ${{ inputs.token }}
-      run: echo "$TOKEN" | helm registry login ghcr.io -u '${{ github.actor }}' --password-stdin
+      run: |
+        set -euo pipefail
+        echo "$TOKEN" | helm registry login ghcr.io -u '${{ github.actor }}' --password-stdin
+        # cosign reads the docker keychain (~/.docker/config.json), which
+        # `helm registry login` does not populate — it keeps its own
+        # credential store. Without this the chart pushes fine and the
+        # signature upload then dies with
+        #   UNAUTHORIZED: unauthenticated ... /blobs/uploads/
+        # publish-image never hit this because it pushes through docker.
+        echo "$TOKEN" | docker login ghcr.io -u '${{ github.actor }}' --password-stdin
 
     - name: helm push
       id: push
