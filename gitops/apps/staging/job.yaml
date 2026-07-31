@@ -1,0 +1,10 @@
+# Version pin only — everything else comes from ../base/job.yaml.
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: job
+  namespace: shomer
+spec:
+  chart:
+    spec:
+      version: "1.3.0"

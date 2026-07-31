@@ -1,0 +1,15 @@
+# The charts this repository publishes, as an OCI artifact repository.
+# `helm push` sends them to oci://ghcr.io/goabonga/charts, one repository
+# per chart named <repo>-<component>.
+#
+# If the ghcr packages are private, add a secretRef here pointing at a
+# docker-registry Secret; public packages need no credentials.
+apiVersion: source.toolkit.fluxcd.io/v1beta2
+kind: HelmRepository
+metadata:
+  name: shomer-charts
+  namespace: shomer
+spec:
+  type: oci
+  url: oci://ghcr.io/goabonga/charts
+  interval: 10m

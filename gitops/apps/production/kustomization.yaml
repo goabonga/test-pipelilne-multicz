@@ -1,0 +1,12 @@
+# Pins for production. Moved only by a reviewed PR, gated by the
+# `production` GitHub Environment. Nothing else writes here.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: shomer
+resources:
+  - ../base
+patches:
+  - path: api.yaml
+  - path: job.yaml
+  - path: ssr.yaml
+  - path: migrations.yaml

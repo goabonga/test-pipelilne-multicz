@@ -1,0 +1,33 @@
+# Alembic migration Job. Runs before anything that talks to the database.
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: migrations
+  namespace: shomer
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: test-pipelilne-multicz-migrations
+      # Overlaid per environment — base carries no version on purpose, so a
+      # missing pin fails loudly instead of silently resolving to "latest".
+      sourceRef:
+        kind: HelmRepository
+        name: shomer-charts
+        namespace: shomer
+      # Refuse to install a chart this repository's release workflow did not
+      # sign. Both the issuer AND the identity are anchored: pinning the
+      # issuer alone would accept a signature from any GitHub workflow in
+      # any repository.
+      verify:
+        provider: cosign
+        matchOIDCIdentity:
+          - issuer: "^https://token\\.actions\\.githubusercontent\\.com$"
+            subject: "^https://github\\.com/goabonga/test-pipelilne-multicz/.*$"
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+      remediateLastFailure: true

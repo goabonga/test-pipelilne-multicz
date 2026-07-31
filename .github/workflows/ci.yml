@@ -3418,8 +3418,13 @@ jobs:
           # it printed one number per document and compared "N\n0" against
           # "0", so it read as "something to release" no matter what.
           BUMPS=$(jq -s '[.[] | .bumps // {}] | add' /tmp/plan.json)
-          COMPONENTS=$(echo "$BUMPS" | jq -r 'keys[] | select(startswith("configs-") | not)')
-          DEFERRED=$(echo "$BUMPS" | jq -r 'keys[] | select(startswith("configs-"))' | paste -sd, -)
+          # Deploy-gated components: they describe what is applied in an
+          # environment, so only the workflow that performs the deploy may
+          # release them. Keyed on the name prefix so a new environment —
+          # or a new family, as gitops- was — needs no edit here.
+          DEPLOY_GATED='^(configs|gitops)-'
+          COMPONENTS=$(echo "$BUMPS" | jq -r --arg re "$DEPLOY_GATED" 'keys[] | select(test($re) | not)')
+          DEFERRED=$(echo "$BUMPS" | jq -r --arg re "$DEPLOY_GATED" 'keys[] | select(test($re))' | paste -sd, -)
           if [ -n "$DEFERRED" ]; then
             echo "[release-bump] deploy-gated, not released here: $DEFERRED"
           fi

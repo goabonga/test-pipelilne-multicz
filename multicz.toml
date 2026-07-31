@@ -488,3 +488,43 @@ bump_files = [
 ]
 changelog  = "infrastructure/modules/example/CHANGELOG.md"
 post_bump  = ["terraform-docs -c infrastructure/modules/example/.terraform-docs.yml infrastructure/modules/example"]
+
+# ═══════════════════════════════ gitops ═══════════════════════════════
+#
+# Flux reconciles gitops/ into two clusters. Both environments pin their
+# chart versions; the only difference is who moves the pin — a workflow
+# committing to main for staging, a reviewed PR for production.
+#
+# Like configs-<env>, these are DEPLOYED STATE, not libraries: release-bump
+# filters them out and only the promotion workflow bumps them. The filter
+# keys on the component-name prefix, so `gitops-` joins `configs-` in that
+# rule rather than getting a special case.
+#
+# One honest caveat, recorded here rather than discovered later: the bump
+# attests that the pins were PROMOTED, not that the cluster converged. Flux
+# applies asynchronously and nothing waits on it. Closing that needs a Flux
+# Alert/Provider notifying GitHub on reconciliation.
+#
+# `depends_on` is what makes the changelog worth reading: upstream-notes
+# lists the chart commits each promotion carries.
+#
+# Staging deliberately has no semver range. A range would leave git saying
+# ">=0.0.0" and nothing more, so the deployed state could not be
+# reconstructed from a commit — which is most of the point of GitOps.
+
+[components.gitops-staging]
+paths      = ["gitops/apps/staging/**"]
+bump_files = [
+    { file = "gitops/apps/staging/VERSION" },
+]
+changelog  = "gitops/apps/staging/CHANGELOG.md"
+depends_on = ["chart-api", "chart-job", "chart-ssr", "chart-migrations"]
+
+[components.gitops-production]
+paths      = ["gitops/apps/production/**"]
+bump_files = [
+    { file = "gitops/apps/production/VERSION" },
+]
+changelog  = "gitops/apps/production/CHANGELOG.md"
+depends_on = ["chart-api", "chart-job", "chart-ssr", "chart-migrations"]
+

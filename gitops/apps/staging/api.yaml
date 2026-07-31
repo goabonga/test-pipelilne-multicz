@@ -1,0 +1,10 @@
+# Version pin only — everything else comes from ../base/api.yaml.
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: api
+  namespace: shomer
+spec:
+  chart:
+    spec:
+      version: "1.4.0"
