@@ -43,13 +43,13 @@ chart_api = "1.4.0"
 chart_job = "1.3.0"
 chart_ssr = "1.4.0"
 chart_migrations = "0.5.0"
-docs      = "1.2.13"
+docs      = "1.2.14"
 # Infrastructure. `configs_*` are DEPLOYED versions — what is actually live
 # in that environment — not library versions like everything above.
 infra     = "0.3.0"
 infra_modules_example = "0.3.0"
-configs_staging       = "0.0.0"
-configs_production    = "0.0.0"
+configs_staging       = "0.1.0"
+configs_production    = "0.1.0"
 
 [project.theme]
 variant  = "classic"
