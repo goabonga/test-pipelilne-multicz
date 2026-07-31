@@ -2,6 +2,17 @@
   "name": "@shomer/app",
   "version": "0.2.1",
   "description": "Shomer React Native app (iOS + Android). Shares validation/types with the web client through @shomer/lib.",
+  "license": "MIT",
+  "author": "Chris <goabonga@pm.me>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/goabonga/test-pipelilne-multicz.git",
+    "directory": "packages/app"
+  },
+  "bugs": {
+    "url": "https://github.com/goabonga/test-pipelilne-multicz/issues"
+  },
+  "homepage": "https://github.com/goabonga/test-pipelilne-multicz",
   "private": true,
   "scripts": {
     "android": "react-native run-android",
