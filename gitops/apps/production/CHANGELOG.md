@@ -9,6 +9,10 @@ multicz's `upstream-notes` plugin from this component's `depends_on`.
 The version records that the pins were **promoted**, not that the cluster
 converged — Flux applies asynchronously and nothing here waits on it.
 
+## [0.1.2] - 2026-08-03
+
+_No notable changes._
+
 ## [0.1.1] - 2026-08-03
 
 _No notable changes._

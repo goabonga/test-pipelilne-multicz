@@ -7,6 +7,12 @@ Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
 ### Releases
 
+- **gitops-production** patch — 0.1.1 → 0.1.2
+
+## 2026-08-03
+
+### Releases
+
 - **gitops-production** patch — 0.1.0 → 0.1.1
 
 ## 2026-07-31
