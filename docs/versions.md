@@ -66,6 +66,15 @@ and tagged on its own; the version is recorded in the module's `README.md`.
 |-------------------|---------------------------------------------------|
 | `example`         | {{ config.extra.versions.infra_modules_example }} |
 
+### Flux wiring
+
+The shared pieces both clusters include — HelmRelease templates, cluster
+entrypoints, the chart repository. A library, like the Terragrunt root.
+
+| component | version                              |
+|-----------|---------------------------------------|
+| `gitops`  | {{ config.extra.versions.gitops }}    |
+
 ### Configurations (deployed environments)
 
 Unlike everything above, these are **deployed** versions. Each is bumped
@@ -76,3 +85,11 @@ actually live in that environment — not what the repository contains.
 |--------------|--------------------------------------------------|
 | `staging`    | {{ config.extra.versions.configs_staging }}      |
 | `production` | {{ config.extra.versions.configs_production }}   |
+
+And what Flux has actually been asked to reconcile — the chart pins, moved
+by a bot for staging and by a reviewed PR for production.
+
+| environment  | promoted pins                                     |
+|--------------|---------------------------------------------------|
+| `staging`    | {{ config.extra.versions.gitops_staging }}        |
+| `production` | {{ config.extra.versions.gitops_production }}     |

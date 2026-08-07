@@ -399,6 +399,7 @@ depends_on = [
     # the next push to main rather than at apply time. One cycle late, by
     # construction.
     "infra", "infra-modules-example", "configs-staging", "configs-production",
+    "gitops", "gitops-staging", "gitops-production",
 ]
 bump_rules = { docs = "patch" }
 
@@ -528,19 +529,40 @@ post_bump  = ["terraform-docs -c infrastructure/modules/example/.terraform-docs.
 # ">=0.0.0" and nothing more, so the deployed state could not be
 # reconstructed from a commit — which is most of the point of GitOps.
 
+# The shared wiring both environments include: the HelmRelease templates,
+# the cluster entrypoints, the HelmRepository. A library, exactly like
+# `infra` is for terragrunt — and released the same way, because the name
+# has no trailing dash and so escapes the `^(configs|gitops)-` deploy gate.
+# That is load-bearing: renaming this to `gitops-base` would silently make
+# it deploy-gated and it would stop releasing.
+[components.gitops]
+paths      = [
+    "gitops/apps/base/**",
+    "gitops/clusters/**",
+    "gitops/infrastructure/**",
+    "gitops/README.md",
+]
+bump_files = [
+    { file = "gitops/VERSION" },
+    { file = "zensical.toml", key = "project.extra.versions.gitops" },
+]
+changelog  = "gitops/CHANGELOG.md"
+
 [components.gitops-staging]
 paths      = ["gitops/apps/staging/**"]
 bump_files = [
     { file = "gitops/apps/staging/VERSION" },
+    { file = "zensical.toml", key = "project.extra.versions.gitops_staging" },
 ]
 changelog  = "gitops/apps/staging/CHANGELOG.md"
-depends_on = ["chart-api", "chart-job", "chart-ssr", "chart-migrations"]
+depends_on = ["gitops", "chart-api", "chart-job", "chart-ssr", "chart-migrations"]
 
 [components.gitops-production]
 paths      = ["gitops/apps/production/**"]
 bump_files = [
     { file = "gitops/apps/production/VERSION" },
+    { file = "zensical.toml", key = "project.extra.versions.gitops_production" },
 ]
 changelog  = "gitops/apps/production/CHANGELOG.md"
-depends_on = ["chart-api", "chart-job", "chart-ssr", "chart-migrations"]
+depends_on = ["gitops", "chart-api", "chart-job", "chart-ssr", "chart-migrations"]
 
