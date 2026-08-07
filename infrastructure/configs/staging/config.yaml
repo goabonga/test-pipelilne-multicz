@@ -8,8 +8,7 @@
 #
 # Terragrunt reads it as `local.config.version` like any other key, which
 # makes it usable as a resource tag once a provider is wired.
-version: 0.1.0
-
+version: 0.0.0
 # Inputs for the `staging` environment. Read by services/terragrunt.hcl as
 # `local.config` when ENV=staging, and by `terragrunt.sh switch_env staging`.
 #

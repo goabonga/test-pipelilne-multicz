@@ -1,6 +1,6 @@
 [project]
 name = "shomer-database"
-version = "0.3.0"
+version = "0.0.0"
 description = "Shomer database library: SQLAlchemy models and an injectable connector (postgres / mysql / mssql). No migration tooling — that lives in shomer-migrations."
 requires-python = ">=3.11"
 license = "MIT"

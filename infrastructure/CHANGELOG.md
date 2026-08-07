@@ -5,25 +5,3 @@ template, `terragrunt.sh`) are documented here. Versions follow
 [Semantic Versioning](https://semver.org) and are derived from
 [Conventional Commits](https://www.conventionalcommits.org) scoped to this
 directory, tagged `infra-v<version>`.
-
-## [0.3.0] - 2026-07-31
-
-### Features
-
-- **infra**: stamp the deployed config version onto resources (`6fa50f9`)
-
-## [0.2.0] - 2026-07-31
-
-### Features
-
-- **infra**: terragrunt landing zone with per-environment deploy gating (`9d50feb`)
-
-### Fixes
-
-- **ci**: pin every action the infra jobs use, drop action-terragrunt (`fb515f9`)
-
-## [0.1.0] - 2026-07-30
-
-### Features
-
-- **infra**: terragrunt landing zone with per-environment deploy gating (`9d50feb`)

@@ -3,4 +3,4 @@
 
 """Shomer background job."""
 
-__version__ = "1.4.0"
+__version__ = "0.0.0"
