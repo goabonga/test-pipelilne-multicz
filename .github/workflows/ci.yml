@@ -3331,6 +3331,9 @@ jobs:
         needs.infra-modules-example-checkov.result == 'success' &&
         needs.infra-modules-example-docs.result == 'success'))
     runs-on: ubuntu-latest
+    concurrency:
+      group: push-to-main
+      cancel-in-progress: false
     permissions:
       contents: write   # push release commit + tags
       actions: write    # dispatch infra-plan.yml, see the last step
@@ -4379,6 +4382,18 @@ jobs:
   # the pins were promoted, not that Flux converged.
   promote-staging:
     needs: [release-bump]
+    # Serialised against every other job that writes to main. promote-staging
+    # and release-gitops-production both hang off release-bump, so they ran
+    # in parallel and raced: one pushed, the other died on
+    # `! [rejected] HEAD -> main (fetch first)`.
+    #
+    # Queue rather than rebase-and-retry. Both push with --follow-tags, and a
+    # rebase moves the commit out from under the tag multicz just created —
+    # leaving a tag pointing at a commit no branch reaches, which is the
+    # partial state already repaired twice here.
+    concurrency:
+      group: push-to-main
+      cancel-in-progress: false
     if: |
       !failure() && !cancelled() &&
       (needs.release-bump.outputs.chart_api_version != '' ||
@@ -4465,6 +4480,18 @@ jobs:
   # and filtered out there, for the same reason configs-<env> is.
   release-gitops-production:
     needs: [detect, release-bump]
+    # Serialised against every other job that writes to main. promote-staging
+    # and release-gitops-production both hang off release-bump, so they ran
+    # in parallel and raced: one pushed, the other died on
+    # `! [rejected] HEAD -> main (fetch first)`.
+    #
+    # Queue rather than rebase-and-retry. Both push with --follow-tags, and a
+    # rebase moves the commit out from under the tag multicz just created —
+    # leaving a tag pointing at a commit no branch reaches, which is the
+    # partial state already repaired twice here.
+    concurrency:
+      group: push-to-main
+      cancel-in-progress: false
     if: |
       !failure() && !cancelled() &&
       contains(fromJson(needs.detect.outputs.changed).changed, 'gitops-production')

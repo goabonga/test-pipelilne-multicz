@@ -77,6 +77,11 @@ jobs:
     # Second gate on top of the branch protection: Settings -> Environments
     # -> required reviewers.
     environment: ${{ needs.resolve-env.outputs.env }}
+    # Same lock as ci.yml's main-writing jobs — this workflow pushes the
+    # bump commit to main too, from a different run entirely.
+    concurrency:
+      group: push-to-main
+      cancel-in-progress: false
     permissions:
       contents: write
     steps:
