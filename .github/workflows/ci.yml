@@ -3544,6 +3544,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run infra-plan.yml --ref main
 
+      - name: Trigger sync-deploy-branches
+        # The release commit carries [skip ci], which suppresses every
+        # workflow for that push — sync-deploy-branches included. Yet that
+        # commit is exactly when configs-<env> stops being pending and the
+        # deploy branches can catch up, so dispatch it by hand.
+        if: steps.plan.outputs.release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run sync-deploy-branches.yml --ref main
+
       - name: Summary
         if: always()
         uses: ./.github/actions/summary

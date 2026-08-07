@@ -1,13 +1,18 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Chris <goabonga@pm.me>
 
-# Runs `terragrunt apply` for an environment once its deploy PR (opened by
-# infra-plan.yml) is merged into `deploy/<env>`.
+# Runs `terragrunt apply` for an environment when its deploy PR (opened by
+# infra-plan.yml) is MERGED into `deploy/<env>`.
 #
-# THE GATE IS THE BRANCH, NOT THIS FILE. Protect every `deploy/*` branch
-# with a required approving review, and protect the matching GitHub
-# Environment with required reviewers, or anything that can push to
-# `deploy/<env>` applies straight to that environment.
+# The trigger is `pull_request: [closed]` gated on `merged == true`, not
+# `push`. On `push` any write to deploy/* started an apply — a manual push,
+# or a branch fast-forward — so an apply could run without anyone approving
+# the PR, which is exactly what happened: configs-staging-v0.1.0 and
+# configs-production-v0.1.0 were tagged off a hand-pushed branch update
+# while the PR was still open.
+#
+# `closed` fires on both merge and close-without-merge, hence the
+# `merged == true` guard: abandoning a deploy PR must not deploy.
 #
 # On a successful apply the `configs-<env>` component is bumped: if commits
 # touching configs/<env>/config.yaml already justify a bump, that drives
@@ -27,14 +32,10 @@
 #      history lives; it picks the release commit up through the next deploy
 #      PR, which is cut from main anyway.
 #
-#   2. This workflow triggers on `push` to deploy/*. Pushing here would
-#      re-trigger it, and the `--force <component>:patch` fallback below
-#      guarantees a bump every time — an unbounded apply/bump loop. It does
-#      not happen today only because GITHUB_TOKEN pushes deliberately do not
-#      fire workflow events. Swapping that checkout to a PAT to get past
-#      reason 1 would remove that guard and make the loop real, which is why
-#      the fix is to stop writing to the branch rather than to authenticate
-#      harder.
+#   2. Historically this workflow triggered on `push` to deploy/*, so
+#      pushing here re-triggered it. That is no longer the trigger, but
+#      writing to the branch would still be pointless: the branch is a gate,
+#      and main is where the release history belongs.
 #
 # NO CLOUD PROVIDER IS WIRED YET — see infrastructure/root.hcl and the TODO
 # below. Until then an apply is a no-op against local state.
@@ -42,8 +43,11 @@
 name: infra-apply
 
 on:
-  push:
+  pull_request:
+    # `branches:` filters on the PR's BASE, so this is "PRs targeting a
+    # deploy branch".
     branches: ["deploy/*"]
+    types: [closed]
 
 concurrency:
   group: infra-apply-${{ github.ref }}
@@ -55,12 +59,16 @@ permissions:
 jobs:
   resolve-env:
     name: resolve-env
+    # Merged, not merely closed.
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     outputs:
       env: ${{ steps.name.outputs.env }}
     steps:
       - id: name
-        run: echo "env=${GITHUB_REF_NAME#deploy/}" >> "$GITHUB_OUTPUT"
+        env:
+          BASE: ${{ github.event.pull_request.base.ref }}
+        run: echo "env=${BASE#deploy/}" >> "$GITHUB_OUTPUT"
 
   apply:
     name: apply (${{ needs.resolve-env.outputs.env }})
@@ -74,6 +82,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          # The merge commit itself, not the branch tip: what was approved
+          # is what gets applied, even if the branch moves meanwhile.
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
           fetch-depth: 0
           persist-credentials: true
       - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e  # v4

@@ -25,6 +25,22 @@ post_bump_policy  = "allow"   # opt in: enables the `uv lock` hook below
 # the bird's-eye view so a release commit lists every component that
 # bumped + a type-grouped digest of the driving commits in one place.
 root_changelog    = "CHANGELOG.md"
+# `skip-checks: true` so GitHub creates no workflow run at all for a release
+# commit. GitHub honours two forms: an `[skip ci]`-style marker, which has to
+# sit on the FIRST line, and this trailer, which sits in the footer after a
+# blank line. The trailer is the better one here — the subject is what shows
+# in `git log --oneline`, in the changelogs and in the release notes, and
+# tooling noise does not belong there permanently.
+#
+# Nothing useful ran on those commits anyway: release-bump already refuses a
+# `chore(release):` head commit, and every component is freshly tagged so the
+# per-component jobs all skip. What was left was a full graph of skipped jobs
+# cluttering the run list.
+#
+# It skips EVERY workflow, sync-deploy-branches included — so release-bump
+# dispatches that one explicitly, since a release commit is precisely when
+# the deploy branches stop owing anything and can catch up.
+release_commit_message = "chore(release): bump {summary}\n\n{body}\n\nskip-checks: true"
 
 [components.api]
 paths      = [
