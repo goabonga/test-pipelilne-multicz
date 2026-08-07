@@ -22,12 +22,19 @@
 # pending, the branch must stay put — fast-forwarding it would erase the very
 # diff the deploy PR needs to show, and the apply would be approved blind.
 #
-# WHY GITHUB_TOKEN AND NOT RELEASE_PAT
+# WHY RELEASE_PAT
 #
-# Deliberately the opposite choice from release-bump. A push to deploy/*
-# triggers infra-apply; a GITHUB_TOKEN push fires no workflow events, so a
-# sync cannot start an apply. Using the PAT here would make every sync
-# attempt a deploy.
+# GITHUB_TOKEN was the first choice, precisely because its pushes fire no
+# workflow events and so could not start an apply. It does not work: the
+# deploy branches are protected, and the bot is not an admin, so the push is
+# declined with GH006. The owner's PAT bypasses that (enforce_admins is
+# false).
+#
+# The consequence — a PAT push to deploy/* does trigger infra-apply — is
+# handled at the other end rather than here: infra-apply now checks whether
+# a deploy is actually owed and no-ops when it is not. That check is worth
+# having on its own; before it, any push to deploy/* force-bumped
+# configs-<env>, recording a release for a deploy that deployed nothing.
 
 name: sync-deploy-branches
 
@@ -50,8 +57,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-          # GITHUB_TOKEN on purpose — see the header.
-          token: ${{ secrets.GITHUB_TOKEN }}
+          # The PAT, not GITHUB_TOKEN — see the header.
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
       - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
         with:
           python-version: "3.12"

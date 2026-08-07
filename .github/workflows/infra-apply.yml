@@ -99,18 +99,44 @@ jobs:
             exit 1
           fi
 
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
+        with:
+          python-version: "3.12"
+      - uses: goabonga/multicz-action@95e90628797bc7dec0d2ad7d9abc6278f3465ed2  # v1
+
+      - name: Is a deploy actually owed?
+        id: owed
+        env:
+          COMPONENT: configs-${{ needs.resolve-env.outputs.env }}
+        run: |
+          set -euo pipefail
+          # `configs-<env>` pending in multicz IS the ledger of what is owed,
+          # and it covers the indirect case: an infra/** or modules/** change
+          # cascades onto the environment through depends_on and shows up as
+          # pending here, so "not pending" genuinely means nothing to deploy.
+          #
+          # Without this the job applied and force-bumped on ANY push to
+          # deploy/*, recording a release for a deploy that deployed nothing.
+          # sync-deploy-branches now pushes here routinely to keep the branch
+          # level with main, which turns that from a latent wart into a
+          # phantom release on every sync.
+          PENDING=$(multicz plan --output json \
+            | jq -s -r --arg c "$COMPONENT" '[.[] | .bumps // {}] | add | .[$c] // empty')
+          if [ -n "$PENDING" ]; then
+            echo "owed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "owed=false" >> "$GITHUB_OUTPUT"
+            echo "nothing pending for ${COMPONENT} — this push carries no undeployed change"
+          fi
+
       - name: Terragrunt apply
+        if: steps.owed.outputs.owed == 'true'
         env:
           ENV: ${{ needs.resolve-env.outputs.env }}
         run: |
           set -euo pipefail
           terragrunt --non-interactive --working-dir infrastructure/services \
             run --all -- apply -auto-approve -input=false
-
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
-        with:
-          python-version: "3.12"
-      - uses: goabonga/multicz-action@95e90628797bc7dec0d2ad7d9abc6278f3465ed2  # v1
 
       - name: Configure git
         # Through `env:`, never interpolated into the `run:` body — commit
@@ -125,6 +151,7 @@ jobs:
 
       - name: Detect GPG availability
         id: gpg
+        if: steps.owed.outputs.owed == 'true'
         env:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
@@ -136,7 +163,7 @@ jobs:
           fi
 
       - name: Import and unlock GPG key
-        if: steps.gpg.outputs.available == 'true'
+        if: steps.owed.outputs.owed == 'true' && steps.gpg.outputs.available == 'true'
         env:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
@@ -148,6 +175,7 @@ jobs:
           git config user.signingkey "$KEY_ID"
 
       - name: Bump configs-<env> and sync main
+        if: steps.owed.outputs.owed == 'true'
         env:
           COMPONENT: configs-${{ needs.resolve-env.outputs.env }}
         run: |
@@ -155,17 +183,11 @@ jobs:
           SIGN_FLAG=""
           if [ "${{ steps.gpg.outputs.available }}" = "true" ]; then SIGN_FLAG="--sign"; fi
 
-          PENDING=$(multicz plan --output json | jq -r --arg c "$COMPONENT" '.bumps[$c] // empty')
+          # No --force fallback any more: the step only runs when the
+          # component is pending, so there is always a real bump to make.
           # Note: no --push. See the "why nothing is pushed to deploy/<env>"
           # note in the workflow header.
-          if [ -n "$PENDING" ]; then
-            multicz bump --component "$COMPONENT" --commit --tag $SIGN_FLAG --output json
-          else
-            # Nothing in configs/<env>/config.yaml itself justified a bump —
-            # the apply was driven by an infra/** or modules/** change. The
-            # deploy still happened, so record it.
-            multicz bump --force "${COMPONENT}:patch" --commit --tag $SIGN_FLAG --output json
-          fi
+          multicz bump --component "$COMPONENT" --commit --tag $SIGN_FLAG --output json
 
           # The release commit goes to main, and --follow-tags carries the
           # release tag with it so the tag can never land without the commit
