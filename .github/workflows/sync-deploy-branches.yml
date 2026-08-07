@@ -1,0 +1,99 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Fast-forward each deploy/<env> branch onto main whenever that environment
+# owes no deploy.
+#
+# WHY THIS EXISTS
+#
+# infra-plan opens its PR from main into deploy/<env>, so the diff is the
+# whole repository, not just infrastructure/. The branch only advanced when
+# a deploy PR merged, so everything landing on main in between piled up:
+# 51 commits behind, 106 files and 3109 insertions in the PR, of which 12
+# files and 133 insertions were actually infrastructure. A reviewer asked to
+# approve an apply was reading 95% noise.
+#
+# Keeping the branch level with main when nothing is pending means the next
+# deploy PR shows only what is genuinely being applied.
+#
+# WHY THE PENDING CHECK
+#
+# `configs-<env>` pending in multicz IS the ledger of what is owed. If it is
+# pending, the branch must stay put — fast-forwarding it would erase the very
+# diff the deploy PR needs to show, and the apply would be approved blind.
+#
+# WHY GITHUB_TOKEN AND NOT RELEASE_PAT
+#
+# Deliberately the opposite choice from release-bump. A push to deploy/*
+# triggers infra-apply; a GITHUB_TOKEN push fires no workflow events, so a
+# sync cannot start an apply. Using the PAT here would make every sync
+# attempt a deploy.
+
+name: sync-deploy-branches
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: sync-deploy-branches
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          # GITHUB_TOKEN on purpose — see the header.
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
+        with:
+          python-version: "3.12"
+      - uses: goabonga/multicz-action@95e90628797bc7dec0d2ad7d9abc6278f3465ed2  # v1
+
+      - name: Fast-forward the branches that owe nothing
+        run: |
+          set -euo pipefail
+          PENDING=$(multicz plan --output json | jq -s -r '[.[] | .bumps // {}] | add | keys[]')
+
+          for dir in infrastructure/configs/*/; do
+            ENV_NAME=$(basename "$dir")
+            BRANCH="deploy/${ENV_NAME}"
+
+            if ! git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
+              echo "  ${BRANCH}: absent, skipping"
+              continue
+            fi
+
+            if echo "$PENDING" | grep -qx "configs-${ENV_NAME}"; then
+              echo "  ${BRANCH}: a deploy is owed — left where it is so the PR shows it"
+              continue
+            fi
+
+            BEHIND=$(git rev-list --count "origin/${BRANCH}..origin/main")
+            if [ "$BEHIND" = "0" ]; then
+              echo "  ${BRANCH}: already level with main"
+              continue
+            fi
+
+            # No --force: a non-fast-forward means the branch carries commits
+            # main does not have, which is not something to paper over.
+            if git push origin "origin/main:refs/heads/${BRANCH}"; then
+              echo "  ${BRANCH}: fast-forwarded ${BEHIND} commits onto main"
+            else
+              echo "::warning::${BRANCH} is not a fast-forward of main — reconcile by hand"
+            fi
+          done
+
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: sync-deploy-branches
+          body: 'Fast-forwarded each `deploy/<env>` onto `main` where that environment owed no deploy, so the next deploy PR diffs only what is being applied.'
