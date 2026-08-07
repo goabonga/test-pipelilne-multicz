@@ -51,7 +51,7 @@ infra_modules_example = "0.1.0"
 configs_staging       = "0.1.0"
 configs_production    = "0.1.0"
 gitops                = "0.1.0"
-gitops_staging        = "0.1.0"
+gitops_staging        = "0.1.1"
 gitops_production     = "0.1.0"
 [project.theme]
 variant  = "classic"
