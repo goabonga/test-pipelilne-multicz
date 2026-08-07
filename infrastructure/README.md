@@ -56,6 +56,7 @@ Non-interactive equivalents, which are what CI runs:
 
 ```bash
 make infra-fmt-check                  # terraform fmt + terragrunt hcl format, non-mutating
+make infra-lint                       # hcl validate + inputs/variables cross-check
 make infra-test                       # terraform test in every module with a tests/ dir
 make infra-docs                       # regenerate every module README with terraform-docs
 make infra-docs-check                 # verify those READMEs are up to date
@@ -63,6 +64,28 @@ make infra-plan ENV=production        # plan one environment
 make infra-new-module NAME=<name>     # scaffold + register a module
 make infra-clean                      # drop .terragrunt-cache / lockfiles / generated *.tf
 ```
+
+## Validating without an environment
+
+`make infra-lint` answers "would a plan get off the ground" without
+credentials, a backend or a provider — the module source is a local path,
+so nothing has to be reachable.
+
+Two passes. `terragrunt hcl validate` parses the whole tree and resolves
+every reference, catching a typo in `root.hcl` or a broken include. Then,
+per environment, `hcl validate --inputs --strict` cross-checks each unit's
+`inputs` against the module's declared variables.
+
+That second one is the one that earns its place. Verified by breaking it
+both ways rather than trusting the happy path:
+
+| introduced | result |
+| --- | --- |
+| a required input removed | `ERROR The following required inputs are missing` — exit 1 |
+| an input the module does not declare | warning only, until `--strict` makes it exit 1 |
+
+Both are bugs that would otherwise surface at plan time, against a real
+provider — which is exactly where you least want to find them.
 
 ## Turning a unit off
 

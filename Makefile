@@ -3,7 +3,7 @@
         release-dry-run release kind-up kind-down kind-status kind-logs \
         kind-forward infra-fmt infra-fmt-check infra-test infra-plan \
         infra-new-module infra-docs infra-docs-check infra-checkov \
-        infra-fmt-check-root \
+        infra-fmt-check-root infra-lint \
         infra-clean clean
 
 VENV     := .venv
@@ -54,6 +54,7 @@ help:
 	@echo "Infrastructure (terragrunt):"
 	@echo "  make infra-fmt         terraform fmt + terragrunt hcl format, in place"
 	@echo "  make infra-fmt-check   same, non-mutating (what CI runs)"
+	@echo "  make infra-lint        terragrunt hcl validate + inputs/variables cross-check"
 	@echo "  make infra-test        terraform test on the modules (M=<name> for one)"
 	@echo "  make infra-checkov     checkov on the modules (M=<name> for one)"
 	@echo "  make infra-plan        terragrunt plan for one env (ENV=staging by default)"
@@ -187,6 +188,34 @@ infra-fmt-check:
 infra-fmt-check-root:
 	terragrunt --working-dir $(INFRA_DIR) hcl format --check
 	terraform fmt -check -recursive $(INFRA_DIR)/modules/_template
+
+# Lint the terragrunt wiring itself — formatting says nothing about whether
+# it is CORRECT.
+#
+# Two passes, deliberately:
+#
+#   1. `hcl validate` over the whole tree, with no ENV. Parses every file
+#      and resolves every reference; catches a typo in root.hcl or a broken
+#      include without touching a provider.
+#
+#   2. `hcl validate --inputs --strict` per environment. This is the one
+#      that earns its place: it cross-checks each unit's `inputs` against
+#      the module's declared variables. A missing required input exits 1 on
+#      its own; --strict promotes an input the module does not declare from
+#      a warning to an error too. Both are bugs that would otherwise only
+#      surface at plan time, against a real provider.
+#
+# Neither needs credentials, a backend or a provider — only the module
+# source, which is a local path.
+infra-lint:
+	terragrunt --working-dir $(INFRA_DIR) hcl validate
+	@set -eu; \
+	for dir in $(INFRA_DIR)/configs/*/; do \
+		env_name=$$(basename "$$dir"); \
+		echo "==> hcl validate --inputs --strict (ENV=$$env_name)"; \
+		ENV=$$env_name terragrunt --working-dir $(INFRA_DIR)/services \
+			hcl validate --inputs --strict; \
+	done
 
 # M selects one module: `make infra-test M=example`. Empty means all of
 # them, which is the useful default locally; CI passes M so it only
