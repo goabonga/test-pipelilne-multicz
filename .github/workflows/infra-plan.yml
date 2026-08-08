@@ -9,12 +9,12 @@
 #   ci.yml finishes on main
 #     -> this workflow runs, once, against the final state of main
 #     -> for each environment multicz reports as changed:
-#          deploy/<env> is fast-forwarded onto main
-#          configs-<env> is bumped on a branch, deploy-pr/<env>
+#          deploy/<env> is reset to main and the configs-<env> bump
+#            committed on it
 #          terragrunt plans that bumped tree
-#          drift  -> PR deploy-pr/<env> -> deploy/<env>, plan attached
-#          clean  -> any open PR is closed and the branch deleted
-#     -> merging the PR runs infra-apply.yml: apply, tag, release
+#          drift  -> PR deploy/<env> -> main, plan attached
+#          clean  -> branch left level with main, any open PR closed
+#     -> merging the PR runs infra-apply.yml: apply, then tag
 #
 # WHY workflow_run AND NOT A DISPATCH FROM release-bump
 #
@@ -25,19 +25,29 @@
 # described a main that no longer existed. `workflow_run` on completion is
 # the only trigger that guarantees ci.yml has finished writing to main.
 #
-# WHY THE PR CARRIES THE VERSION BUMP
+# WHY THE PR RUNS deploy/<env> -> main, AND NOT THE OTHER WAY
 #
-# deploy/<env> is fast-forwarded onto main before planning, so main and the
-# branch are identical and a PR between them would have no commits — GitHub
-# refuses to open one. The PR therefore comes from deploy-pr/<env>, whose
-# single commit is the `configs-<env>` bump. That commit is exactly what the
-# merge authorises: deploy this, and release it as this version. It is also
-# what makes the plan honest — config.yaml's `version:` is stamped onto
-# every resource as the `config-version` tag, so the plan has to be computed
-# against the version that will actually be applied.
+# The bump has to reach main eventually, and main's ruleset allows exactly
+# one way in: a reviewed pull request, rebase-merged, signed. Pointing the
+# PR at main means the release commit arrives through that door instead of
+# being pushed at it. infra-apply used to `git push origin HEAD:main` after
+# applying, which that ruleset rejects with GH013 — the push simply had no
+# way of working.
 #
-# infra-apply does NOT bump. The bump is already in the merge commit; that
-# job only applies it and moves the tag.
+# The single commit on deploy/<env> is the `configs-<env>` bump, and it is
+# exactly what the merge authorises: deploy this, release it as this
+# version. It is also what makes the plan honest — config.yaml's `version:`
+# is stamped onto every resource as the `config-version` tag, so the plan
+# must be computed against the version that will actually be applied.
+#
+# deploy/<env> is machine-owned and reset to main every cycle, so it holds
+# no history: a rebase-merge rewrites the commit onto main under a new SHA,
+# which means the branch is never again an ancestor of main and a plain
+# fast-forward would fail. That is why the reset is forced. The branch
+# allows force-pushes and requires no review; main carries the review.
+#
+# infra-apply does NOT bump and pushes no branch. The bump is already on
+# main via the merge; that job applies it and creates the tag.
 #
 # NO CLOUD PROVIDER IS WIRED YET (see infrastructure/root.hcl). Until one is,
 # state is local to the job so every plan reports a first apply.
@@ -128,7 +138,7 @@ jobs:
     # credentials behind a different name.
     environment: ${{ matrix.env }}-plan
     permissions:
-      contents: write        # fast-forward deploy/<env>, push deploy-pr/<env>
+      contents: write        # force-push the bump onto deploy/<env>
       pull-requests: write
     env:
       GH_TOKEN: ${{ github.token }}
@@ -161,44 +171,21 @@ jobs:
             exit 1
           fi
 
-      - name: Fast-forward deploy/<env> onto main
-        run: |
-          set -euo pipefail
-          BRANCH="deploy/${ENV_NAME}"
-          BEHIND=$(git rev-list --count "origin/${BRANCH}..origin/main")
-          if [ "$BEHIND" = "0" ]; then
-            echo "${BRANCH} is already level with main"
-            exit 0
-          fi
-          # Safe even with a deploy PR open: that PR's head is
-          # deploy-pr/<env>, which carries a commit main does not have, so
-          # moving the base cannot make the head reachable from it and
-          # cannot merge the PR. That distinction is the whole reason the
-          # PR is no longer opened from main — when it was,
-          # sync-deploy-branches merged PR #174 by doing exactly this.
-          #
-          # No --force: a non-fast-forward means deploy/<env> carries
-          # commits main does not have, which is not something to paper over.
-          if git push origin "origin/main:refs/heads/${BRANCH}"; then
-            echo "${BRANCH}: fast-forwarded ${BEHIND} commits onto main"
-          else
-            echo "::error::${BRANCH} is not a fast-forward of main — reconcile by hand"
-            exit 1
-          fi
-
-      - name: Bump configs-<env> on the PR branch
+      - name: Bump configs-<env>
         id: bump
         run: |
           set -euo pipefail
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git switch -c "deploy-pr/${ENV_NAME}"
 
+          # Committed locally only. Nothing reaches deploy/<env> unless the
+          # plan below actually finds work — a clean plan must leave no
+          # trace, or the branch would carry a bump for a deploy that never
+          # happened.
+          #
           # Writes config.yaml's `version:`, the component CHANGELOG and the
-          # zensical.toml mirror, then commits them. No --tag and no --push:
-          # the tag is the record of a completed apply, so it is created by
-          # infra-apply, and nothing leaves this runner unless the plan below
-          # actually finds work.
+          # zensical.toml mirror. No --tag: the tag records a completed
+          # apply, so infra-apply creates it.
           multicz bump --component "configs-${ENV_NAME}" --commit --output json \
             > /tmp/bump.json
           VERSION=$(jq -s -r --arg c "configs-${ENV_NAME}" \
@@ -262,13 +249,14 @@ jobs:
           VERSION: ${{ steps.bump.outputs.version }}
         run: |
           set -euo pipefail
-          HEAD_BRANCH="deploy-pr/${ENV_NAME}"
-          BASE="deploy/${ENV_NAME}"
+          BRANCH="deploy/${ENV_NAME}"
 
-          # --force: this branch is machine-owned and single-purpose. Each
-          # cycle recomputes the bump from a new main, so the previous
-          # commit is not history worth keeping — it is a superseded draft.
-          git push --force origin "HEAD:refs/heads/${HEAD_BRANCH}"
+          # --force, and it is not a shortcut. main's ruleset rebase-merges,
+          # which replays this commit onto main under a new SHA — so once a
+          # deploy lands, the branch is no longer an ancestor of main and no
+          # fast-forward exists. The branch is a per-cycle proposal, not
+          # history: it is reset to main plus one bump every time.
+          git push --force origin "HEAD:refs/heads/${BRANCH}"
 
           SUMMARY=$(grep -E '^Plan: ' "plan-${ENV_NAME}.txt" || echo "(no per-unit summary line found)")
           BODY_FILE=$(mktemp)
@@ -288,10 +276,10 @@ jobs:
             echo "Full plan: artifact \`plan-${ENV_NAME}-v${VERSION}\` on run [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})."
           } > "$BODY_FILE"
 
-          PR_NUMBER=$(gh pr list --base "$BASE" --head "$HEAD_BRANCH" --state open \
+          PR_NUMBER=$(gh pr list --base main --head "$BRANCH" --state open \
             --json number --jq '.[0].number // empty')
           if [ -z "$PR_NUMBER" ]; then
-            gh pr create --base "$BASE" --head "$HEAD_BRANCH" \
+            gh pr create --base main --head "$BRANCH" \
               --title "deploy(${ENV_NAME}): apply and release configs-${ENV_NAME} v${VERSION}" \
               --body-file "$BODY_FILE"
           else
@@ -303,18 +291,24 @@ jobs:
             gh pr comment "$PR_NUMBER" --body-file "$BODY_FILE"
           fi
 
-      - name: Close the deploy PR (plan is clean)
+      - name: Reset the deploy branch (plan is clean)
         if: steps.tg.outputs.exit_code == '0'
         run: |
           set -euo pipefail
-          HEAD_BRANCH="deploy-pr/${ENV_NAME}"
-          PR_NUMBER=$(gh pr list --base "deploy/${ENV_NAME}" --head "$HEAD_BRANCH" --state open \
+          BRANCH="deploy/${ENV_NAME}"
+          PR_NUMBER=$(gh pr list --base main --head "$BRANCH" --state open \
             --json number --jq '.[0].number // empty')
           if [ -n "$PR_NUMBER" ]; then
             gh pr comment "$PR_NUMBER" --body "Plan is now clean — nothing to apply. Closing."
-            gh pr close "$PR_NUMBER" --delete-branch
-          else
-            # No PR, but the branch may survive from a previous cycle.
-            git push origin --delete "$HEAD_BRANCH" >/dev/null 2>&1 || true
+            gh pr close "$PR_NUMBER"
           fi
-          echo "no drift for ${ENV_NAME} — nothing bumped, nothing pushed"
+          # Drop the local bump commit: it described a deploy that is not
+          # owed. The branch goes back to being exactly main, so the next
+          # cycle starts from a clean slate and nothing stale is left for a
+          # reviewer to stumble on.
+          #
+          # The branch is never deleted — infra-plan requires it to exist,
+          # and recreating a protected branch needs permissions this job
+          # deliberately does not have.
+          git push --force origin "origin/main:refs/heads/${BRANCH}"
+          echo "no drift for ${ENV_NAME} — ${BRANCH} left level with main"
