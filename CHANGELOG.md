@@ -7,6 +7,16 @@ Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
 ### Releases
 
+- **gitops-staging** minor — 0.2.0 → 0.3.0
+
+### Features
+
+- **gitops-staging**: flux layout with pinned staging and production (`799dccf`)
+
+## 2026-08-08
+
+### Releases
+
 - **gitops-production** minor — 0.1.0 → 0.2.0
 
 ### Features
