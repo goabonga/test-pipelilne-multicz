@@ -4469,7 +4469,18 @@ jobs:
           git commit -m "deploy(staging): promote chart pins"
           # --force: the pin edit is not a conventional-commit bump of its
           # own, but the promotion is real and must be recorded.
-          multicz bump --force gitops-staging:patch --commit --tag --output json
+          #
+          # --component is NOT redundant with --force. --force ADDS a
+          # component to the batch; it does not restrict it. Without the
+          # restriction this released everything else that happened to be
+          # pending — including the deploy-gated configs-*, which are only
+          # ever allowed to move after a real terragrunt apply. That is not
+          # hypothetical: release-gitops-production tagged
+          # configs-staging-v0.1.0 and configs-production-v0.1.0 this way,
+          # which then made sync-deploy-branches think nothing was owed and
+          # auto-merge an open deploy PR.
+          multicz bump --component gitops-staging --force gitops-staging:patch \
+            --commit --tag --output json
           git push origin HEAD:main --follow-tags
 
       - name: Summary
@@ -4529,7 +4540,14 @@ jobs:
           # --force for the same reason infra-apply uses it: a pin edit is
           # not a conventional-commit bump of its own, but the promotion is
           # real and has to be recorded.
-          multicz bump --force gitops-production:patch --commit --tag --output json
+          #
+          # --component is NOT redundant with --force — see the identical
+          # note on promote-staging. This exact command, without the
+          # restriction, produced commit 1553ebf: "bump configs-staging
+          # 0.0.0 -> 0.1.0, configs-production 0.0.0 -> 0.1.0, ..." — two
+          # environments released as deployed while no apply had run.
+          multicz bump --component gitops-production --force gitops-production:patch \
+            --commit --tag --output json
           git push origin HEAD:main --follow-tags
       - name: Summary
         if: always()

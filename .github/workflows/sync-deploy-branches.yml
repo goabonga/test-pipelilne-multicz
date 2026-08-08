@@ -49,10 +49,13 @@ concurrency:
 
 permissions:
   contents: write
+  pull-requests: read
 
 jobs:
   sync:
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -75,6 +78,30 @@ jobs:
 
             if ! git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
               echo "  ${BRANCH}: absent, skipping"
+              continue
+            fi
+
+            # An open deploy PR is the hard stop, and it is checked FIRST
+            # because it is the only signal that cannot be wrong.
+            #
+            # Fast-forwarding a branch up to the head of a PR that targets
+            # it IS merging that PR: GitHub marks it merged the moment the
+            # head commits become reachable from the base. infra-apply
+            # triggers on `merged == true`, so this workflow silently
+            # approved a deploy on its own — PR #174 was created at
+            # 12:30:42 and merged by this job at 12:31:51, with nobody
+            # having looked at the plan.
+            #
+            # The pending check below was supposed to prevent that, and it
+            # is genuinely useful, but it answers a different question:
+            # "does multicz think work is owed", not "is a human currently
+            # being asked to approve something". Those disagreed exactly
+            # once and that was enough — a stray release had cleared
+            # configs-* while the PR sat open.
+            OPEN_PR=$(gh pr list --base "$BRANCH" --head main --state open \
+              --json number --jq '.[0].number // empty')
+            if [ -n "$OPEN_PR" ]; then
+              echo "  ${BRANCH}: deploy PR #${OPEN_PR} is open — moving the branch would merge it"
               continue
             fi
 
