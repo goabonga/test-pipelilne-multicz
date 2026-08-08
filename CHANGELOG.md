@@ -7,6 +7,23 @@ Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
 ### Releases
 
+- **configs-production** minor — 0.0.0 → 0.1.0
+- **configs-staging** minor — 0.0.0 → 0.1.0
+- **docs** patch — 1.0.0 → 1.0.1  _(cascade from configs-staging 0.1.0)_
+- **gitops-production** minor — 0.0.0 → 0.1.0
+- **gitops-staging** minor — 0.0.0 → 0.1.0
+
+### Features
+
+- **configs-production**: terragrunt landing zone with per-environment deploy gating (`9d50feb`)
+- **configs-staging**: terragrunt landing zone with per-environment deploy gating (`9d50feb`)
+- **gitops-production**: flux layout with pinned staging and production (`799dccf`)
+- **gitops-staging**: flux layout with pinned staging and production (`799dccf`)
+
+## 2026-08-08
+
+### Releases
+
 - **api** minor — 0.0.0 → 0.1.0  _(cascade from database 0.1.0)_
 - **app** minor — 0.0.0 → 0.1.0  _(cascade from lib 0.1.0)_
 - **chart-api** major — 0.0.0 → 1.0.0  _(cascade from api 0.1.0)_
