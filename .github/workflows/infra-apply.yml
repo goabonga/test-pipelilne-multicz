@@ -118,35 +118,40 @@ jobs:
             exit 1
           fi
 
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
-        with:
-          python-version: "3.12"
-      - uses: goabonga/multicz-action@95e90628797bc7dec0d2ad7d9abc6278f3465ed2  # v1
+      # No multicz here any more. This job reads the version out of the
+      # merged tree and tags it; it never computes one. Installing the tool
+      # would only invite someone to re-derive a number that has already
+      # been reviewed.
 
-      - name: Is a deploy actually owed?
-        id: owed
-        env:
-          COMPONENT: configs-${{ needs.resolve-env.outputs.env }}
+      - name: Read the version this deploy releases
+        id: version
         run: |
           set -euo pipefail
-          # `configs-<env>` pending in multicz IS the ledger of what is owed,
-          # and it covers the indirect case: an infra/** or modules/** change
-          # cascades onto the environment through depends_on and shows up as
-          # pending here, so "not pending" genuinely means nothing to deploy.
-          #
-          # Without this the job applied and force-bumped on ANY push to
-          # deploy/*, recording a release for a deploy that deployed nothing.
-          # sync-deploy-branches now pushes here routinely to keep the branch
-          # level with main, which turns that from a latent wart into a
-          # phantom release on every sync.
-          PENDING=$(multicz plan --output json \
-            | jq -s -r --arg c "$COMPONENT" '[.[] | .bumps // {}] | add | .[$c] // empty')
-          if [ -n "$PENDING" ]; then
-            echo "owed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "owed=false" >> "$GITHUB_OUTPUT"
-            echo "nothing pending for ${COMPONENT} — this push carries no undeployed change"
+          # The version comes from the merged tree, not from a fresh
+          # computation. infra-plan wrote it into config.yaml on the PR
+          # branch and terragrunt planned against it, so re-deriving it here
+          # could only produce a different answer — and a different answer
+          # would mean applying something other than what was approved.
+          VERSION=$(grep -oP '^version:\s*\K\S+' \
+            "infrastructure/configs/${ENV}/config.yaml")
+          if [ -z "$VERSION" ]; then
+            echo "::error::no version: key in infrastructure/configs/${ENV}/config.yaml"
+            exit 1
           fi
+
+          TAG="configs-${ENV}-v${VERSION}"
+          if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
+            # Re-merging a branch, or a rerun after the push already landed.
+            # Applying again would be harmless (terraform converges) but
+            # moving a published tag would not.
+            echo "::error::${TAG} already exists — this deploy has already been released"
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "applying and releasing ${TAG}"
+        env:
+          ENV: ${{ needs.resolve-env.outputs.env }}
 
       - name: Configure git
         # Through `env:`, never interpolated into the `run:` body — the
@@ -166,7 +171,6 @@ jobs:
 
       - name: Detect GPG availability
         id: gpg
-        if: steps.owed.outputs.owed == 'true'
         env:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
@@ -178,7 +182,7 @@ jobs:
           fi
 
       - name: Import and unlock GPG key
-        if: steps.owed.outputs.owed == 'true' && steps.gpg.outputs.available == 'true'
+        if: steps.gpg.outputs.available == 'true'
         env:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
@@ -189,50 +193,38 @@ jobs:
           KEY_ID=$(gpg --list-secret-keys --with-colons | awk -F: '/^sec/{print $5; exit}')
           git config user.signingkey "$KEY_ID"
 
-      # ── bump, THEN apply, THEN push ──────────────────────────────────
+      # ── apply, THEN tag, THEN push ───────────────────────────────────
       #
-      # The order is the point. config.yaml's `version:` is a plan input:
-      # services/example stamps it onto every resource as the
-      # `config-version` tag. Bumping after the apply meant the applied
-      # infrastructure was always tagged one version behind the release that
-      # claimed to have produced it, and the catch-up surfaced as a phantom
-      # diff in the next plan — a change nobody made, needing a deploy PR to
-      # clear.
-      #
-      # Bumping first also makes the artefact honest: infra-plan previews the
-      # same version, so the plan a reviewer approved is the plan that runs.
-      #
-      # Nothing is pushed until the apply succeeds, so a failed apply leaves
-      # no tag and no release — the commit dies with the runner and the
-      # environment stays pending, which is exactly the state that makes
-      # infra-plan open the PR again.
-      - name: Bump configs-<env> (local commit and tag, not pushed yet)
-        if: steps.owed.outputs.owed == 'true'
-        env:
-          COMPONENT: configs-${{ needs.resolve-env.outputs.env }}
-        run: |
-          set -euo pipefail
-          SIGN_FLAG=""
-          if [ "${{ steps.gpg.outputs.available }}" = "true" ]; then SIGN_FLAG="--sign"; fi
-
-          # No --force fallback any more: the step only runs when the
-          # component is pending, so there is always a real bump to make.
-          # Note: no --push. See the "why nothing is pushed to deploy/<env>"
-          # note in the workflow header.
-          multicz bump --component "$COMPONENT" --commit --tag $SIGN_FLAG --output json
-
+      # Nothing leaves this runner until the apply succeeds. A failed apply
+      # therefore leaves no tag and no release: configs-<env> stays pending,
+      # which is exactly the state that makes infra-plan open the PR again.
       - name: Terragrunt apply
-        if: steps.owed.outputs.owed == 'true'
         env:
           ENV: ${{ needs.resolve-env.outputs.env }}
         run: |
           set -euo pipefail
-          # Reads the version the step above just wrote.
+          # The merged tree already carries the version infra-plan planned
+          # against, so this applies the reviewed plan rather than a fresh
+          # one computed here.
           terragrunt --non-interactive --working-dir infrastructure/services \
             run --all -- apply -auto-approve -input=false
 
+      - name: Tag the release
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+          ENV: ${{ needs.resolve-env.outputs.env }}
+        run: |
+          set -euo pipefail
+          SIGN_FLAG=""
+          if [ "${{ steps.gpg.outputs.available }}" = "true" ]; then SIGN_FLAG="-s"; fi
+          # An annotated tag on the merge commit. No `multicz bump` here:
+          # the bump is already in the tree, made by infra-plan and reviewed
+          # in the PR. Re-running it would compute 0.1.0 -> 0.2.0 off the
+          # already-bumped config.yaml and release a version nobody planned.
+          git tag -a $SIGN_FLAG -m "configs-${ENV} v${VERSION} (applied)" "$TAG"
+
       - name: Push the release to main
-        if: steps.owed.outputs.owed == 'true'
         run: |
           set -euo pipefail
           # --follow-tags carries the release tag with the commit, so the tag

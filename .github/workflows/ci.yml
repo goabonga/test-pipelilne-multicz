@@ -3560,39 +3560,14 @@ jobs:
         run: |
           echo "repo=${{ github.event.repository.name }}" >> "$GITHUB_OUTPUT"
 
-      - name: Trigger infra-plan
-        # infra-plan.yml has no push trigger — this is its only entry
-        # point, so the decision to plan lives here, next to `detect`.
-        #
-        # The signal is a `configs-*` component in the changed set. multicz
-        # marks an environment changed both when its own config.yaml is
-        # edited and when infra/** or a module cascades onto it through
-        # depends_on, so one condition covers a config edit, a module
-        # change and a services/** change alike.
-        #
-        # NOT gated on steps.plan.outputs.release: a config-only change
-        # bumps nothing in this job (configs-* are deploy-gated and
-        # filtered out of the bump), so `release` would be 'false' and the
-        # plan would never fire — on precisely the change that most needs
-        # one.
-        #
-        # Dispatch rather than relying on the release commit's own push
-        # event: that push uses RELEASE_PAT when set, and falls back to
-        # GITHUB_TOKEN, whose anti-recursion rule fires nothing at all.
-        if: contains(join(fromJson(needs.detect.outputs.changed).changed, ','), 'configs-')
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh workflow run infra-plan.yml --ref main
-
-      - name: Trigger sync-deploy-branches
-        # The release commit carries [skip ci], which suppresses every
-        # workflow for that push — sync-deploy-branches included. Yet that
-        # commit is exactly when configs-<env> stops being pending and the
-        # deploy branches can catch up, so dispatch it by hand.
-        if: steps.plan.outputs.release == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh workflow run sync-deploy-branches.yml --ref main
+      # infra-plan.yml is no longer dispatched from here. It triggers on
+      # `workflow_run` when ci.yml completes, because this job is not the
+      # last one in the workflow: release-gitops-production and
+      # promote-staging push further commits to main after it. Dispatching
+      # from here planned a main that three commits then overtook.
+      #
+      # sync-deploy-branches.yml is gone entirely — infra-plan fast-forwards
+      # deploy/<env> itself, immediately before planning it.
 
       - name: Summary
         if: always()
