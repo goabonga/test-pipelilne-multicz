@@ -14,13 +14,16 @@
 # `closed` fires on both merge and close-without-merge, hence the
 # `merged == true` guard: abandoning a deploy PR must not deploy.
 #
-# On a successful apply the `configs-<env>` component is bumped: if commits
-# touching configs/<env>/config.yaml already justify a bump, that drives
-# the version and kind; otherwise the deploy is still real and is recorded
-# as a forced patch. Either way multicz's `upstream-notes` plugin pulls in
-# the `infra` / `infra-modules-*` commits that deploy shipped (from the
-# component's depends_on, see multicz.toml). The release commit and tag go
-# to `deploy/<env>` first, then fast-forward onto `main`.
+# The `configs-<env>` component is bumped BEFORE the apply, and the release
+# is pushed only once the apply succeeds. config.yaml's `version:` is a plan
+# input — services/example stamps it on every resource as `config-version` —
+# so bumping afterwards left the infrastructure permanently one version
+# behind the release naming it. infra-plan previews the same version, so the
+# plan a reviewer approved is the plan that runs.
+#
+# multicz's `upstream-notes` plugin pulls the `infra` / `infra-modules-*`
+# commits that deploy shipped into the changelog (from the component's
+# depends_on, see multicz.toml).
 #
 # WHY NOTHING IS PUSHED TO deploy/<env>
 #
@@ -145,25 +148,21 @@ jobs:
             echo "nothing pending for ${COMPONENT} — this push carries no undeployed change"
           fi
 
-      - name: Terragrunt apply
-        if: steps.owed.outputs.owed == 'true'
-        env:
-          ENV: ${{ needs.resolve-env.outputs.env }}
-        run: |
-          set -euo pipefail
-          terragrunt --non-interactive --working-dir infrastructure/services \
-            run --all -- apply -auto-approve -input=false
-
       - name: Configure git
-        # Through `env:`, never interpolated into the `run:` body — commit
-        # author metadata is attacker-controllable and `${{ }}` is
-        # substituted before bash sees the line.
+        # Through `env:`, never interpolated into the `run:` body — the
+        # login is attacker-influenced (anyone can open the PR) and `${{ }}`
+        # is substituted before bash sees the line.
+        #
+        # `github.event.head_commit` does not exist on a pull_request event;
+        # it was left over from the old `push` trigger and silently resolved
+        # to empty, so every release commit was authored by the bot anyway.
+        # The merger is the meaningful attribution here: they are the one who
+        # approved the deploy.
         env:
-          AUTHOR_NAME: ${{ github.event.head_commit.author.name }}
-          AUTHOR_EMAIL: ${{ github.event.head_commit.author.email }}
+          ACTOR: ${{ github.event.pull_request.merged_by.login }}
         run: |
-          git config user.name  "${AUTHOR_NAME:-github-actions[bot]}"
-          git config user.email "${AUTHOR_EMAIL:-41898282+github-actions[bot]@users.noreply.github.com}"
+          git config user.name  "${ACTOR:-github-actions[bot]}"
+          git config user.email "${ACTOR:-41898282+github-actions[bot]}@users.noreply.github.com"
 
       - name: Detect GPG availability
         id: gpg
@@ -190,7 +189,24 @@ jobs:
           KEY_ID=$(gpg --list-secret-keys --with-colons | awk -F: '/^sec/{print $5; exit}')
           git config user.signingkey "$KEY_ID"
 
-      - name: Bump configs-<env> and sync main
+      # ── bump, THEN apply, THEN push ──────────────────────────────────
+      #
+      # The order is the point. config.yaml's `version:` is a plan input:
+      # services/example stamps it onto every resource as the
+      # `config-version` tag. Bumping after the apply meant the applied
+      # infrastructure was always tagged one version behind the release that
+      # claimed to have produced it, and the catch-up surfaced as a phantom
+      # diff in the next plan — a change nobody made, needing a deploy PR to
+      # clear.
+      #
+      # Bumping first also makes the artefact honest: infra-plan previews the
+      # same version, so the plan a reviewer approved is the plan that runs.
+      #
+      # Nothing is pushed until the apply succeeds, so a failed apply leaves
+      # no tag and no release — the commit dies with the runner and the
+      # environment stays pending, which is exactly the state that makes
+      # infra-plan open the PR again.
+      - name: Bump configs-<env> (local commit and tag, not pushed yet)
         if: steps.owed.outputs.owed == 'true'
         env:
           COMPONENT: configs-${{ needs.resolve-env.outputs.env }}
@@ -205,12 +221,25 @@ jobs:
           # note in the workflow header.
           multicz bump --component "$COMPONENT" --commit --tag $SIGN_FLAG --output json
 
-          # The release commit goes to main, and --follow-tags carries the
-          # release tag with it so the tag can never land without the commit
-          # that explains it. That split is not hypothetical: when the push
-          # to the protected deploy branch was declined, the tags had
-          # already gone through and left both environments tagged v0.1.0
-          # with config.yaml still reading 0.0.0.
+      - name: Terragrunt apply
+        if: steps.owed.outputs.owed == 'true'
+        env:
+          ENV: ${{ needs.resolve-env.outputs.env }}
+        run: |
+          set -euo pipefail
+          # Reads the version the step above just wrote.
+          terragrunt --non-interactive --working-dir infrastructure/services \
+            run --all -- apply -auto-approve -input=false
+
+      - name: Push the release to main
+        if: steps.owed.outputs.owed == 'true'
+        run: |
+          set -euo pipefail
+          # --follow-tags carries the release tag with the commit, so the tag
+          # can never land without the commit that explains it. That split is
+          # not hypothetical: when the push to the protected deploy branch was
+          # declined, the tags had already gone through and left both
+          # environments tagged v0.1.0 with config.yaml still reading 0.0.0.
           #
           # Plain push, not forced: if main has diverged since the deploy PR
           # merged, this fails loudly rather than rewriting someone else's
