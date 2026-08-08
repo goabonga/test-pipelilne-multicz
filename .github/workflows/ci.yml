@@ -98,6 +98,16 @@ jobs:
   #
   # ~90s, on every push and PR. plumber.yml keeps only the weekly cron.
   plumber:
+    # A deploy PR (deploy/<env> -> main) carries exactly one commit: the
+    # configs-<env> version bump that infra-plan wrote and terragrunt
+    # planned against. Running the full component matrix over it re-tests
+    # content identical to main, and the plan is what the reviewer is
+    # actually approving. Guarding the two root jobs is enough — every
+    # other job reaches them through `needs`, and a skipped dependency
+    # skips the whole closure.
+    if: >-
+      github.event_name != 'pull_request' ||
+      !startsWith(github.event.pull_request.head.ref, 'deploy/')
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -246,6 +256,16 @@ jobs:
           body: SPDX header check on `packages/` and `scripts/`.
 
   validate:
+    # A deploy PR (deploy/<env> -> main) carries exactly one commit: the
+    # configs-<env> version bump that infra-plan wrote and terragrunt
+    # planned against. Running the full component matrix over it re-tests
+    # content identical to main, and the plan is what the reviewer is
+    # actually approving. Guarding the two root jobs is enough — every
+    # other job reaches them through `needs`, and a skipped dependency
+    # skips the whole closure.
+    if: >-
+      github.event_name != 'pull_request' ||
+      !startsWith(github.event.pull_request.head.ref, 'deploy/')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

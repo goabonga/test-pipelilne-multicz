@@ -1,44 +1,37 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Chris <goabonga@pm.me>
 
-# Runs `terragrunt apply` for an environment when its deploy PR (opened by
-# infra-plan.yml) is MERGED into `deploy/<env>`.
+# Runs `terragrunt apply` for an environment when its deploy PR — opened by
+# infra-plan.yml from `deploy/<env>` into `main` — is MERGED.
 #
-# The trigger is `pull_request: [closed]` gated on `merged == true`, not
-# `push`. On `push` any write to deploy/* started an apply — a manual push,
-# or a branch fast-forward — so an apply could run without anyone approving
-# the PR, which is exactly what happened: configs-staging-v0.1.0 and
-# configs-production-v0.1.0 were tagged off a hand-pushed branch update
-# while the PR was still open.
+# THE PR GOES INTO main, NOT INTO deploy/<env>
+#
+# The bump has to reach main, and main's ruleset allows exactly one way in:
+# a reviewed pull request, rebase-merged. This workflow used to apply first
+# and then `git push origin HEAD:main`, which that ruleset rejects with
+# GH013 — there was no version of that push that could have worked. Now the
+# release commit arrives through the merge, and this job pushes no branch at
+# all. Only a tag, which no branch rule governs.
 #
 # `closed` fires on both merge and close-without-merge, hence the
-# `merged == true` guard: abandoning a deploy PR must not deploy.
+# `merged == true` guard: abandoning a deploy PR must not deploy. The head
+# check is what separates a deploy PR from every other PR into main.
 #
-# The `configs-<env>` component is bumped BEFORE the apply, and the release
-# is pushed only once the apply succeeds. config.yaml's `version:` is a plan
-# input — services/example stamps it on every resource as `config-version` —
-# so bumping afterwards left the infrastructure permanently one version
-# behind the release naming it. infra-plan previews the same version, so the
-# plan a reviewer approved is the plan that runs.
+# WHAT THIS JOB DOES NOT DO
 #
-# multicz's `upstream-notes` plugin pulls the `infra` / `infra-modules-*`
-# commits that deploy shipped into the changelog (from the component's
-# depends_on, see multicz.toml).
+# It does not bump. infra-plan wrote the version into config.yaml on
+# deploy/<env>, terragrunt planned against it, and a reviewer approved that
+# exact diff — the number is settled before this runs. Re-deriving it here
+# could only produce a different answer, and a different answer would mean
+# applying something other than what was approved.
 #
-# WHY NOTHING IS PUSHED TO deploy/<env>
+# ORDER, AND WHAT A FAILURE LEAVES BEHIND
 #
-# The bump commit goes to `main` only. Two independent reasons, either of
-# which is sufficient:
-#
-#   1. deploy/<env> is protected — changes must go through a pull request —
-#      so a bot push is declined (GH006). The branch is a gate, not a place
-#      history lives; it picks the release commit up through the next deploy
-#      PR, which is cut from main anyway.
-#
-#   2. Historically this workflow triggered on `push` to deploy/*, so
-#      pushing here re-triggered it. That is no longer the trigger, but
-#      writing to the branch would still be pointless: the branch is a gate,
-#      and main is where the release history belongs.
+# apply, then tag. A failed apply leaves main carrying the version but no
+# tag and no release, so nothing claims to have been deployed. multicz then
+# sees configs-<env> as released-at-nothing and the next cycle proposes the
+# following version — the environment stays visibly owed rather than
+# silently marked done.
 #
 # NO CLOUD PROVIDER IS WIRED YET — see infrastructure/root.hcl and the TODO
 # below. Until then an apply is a no-op against local state.
@@ -47,9 +40,10 @@ name: infra-apply
 
 on:
   pull_request:
-    # `branches:` filters on the PR's BASE, so this is "PRs targeting a
-    # deploy branch".
-    branches: ["deploy/*"]
+    # `branches:` filters on the PR's BASE, which is now main. The head
+    # branch is what identifies a deploy PR, and that is checked below —
+    # `on:` has no head filter.
+    branches: [main]
     types: [closed]
 
 concurrency:
@@ -62,16 +56,20 @@ permissions:
 jobs:
   resolve-env:
     name: resolve-env
-    # Merged, not merely closed.
-    if: github.event.pull_request.merged == true
+    # Merged, not merely closed — and a deploy PR, not any other PR into
+    # main. Every ordinary PR reaches this workflow now that the base is
+    # main, so the head-branch check is load-bearing, not decoration.
+    if: >-
+      github.event.pull_request.merged == true &&
+      startsWith(github.event.pull_request.head.ref, 'deploy/')
     runs-on: ubuntu-latest
     outputs:
       env: ${{ steps.name.outputs.env }}
     steps:
       - id: name
         env:
-          BASE: ${{ github.event.pull_request.base.ref }}
-        run: echo "env=${BASE#deploy/}" >> "$GITHUB_OUTPUT"
+          HEAD: ${{ github.event.pull_request.head.ref }}
+        run: echo "env=${HEAD#deploy/}" >> "$GITHUB_OUTPUT"
 
   apply:
     name: apply (${{ needs.resolve-env.outputs.env }})
@@ -80,18 +78,20 @@ jobs:
     # Second gate on top of the branch protection: Settings -> Environments
     # -> required reviewers.
     environment: ${{ needs.resolve-env.outputs.env }}
-    # Same lock as ci.yml's main-writing jobs — this workflow pushes the
-    # bump commit to main too, from a different run entirely.
+    # Serialised per environment only. This job no longer writes to main,
+    # so it does not need the repo-wide push-to-main lock; two environments
+    # applying at once is fine and desirable.
     concurrency:
-      group: push-to-main
+      group: infra-apply-${{ needs.resolve-env.outputs.env }}
       cancel-in-progress: false
     permissions:
-      contents: write
+      contents: write   # push the release tag
     steps:
       - uses: actions/checkout@v7
         with:
-          # The merge commit itself, not the branch tip: what was approved
-          # is what gets applied, even if the branch moves meanwhile.
+          # The merge result, not the branch tip: what was approved is what
+          # gets applied. main's ruleset rebase-merges, so this SHA is the
+          # replayed commit on main — which is also where the tag belongs.
           ref: ${{ github.event.pull_request.merge_commit_sha }}
           fetch-depth: 0
           persist-credentials: true
@@ -193,11 +193,10 @@ jobs:
           KEY_ID=$(gpg --list-secret-keys --with-colons | awk -F: '/^sec/{print $5; exit}')
           git config user.signingkey "$KEY_ID"
 
-      # ── apply, THEN tag, THEN push ───────────────────────────────────
+      # ── apply, THEN tag ──────────────────────────────────────────────
       #
-      # Nothing leaves this runner until the apply succeeds. A failed apply
-      # therefore leaves no tag and no release: configs-<env> stays pending,
-      # which is exactly the state that makes infra-plan open the PR again.
+      # Nothing leaves this runner until the apply succeeds, so a failed
+      # apply publishes no tag and no release.
       - name: Terragrunt apply
         env:
           ENV: ${{ needs.resolve-env.outputs.env }}
@@ -218,22 +217,25 @@ jobs:
           set -euo pipefail
           SIGN_FLAG=""
           if [ "${{ steps.gpg.outputs.available }}" = "true" ]; then SIGN_FLAG="-s"; fi
-          # An annotated tag on the merge commit. No `multicz bump` here:
-          # the bump is already in the tree, made by infra-plan and reviewed
-          # in the PR. Re-running it would compute 0.1.0 -> 0.2.0 off the
-          # already-bumped config.yaml and release a version nobody planned.
+          # An annotated tag on the merged commit — which is on main, so the
+          # tag can never point at something main does not contain. That was
+          # a real failure before: tags landed while the commit explaining
+          # them was rejected, leaving both environments tagged v0.1.0 with
+          # config.yaml still reading 0.0.0. With the commit arriving through
+          # the merge, the ordering is no longer ours to get wrong.
+          #
+          # No `multicz bump` here: the bump is already in the tree, written
+          # by infra-plan and reviewed in the PR. Re-running it would compute
+          # 0.1.0 -> 0.2.0 off the already-bumped config.yaml and release a
+          # version nobody planned.
           git tag -a $SIGN_FLAG -m "configs-${ENV} v${VERSION} (applied)" "$TAG"
 
-      - name: Push the release to main
+      - name: Push the tag
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
         run: |
           set -euo pipefail
-          # --follow-tags carries the release tag with the commit, so the tag
-          # can never land without the commit that explains it. That split is
-          # not hypothetical: when the push to the protected deploy branch was
-          # declined, the tags had already gone through and left both
-          # environments tagged v0.1.0 with config.yaml still reading 0.0.0.
-          #
-          # Plain push, not forced: if main has diverged since the deploy PR
-          # merged, this fails loudly rather than rewriting someone else's
-          # history — reconcile by hand.
-          git push origin "HEAD:main" --follow-tags
+          # A tag, and nothing else. No branch is written by this workflow —
+          # main's ruleset would refuse the push, and it has nothing to say
+          # that the merge has not already said.
+          git push origin "refs/tags/${TAG}"
