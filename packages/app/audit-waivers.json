@@ -1,0 +1,30 @@
+{
+  "$comment": [
+    "Advisories deliberately accepted for packages/app, checked by",
+    ".github/actions/npm-audit. Every entry expires: on that date the",
+    "audit job goes red and the exception has to be argued again, not",
+    "inherited. Deleting an entry whose advisory is fixed is also",
+    "required — a waiver matching nothing fails the job too.",
+    "",
+    "Adding one is a deliberate act: state why the risk is acceptable",
+    "here, in the diff, where a reviewer sees it."
+  ],
+  "waivers": [
+    {
+      "id": "GHSA-w3rx-r6r6-pgpr",
+      "package": "image-size",
+      "severity": "high",
+      "reason": "No patched version exists: the advisory covers <=2.0.2 and 2.0.2 is the latest published release. Reached only through metro, the React Native bundler, which runs at build time over first-party assets and ships nothing into the app binary. The impact is a parser infinite loop on a malicious ICNS file, i.e. a build that hangs.",
+      "added": "2026-08-08",
+      "expires": "2026-11-06"
+    },
+    {
+      "id": "GHSA-5p2g-fcmc-qvqq",
+      "package": "image-size",
+      "severity": "high",
+      "reason": "Same root cause and same reasoning as GHSA-w3rx-r6r6-pgpr — JXL and HEIF parsers rather than ICNS. No patched version exists, and image-size is only reachable through the metro bundler at build time.",
+      "added": "2026-08-08",
+      "expires": "2026-11-06"
+    }
+  ]
+}

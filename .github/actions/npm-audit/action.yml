@@ -1,0 +1,159 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+name: npm audit with waivers
+description: |
+  `npm audit` at high+, with an explicit, expiring waiver list.
+
+  Plain `npm audit --audit-level=high` has one failure mode and no way
+  out of it: when an advisory has no patched version, the job is red
+  forever and the only options are to delete the check or to stop
+  looking at it. Both end in the same place — a check that asserts
+  nothing.
+
+  This action makes the exception explicit instead. A waiver names the
+  advisory, says why, and expires. Three separate things fail the job:
+
+    1. an advisory at high+ that no waiver covers  — the normal case;
+    2. a waiver past its `expires` date            — the exception was
+       never meant to be permanent, and nobody re-read it;
+    3. a waiver that matches nothing               — the advisory was
+       fixed or the dependency dropped, so the waiver is now a hole in
+       the check that nothing is watching.
+
+  (3) is the one that matters over time. Without it, waivers accumulate
+  and quietly widen until the audit passes on a tree nobody has looked
+  at in a year.
+
+inputs:
+  working-directory:
+    description: Directory holding package.json / package-lock.json.
+    required: true
+  waivers:
+    description: |
+      Path to the waiver file, relative to working-directory. Missing
+      file means "no waivers", which is the correct default — it is not
+      an error, but then every finding fails the job.
+    required: false
+    default: audit-waivers.json
+  audit-level:
+    description: npm audit threshold — low | moderate | high | critical.
+    required: false
+    default: high
+
+runs:
+  using: composite
+  steps:
+    - name: npm audit (${{ inputs.audit-level }}+) with waivers
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        WAIVERS: ${{ inputs.waivers }}
+        LEVEL: ${{ inputs.audit-level }}
+      run: |
+        set -euo pipefail
+
+        # `npm audit` exits non-zero as soon as it finds anything at or
+        # above the threshold, which is the whole point of running it —
+        # so its exit code is not the signal here, the parsed report is.
+        npm audit --audit-level="$LEVEL" --json > /tmp/audit.json || true
+
+        # An unreadable report means npm failed for some other reason
+        # (network, corrupt lockfile). Treat that as a failure rather
+        # than as "no vulnerabilities".
+        if ! jq -e . /tmp/audit.json > /dev/null 2>&1; then
+          echo "::error::npm audit produced no parsable JSON — see the raw output below"
+          cat /tmp/audit.json
+          exit 1
+        fi
+
+        # Severities at or above the threshold, in npm's own order.
+        case "$LEVEL" in
+          low)      KEEP='["low","moderate","high","critical"]' ;;
+          moderate) KEEP='["moderate","high","critical"]' ;;
+          high)     KEEP='["high","critical"]' ;;
+          critical) KEEP='["critical"]' ;;
+          *) echo "::error::unknown audit-level '$LEVEL'"; exit 1 ;;
+        esac
+
+        # One entry per distinct advisory. npm reports the same advisory
+        # once per affected path, so the raw list is mostly duplicates:
+        # the 8 "high severity vulnerabilities" in packages/app are two
+        # advisories reached through eight paths.
+        jq --argjson keep "$KEEP" '[
+          .vulnerabilities[]?.via[]?
+          | select(type == "object")
+          | select(.severity as $s | $keep | index($s))
+          | { id: (.url | sub(".*/"; "")), package: .name,
+              severity: .severity, title: .title }
+        ] | unique_by(.id)' /tmp/audit.json > /tmp/found.json
+
+        if [ -f "$WAIVERS" ]; then
+          jq -e . "$WAIVERS" > /dev/null \
+            || { echo "::error::${WAIVERS} is not valid JSON"; exit 1; }
+          jq '.waivers' "$WAIVERS" > /tmp/waivers.json
+        else
+          echo "no waiver file at ${WAIVERS} — every finding will fail the job"
+          echo '[]' > /tmp/waivers.json
+        fi
+
+        TODAY=$(date -u +%F)
+        STATUS=0
+
+        # 1. Findings nobody has waived.
+        UNWAIVED=$(jq -r --slurpfile w /tmp/waivers.json '
+          [ .[] | select(.id as $id | ($w[0] | map(.id) | index($id)) | not) ]
+          | .[] | "\(.severity)  \(.id)  \(.package): \(.title)"' /tmp/found.json)
+        if [ -n "$UNWAIVED" ]; then
+          echo "::group::unwaived advisories at ${LEVEL}+"
+          echo "$UNWAIVED"
+          echo "::endgroup::"
+          while IFS= read -r line; do
+            echo "::error::unwaived advisory — ${line}"
+          done <<< "$UNWAIVED"
+          STATUS=1
+        fi
+
+        # 2. Waivers that have run out. An expiry is the only thing that
+        #    forces the exception to be re-argued rather than inherited.
+        EXPIRED=$(jq -r --arg today "$TODAY" '
+          .[] | select(.expires < $today)
+          | "\(.id) (\(.package)) expired \(.expires)"' /tmp/waivers.json)
+        if [ -n "$EXPIRED" ]; then
+          while IFS= read -r line; do
+            echo "::error::waiver expired, re-assess it — ${line}"
+          done <<< "$EXPIRED"
+          STATUS=1
+        fi
+
+        # 3. Waivers matching nothing. The advisory is gone; the waiver
+        #    is now an unwatched hole in the check.
+        STALE=$(jq -r --slurpfile f /tmp/found.json '
+          .[] | select(.id as $id | ($f[0] | map(.id) | index($id)) | not)
+          | "\(.id) (\(.package))"' /tmp/waivers.json)
+        if [ -n "$STALE" ]; then
+          while IFS= read -r line; do
+            echo "::error::waiver no longer matches any finding, delete it — ${line}"
+          done <<< "$STALE"
+          STATUS=1
+        fi
+
+        # Always say what was waived, on success too: a green audit that
+        # silently carries exceptions is the thing this action exists to
+        # prevent.
+        {
+          echo "### npm audit (${LEVEL}+) — \`${{ inputs.working-directory }}\`"
+          echo
+          COUNT=$(jq 'length' /tmp/found.json)
+          WCOUNT=$(jq 'length' /tmp/waivers.json)
+          echo "${COUNT} distinct advisories at ${LEVEL}+, ${WCOUNT} waived."
+          if [ "$WCOUNT" -gt 0 ]; then
+            echo
+            echo "| advisory | package | expires | reason |"
+            echo "|---|---|---|---|"
+            jq -r '.[] | "| [\(.id)](https://github.com/advisories/\(.id)) | \(.package) | \(.expires) | \(.reason) |"' \
+              /tmp/waivers.json
+          fi
+        } >> "$GITHUB_STEP_SUMMARY"
+
+        exit "$STATUS"

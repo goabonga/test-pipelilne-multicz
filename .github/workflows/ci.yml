@@ -2780,14 +2780,17 @@ jobs:
         with:
           node-version: "22"
       - name: npm audit (high+)
-        run: npm audit --audit-level=high
-        working-directory: packages/app
+        uses: ./.github/actions/npm-audit
+        with:
+          working-directory: packages/app
+          waivers: audit-waivers.json
+          audit-level: high
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
           title: app-audit
-          body: '`npm audit --audit-level=high` on `packages/app/package-lock.json`.'
+          body: '`npm audit --audit-level=high` on `packages/app/package-lock.json`, with the expiring waivers in `packages/app/audit-waivers.json`.'
 
   app-sbom:
     needs: [detect, headers]
