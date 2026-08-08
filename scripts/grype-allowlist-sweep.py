@@ -42,7 +42,12 @@ from pathlib import Path
 EXPIRES_RE = re.compile(r"^\s*#\s*expires:\s*(\d{4}-\d{2}-\d{2})\s*$", re.IGNORECASE)
 VULN_RE = re.compile(r"^(\s*)-\s*vulnerability:\s*(\S+)\s*$")
 GHCR_IMAGE_FMT = "ghcr.io/goabonga/shomer-{component}:{version}"
-ALLOWLIST_GLOB = "packages/*/.grype.yaml"
+# `**` rather than `*`: packages/bdd/migrations/.grype.yaml sits two levels
+# down and a single-star glob skipped it entirely. It is empty today, so
+# nothing was actually missed — but the first ignore added there would have
+# been a waiver that never expires and that no sweep ever reads, which is
+# the exact failure this script exists to prevent.
+ALLOWLIST_GLOB = "packages/**/.grype.yaml"
 
 
 def parse(path: Path) -> Iterator[dict]:
