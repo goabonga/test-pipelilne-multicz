@@ -1,3 +1,17 @@
+shomer-cli (0.3.0-1) unstable; urgency=medium
+
+  * feat(cli): Scaffold typer cli with health probe
+  * feat(cli): Add debian packaging
+  * feat(debian): Mark all packages as 3.0 (native) source format
+  * fix(cli): Add debian/copyright (DEP-5, MIT) — clears lintian E:no-copyright-file
+  * feat(cli): Ship AppStream metainfo + hicolor icon so AppCenter shows the package
+  * fix(cli): Bump typer from 0.26.4 to 0.26.7
+  * fix(cli): Clarify the operator workflow in the module docstring
+  * feat: Cut a synchronized release baseline across all components
+  * feat(cli): Publish package metadata and a PEP 561 marker
+
+ -- Chris <goabonga@pm.me>  Sat, 08 Aug 2026 14:14:58 +0000
+
 shomer-cli (0.2.0-1) unstable; urgency=medium
 
   * feat(cli): Scaffold typer cli with health probe

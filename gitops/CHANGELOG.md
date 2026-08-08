@@ -10,6 +10,13 @@ A library, released on every push to `main` that touches it — unlike
 `gitops-staging` / `gitops-production`, which are deployed state and move
 only when a promotion lands.
 
+## [0.3.0] - 2026-08-08
+
+### Features
+
+- **gitops**: flux layout with pinned staging and production (`799dccf`)
+- **gitops**: promotion workflows for staging and production (`745a6b6`)
+
 ## [0.2.0] - 2026-08-08
 
 ### Features
