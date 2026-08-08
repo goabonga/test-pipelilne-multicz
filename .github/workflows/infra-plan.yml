@@ -1,37 +1,58 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Chris <goabonga@pm.me>
 
-# Runs `terragrunt plan` for every environment that owes a deploy. If a plan
-# has changes, opens (or updates) a PR from `main` into `deploy/<env>`;
-# merging that PR — once approved per the branch's protection rules —
-# triggers infra-apply.yml.
+# Plans each environment that owes a deploy, and turns a non-empty plan into
+# a pull request whose merge applies it.
 #
-# NO CLOUD PROVIDER IS WIRED YET (see infrastructure/services/terragrunt.hcl).
-# Two consequences, both marked TODO below:
-#   - there is no login step, so nothing authenticates anywhere;
-#   - state is local to the job, so every plan starts from nothing.
-# Until both are fixed a plan is always empty and this workflow never opens
-# a PR. That is the intended resting state: the wiring is proven, and
-# nothing can be applied by accident.
+# THE CYCLE
+#
+#   ci.yml finishes on main
+#     -> this workflow runs, once, against the final state of main
+#     -> for each environment multicz reports as changed:
+#          deploy/<env> is fast-forwarded onto main
+#          configs-<env> is bumped on a branch, deploy-pr/<env>
+#          terragrunt plans that bumped tree
+#          drift  -> PR deploy-pr/<env> -> deploy/<env>, plan attached
+#          clean  -> any open PR is closed and the branch deleted
+#     -> merging the PR runs infra-apply.yml: apply, tag, release
+#
+# WHY workflow_run AND NOT A DISPATCH FROM release-bump
+#
+# It used to be dispatched from ci.yml's release-bump job, which is not the
+# last job in that workflow. On one run infra-plan was dispatched at
+# 12:29:54 and planned main at 4ba1726, while release-gitops-production and
+# promote-staging pushed three more commits to main by 12:31:26. The plan
+# described a main that no longer existed. `workflow_run` on completion is
+# the only trigger that guarantees ci.yml has finished writing to main.
+#
+# WHY THE PR CARRIES THE VERSION BUMP
+#
+# deploy/<env> is fast-forwarded onto main before planning, so main and the
+# branch are identical and a PR between them would have no commits — GitHub
+# refuses to open one. The PR therefore comes from deploy-pr/<env>, whose
+# single commit is the `configs-<env>` bump. That commit is exactly what the
+# merge authorises: deploy this, and release it as this version. It is also
+# what makes the plan honest — config.yaml's `version:` is stamped onto
+# every resource as the `config-version` tag, so the plan has to be computed
+# against the version that will actually be applied.
+#
+# infra-apply does NOT bump. The bump is already in the merge commit; that
+# job only applies it and moves the tag.
+#
+# NO CLOUD PROVIDER IS WIRED YET (see infrastructure/root.hcl). Until one is,
+# state is local to the job so every plan reports a first apply.
 
 name: infra-plan
 
-# Dispatch only — ci.yml's release-bump is the single entry point, and it
-# fires this when multicz reports a `configs-<env>` component with
-# undeployed changes.
-#
-# There is deliberately no `push` trigger. A `paths:` filter would be a
-# second, silently diverging answer to "did the infrastructure change" — it
-# already did diverge once, because scripts/terragrunt.sh and
-# scripts/new-terraform-module.sh belong to the `infra` component but sit
-# outside infrastructure/. And a push trigger without a filter is worse
-# still: `configs-*` only clear on apply, so they stay pending and every
-# single commit on main would drag a full plan matrix behind it, forever.
 on:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+    branches: [main]
   workflow_dispatch: {}
 
 concurrency:
-  group: infra-plan-${{ github.ref }}
+  group: infra-plan
   cancel-in-progress: false
 
 permissions:
@@ -40,12 +61,19 @@ permissions:
 jobs:
   discover-envs:
     name: discover-envs
+    # A failed or cancelled ci run has not finished writing to main, so
+    # planning against it would repeat the bug this trigger fixes.
+    # workflow_dispatch has no parent run, hence the second clause.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     outputs:
       envs: ${{ steps.list.outputs.envs }}
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: main
           fetch-depth: 0   # multicz compares against each component's last tag
       - uses: goabonga/multicz-action@95e90628797bc7dec0d2ad7d9abc6278f3465ed2  # v1
       - id: changed
@@ -54,18 +82,14 @@ jobs:
           multicz changed --output json | tee /tmp/changed.json
       - id: list
         # An environment is planned when its `configs-<env>` component has
-        # undeployed changes — which is exactly the question this workflow
-        # exists to answer, and one multicz already computes. It covers the
-        # indirect cases for free: a module or a services/** change cascades
-        # onto every configs-<env> through depends_on, so all of them get
-        # planned; a change to one environment's config.yaml marks only
-        # that one.
+        # undeployed changes — the question this workflow exists to answer,
+        # and one multicz already computes. It covers the indirect cases for
+        # free: a module or a services/** change cascades onto every
+        # configs-<env> through depends_on, so all of them get planned; a
+        # change to one environment's config.yaml marks only that one.
         #
-        # release-bump never bumps configs-*, so an environment stays
-        # pending here from the moment something lands until an apply
-        # clears it — that pending state IS the ledger of what is owed.
-        # It is also why this workflow must not run on every push: the
-        # signal never goes quiet on its own.
+        # release-bump never releases configs-*, so an environment stays
+        # pending from the moment something lands until an apply clears it.
         run: |
           set -euo pipefail
           envs=$(jq -c '[
@@ -89,9 +113,8 @@ jobs:
     name: plan (${{ matrix.env }})
     needs: [discover-envs]
     # GitHub errors out on an empty matrix vector ("does not contain any
-    # values") rather than skipping, so nothing-pending has to be caught
-    # here. ci.yml only dispatches when a configs-* is pending, but a
-    # manual dispatch has no such filter.
+    # values") rather than skipping it, so nothing-pending has to be caught
+    # here.
     if: needs.discover-envs.outputs.envs != '[]'
     strategy:
       fail-fast: false
@@ -105,14 +128,21 @@ jobs:
     # credentials behind a different name.
     environment: ${{ matrix.env }}-plan
     permissions:
-      contents: read
+      contents: write        # fast-forward deploy/<env>, push deploy-pr/<env>
       pull-requests: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      ENV_NAME: ${{ matrix.env }}
     steps:
       - uses: actions/checkout@v7
         with:
-          # multicz needs the full tag history to compute the next version
-          # for the preview step below.
+          ref: main
           fetch-depth: 0
+          # deploy/* is protected and the bot is not an admin, so GITHUB_TOKEN
+          # is refused with GH006 on the fast-forward. The owner's PAT is not
+          # (enforce_admins is false).
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+          persist-credentials: true
       - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e  # v4
         with:
           terraform_wrapper: false
@@ -123,34 +153,61 @@ jobs:
       # secret) with READ-ONLY permissions — plan must not be able to
       # mutate anything, including acquiring a state lock.
 
-      - name: Preview the version this deploy will release
-        id: version
-        env:
-          ENV_NAME: ${{ matrix.env }}
+      - name: Require the deploy branch to exist
         run: |
           set -euo pipefail
-          # Plan against the version the deploy WILL carry, not the one
-          # sitting on main right now.
+          if ! gh api "repos/${{ github.repository }}/branches/deploy/${ENV_NAME}" >/dev/null 2>&1; then
+            echo "::error::branch deploy/${ENV_NAME} does not exist — create it once from main, then protect it (required reviewers)"
+            exit 1
+          fi
+
+      - name: Fast-forward deploy/<env> onto main
+        run: |
+          set -euo pipefail
+          BRANCH="deploy/${ENV_NAME}"
+          BEHIND=$(git rev-list --count "origin/${BRANCH}..origin/main")
+          if [ "$BEHIND" = "0" ]; then
+            echo "${BRANCH} is already level with main"
+            exit 0
+          fi
+          # Safe even with a deploy PR open: that PR's head is
+          # deploy-pr/<env>, which carries a commit main does not have, so
+          # moving the base cannot make the head reachable from it and
+          # cannot merge the PR. That distinction is the whole reason the
+          # PR is no longer opened from main — when it was,
+          # sync-deploy-branches merged PR #174 by doing exactly this.
           #
-          # config.yaml's `version:` is not decoration — services/example
-          # stamps it onto every resource as the `config-version` tag, so it
-          # is a real plan input. Planning with the current value produces a
-          # plan for a version that will never exist: infra-apply now bumps
-          # BEFORE it applies, and without this the reviewer would approve a
-          # plan reading 0.0.0 and get 0.1.0 applied.
-          #
-          # Write-only bump — no commit, no tag, no CHANGELOG, no post_bump
-          # hooks. The working tree is thrown away with the runner; nothing
-          # is pushed from this job, which only has `contents: read`.
-          multicz bump --component "configs-${ENV_NAME}" \
-            --no-post-bump --no-changelog --output json > /tmp/preview.json
+          # No --force: a non-fast-forward means deploy/<env> carries
+          # commits main does not have, which is not something to paper over.
+          if git push origin "origin/main:refs/heads/${BRANCH}"; then
+            echo "${BRANCH}: fast-forwarded ${BEHIND} commits onto main"
+          else
+            echo "::error::${BRANCH} is not a fast-forward of main — reconcile by hand"
+            exit 1
+          fi
+
+      - name: Bump configs-<env> on the PR branch
+        id: bump
+        run: |
+          set -euo pipefail
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "deploy-pr/${ENV_NAME}"
+
+          # Writes config.yaml's `version:`, the component CHANGELOG and the
+          # zensical.toml mirror, then commits them. No --tag and no --push:
+          # the tag is the record of a completed apply, so it is created by
+          # infra-apply, and nothing leaves this runner unless the plan below
+          # actually finds work.
+          multicz bump --component "configs-${ENV_NAME}" --commit --output json \
+            > /tmp/bump.json
           VERSION=$(jq -s -r --arg c "configs-${ENV_NAME}" \
-            '[.[] | .bumps // {}] | add | .[$c].next_version // empty' /tmp/preview.json)
+            '[.[] | .bumps // {}] | add | .[$c].next_version // empty' /tmp/bump.json)
           if [ -z "$VERSION" ]; then
             # discover-envs only lists environments multicz reports as
-            # changed, so an empty preview means the two disagree — a bug,
-            # not a quiet no-op.
-            echo "::error::configs-${ENV_NAME} was reported changed but previews no bump"
+            # changed, so an empty bump means the two disagree — a bug, not
+            # a quiet no-op.
+            echo "::error::configs-${ENV_NAME} was reported changed but bumps to nothing"
             exit 1
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
@@ -158,8 +215,6 @@ jobs:
 
       - name: Terragrunt plan
         id: tg
-        env:
-          ENV: ${{ matrix.env }}
         run: |
           set +e
           # Output goes to a file, never straight to the log: job logs are
@@ -168,12 +223,12 @@ jobs:
           # below.
           terragrunt --non-interactive --working-dir infrastructure/services \
             run --all -- plan -detailed-exitcode -no-color -input=false \
-            > "plan-${ENV}.txt" 2>&1
+            > "plan-${ENV_NAME}.txt" 2>&1
           echo "exit_code=$?" >> "$GITHUB_OUTPUT"
 
       - name: Show plan summary
         run: |
-          grep -E '^Plan: ' "plan-${{ matrix.env }}.txt" \
+          grep -E '^Plan: ' "plan-${ENV_NAME}.txt" \
             || echo "(no summary line — see exit code / job status)"
 
       - name: Show plan error
@@ -197,63 +252,69 @@ jobs:
         # credentials.
         uses: actions/upload-artifact@v7
         with:
-          # Versioned name: the artifact says which release it is the plan
-          # for, so a reviewer coming back to an older run cannot mistake a
-          # stale plan for the current one.
-          name: plan-${{ matrix.env }}-v${{ steps.version.outputs.version }}
+          name: plan-${{ matrix.env }}-v${{ steps.bump.outputs.version }}
           path: plan-${{ matrix.env }}.txt
           retention-days: 7
 
       - name: Open or update the deploy PR
         if: steps.tg.outputs.exit_code == '2'
         env:
-          GH_TOKEN: ${{ github.token }}
-          ENV_NAME: ${{ matrix.env }}
-          VERSION: ${{ steps.version.outputs.version }}
+          VERSION: ${{ steps.bump.outputs.version }}
         run: |
           set -euo pipefail
+          HEAD_BRANCH="deploy-pr/${ENV_NAME}"
           BASE="deploy/${ENV_NAME}"
-          if ! gh api "repos/${{ github.repository }}/branches/${BASE}" >/dev/null 2>&1; then
-            echo "::error::branch ${BASE} does not exist — create it once from main, then protect it (required reviewers)"
-            exit 1
-          fi
+
+          # --force: this branch is machine-owned and single-purpose. Each
+          # cycle recomputes the bump from a new main, so the previous
+          # commit is not history worth keeping — it is a superseded draft.
+          git push --force origin "HEAD:refs/heads/${HEAD_BRANCH}"
 
           SUMMARY=$(grep -E '^Plan: ' "plan-${ENV_NAME}.txt" || echo "(no per-unit summary line found)")
           BODY_FILE=$(mktemp)
           {
-            echo "Terragrunt detected pending changes for **${ENV_NAME}**."
+            echo "Terragrunt found pending changes for **${ENV_NAME}**."
             echo
-            echo "Merging this PR (once approved) applies the plan below and releases"
-            echo "\`configs-${ENV_NAME}\` **v${VERSION}**. The plan was produced with that"
-            echo "version already in place, so what you approve is what gets applied."
+            echo "Merging this PR applies them and releases \`configs-${ENV_NAME}\` **v${VERSION}**."
+            echo "The bump in the diff is the whole authorisation: \`version:\` is stamped"
+            echo "onto every resource as the \`config-version\` tag, so the plan below was"
+            echo "computed with v${VERSION} already in place. What you approve is what runs."
             echo
             echo "**Summary**"
             echo '```'
             echo "$SUMMARY"
             echo '```'
             echo
-            echo "The full plan is attached to run [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) as the \`plan-${ENV_NAME}-v${VERSION}\` artifact."
+            echo "Full plan: artifact \`plan-${ENV_NAME}-v${VERSION}\` on run [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})."
           } > "$BODY_FILE"
 
-          PR_NUMBER=$(gh pr list --base "$BASE" --head main --state open --json number --jq '.[0].number // empty')
+          PR_NUMBER=$(gh pr list --base "$BASE" --head "$HEAD_BRANCH" --state open \
+            --json number --jq '.[0].number // empty')
           if [ -z "$PR_NUMBER" ]; then
-            gh pr create --base "$BASE" --head main \
-              --title "deploy(${ENV_NAME}): apply plan for configs-${ENV_NAME} v${VERSION}" \
+            gh pr create --base "$BASE" --head "$HEAD_BRANCH" \
+              --title "deploy(${ENV_NAME}): apply and release configs-${ENV_NAME} v${VERSION}" \
               --body-file "$BODY_FILE"
           else
+            # The force-push above already updated the diff; this records
+            # the new plan against it.
+            gh pr edit "$PR_NUMBER" \
+              --title "deploy(${ENV_NAME}): apply and release configs-${ENV_NAME} v${VERSION}" \
+              --body-file "$BODY_FILE"
             gh pr comment "$PR_NUMBER" --body-file "$BODY_FILE"
           fi
 
-      - name: Close stale deploy PR (plan is clean)
+      - name: Close the deploy PR (plan is clean)
         if: steps.tg.outputs.exit_code == '0'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          ENV_NAME: ${{ matrix.env }}
         run: |
           set -euo pipefail
-          BASE="deploy/${ENV_NAME}"
-          PR_NUMBER=$(gh pr list --base "$BASE" --head main --state open --json number --jq '.[0].number // empty')
+          HEAD_BRANCH="deploy-pr/${ENV_NAME}"
+          PR_NUMBER=$(gh pr list --base "deploy/${ENV_NAME}" --head "$HEAD_BRANCH" --state open \
+            --json number --jq '.[0].number // empty')
           if [ -n "$PR_NUMBER" ]; then
-            gh pr comment "$PR_NUMBER" --body "Plan is now clean (no pending changes) — closing."
-            gh pr close "$PR_NUMBER"
+            gh pr comment "$PR_NUMBER" --body "Plan is now clean — nothing to apply. Closing."
+            gh pr close "$PR_NUMBER" --delete-branch
+          else
+            # No PR, but the branch may survive from a previous cycle.
+            git push origin --delete "$HEAD_BRANCH" >/dev/null 2>&1 || true
           fi
+          echo "no drift for ${ENV_NAME} — nothing bumped, nothing pushed"
