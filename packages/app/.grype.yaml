@@ -1,0 +1,48 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Per-component grype allowlist (auto-discovered when grype runs with this
+# directory as CWD — see the `working-directory: packages/app` on the
+# app-grype step in .github/workflows/ci.yml).
+#
+# Every entry MUST be preceded by a `# expires: YYYY-MM-DD` marker comment
+# AND pin `package.name` + `package.version`, so:
+#
+#   1. The marker is the single source of truth read by the weekly
+#      grype-allowlist-sweep workflow (scripts/grype-allowlist-sweep.py).
+#      Don't bury the date in prose — the script greps `# expires:`.
+#   2. The version pin auto-resolves the ignore the moment a patched
+#      image-size ships: version mismatch -> no match -> the CVE surfaces
+#      again under --fail-on high.
+#
+# NOTE ON THE SWEEP: it re-verifies expired entries by rescanning
+# `ghcr.io/goabonga/shomer-<component>:<version>`. `app` publishes no
+# image — it is scanned through its SBOM — so that pull fails and the
+# sweep files these under `to_review` rather than auto-removing them. It
+# will still tell you they expired, which is the part that matters.
+#
+# The same two advisories are waived for `npm audit` in
+# ./audit-waivers.json, with the same expiry. Both must be dropped
+# together once upstream publishes a fix.
+
+ignore:
+  # image-size: ICNS parser allows denial of service through an infinite
+  # loop. No patched version exists — the advisory covers <=2.0.2 and
+  # 2.0.2 is the latest published release. Reached only through metro,
+  # the React Native bundler, which runs at build time over first-party
+  # assets and ships nothing into the app binary; the impact is a build
+  # that hangs on a malicious ICNS file.
+  # expires: 2026-11-06
+  - vulnerability: GHSA-w3rx-r6r6-pgpr
+    package:
+      name: image-size
+      version: 1.2.1
+
+  # image-size: JXL and HEIF parsers allow denial of service through
+  # infinite loops. Same root cause, same package and same reasoning as
+  # GHSA-w3rx-r6r6-pgpr above.
+  # expires: 2026-11-06
+  - vulnerability: GHSA-5p2g-fcmc-qvqq
+    package:
+      name: image-size
+      version: 1.2.1

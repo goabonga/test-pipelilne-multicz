@@ -2834,6 +2834,11 @@ jobs:
       - name: Install grype
         run: curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
       - name: Scan SBOM (--fail-on high)
+        # working-directory is what makes grype pick up
+        # packages/app/.grype.yaml — it auto-discovers the config from CWD,
+        # not from the scan target. The SBOM path stays absolute. Same
+        # convention as the api / job / ssr / migrations grype steps.
+        working-directory: packages/app
         run: grype sbom:/tmp/app.sbom.cdx.json --fail-on high
       - name: Summary
         if: always()
