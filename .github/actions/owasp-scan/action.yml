@@ -99,13 +99,68 @@ runs:
         cat /tmp/pf-${{ inputs.component }}.log >&2
         exit 1
 
+    # continue-on-error, and the assertion that follows, exist because this
+    # step decided the job for the wrong reasons in both directions.
+    #
+    # It could not fail on a finding: `fail_action` defaults to false and was
+    # never set, so ZAP reported its alerts and the step went green whatever
+    # they said. The scan asserted nothing.
+    #
+    # It could fail on nothing at all: the action uploads its three reports
+    # as an artifact, and that upload dying — `Failed to CreateArtifact:
+    # ECONNRESET` — reddened a run whose scan had just printed FAIL-NEW: 0
+    # and PASS: 68.
+    #
+    # Setting `fail_action: true` would fix the first half and keep the
+    # second, since a network blip and a real alert would still share one
+    # exit code. So the scan is allowed to end however it likes, and the
+    # verdict is read from the report it wrote.
     - name: OWASP ZAP baseline scan — ${{ inputs.component }}
+      id: zap
+      continue-on-error: true
       uses: zaproxy/action-baseline@6c5a007541891231cd9e0ddec25d4f25c59c9874  # v0.15.0
       with:
         target: http://localhost:${{ inputs.port }}
         cmd_options: "-I -a"
         allow_issue_writing: false
         artifact_name: zap-${{ inputs.component }}-baseline
+
+    - name: Fail on new ZAP alerts — ${{ inputs.component }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        REPORT=report_json.json
+        if [ ! -f "$REPORT" ]; then
+          # No report means the scan itself did not run — a port-forward that
+          # died, a container that never started. That is a failure, and it
+          # must not be mistaken for a clean result.
+          echo "::error::ZAP produced no ${REPORT} for ${{ inputs.component }} — the scan did not complete"
+          exit 1
+        fi
+
+        # `riskcode` 3 = High, 2 = Medium. The baseline scan reports
+        # everything it sees; the FAIL/WARN split in its log comes from the
+        # rule configuration, not from severity. Keying on riskcode here
+        # keeps the threshold in this file, where it can be read, rather than
+        # in ZAP's defaults.
+        HIGH=$(jq '[.site[]?.alerts[]? | select((.riskcode|tonumber) >= 3)] | length' "$REPORT")
+        MED=$(jq '[.site[]?.alerts[]? | select((.riskcode|tonumber) == 2)] | length' "$REPORT")
+        echo "${{ inputs.component }}: ${HIGH} high, ${MED} medium"
+
+        jq -r '.site[]?.alerts[]? | select((.riskcode|tonumber) >= 2)
+               | "  [\(.riskdesc)] \(.name) x\(.count)"' "$REPORT"
+
+        if [ "$HIGH" -gt 0 ]; then
+          echo "::error::${HIGH} high-risk ZAP alert(s) on ${{ inputs.component }}"
+          exit 1
+        fi
+
+        # The scan step's own outcome is still worth surfacing — it is how a
+        # broken upload or a crashed container shows up — but it no longer
+        # decides the job on its own.
+        if [ "${{ steps.zap.outcome }}" != "success" ]; then
+          echo "::warning::the ZAP action step ended as '${{ steps.zap.outcome }}' (usually the artifact upload); the scan itself produced a report and it is clean"
+        fi
 
     - name: Cluster state (always)
       if: always()
