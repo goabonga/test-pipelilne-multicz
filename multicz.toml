@@ -40,15 +40,24 @@ root_changelog    = "CHANGELOG.md"
 # It skips EVERY workflow. infra-plan is unaffected: it triggers on
 # `workflow_run` when ci completes, not on the push itself.
 #
-# THE TRAILER NEEDS **TWO** BLANK LINES BEFORE IT.
+# WHY `[skip ci]` AND NOT THE `skip-checks: true` TRAILER
 #
-# GitHub's rule is "end the commit message with two empty lines followed by
-# skip-checks: true". With a single blank line the trailer is not recognised
-# and every release commit starts a full ci run — which is what happened:
-# one push produced four release commits, four ci runs, and five infra-plan
-# runs chained off their completions. `\n\n\n` is the fix, and it is the
-# entire difference between one run and five.
-release_commit_message = "chore(release): bump {summary}\n\n{body}\n\n\nskip-checks: true"
+# The trailer was tried first, to keep the marker out of the subject line.
+# It cannot work here. GitHub requires two empty lines before it, and
+# `git commit` with its default cleanup collapses consecutive empty lines —
+# measured: `\n\n\n` goes in, `\n\n` is stored. Only
+# `--cleanup=verbatim` preserves it, and multicz does not use it. The
+# trailer was therefore silently ignored on every release commit.
+#
+# The cost was not one extra run. One push produces four release commits —
+# release-bump, promote-staging, and their cascades — each starting a ci
+# run, and each ci completion fires infra-plan through `workflow_run`. Five
+# infra-plan runs, three of them planning a main the next push had already
+# replaced.
+#
+# `[skip ci]` is matched anywhere in the message, so it survives the
+# cleanup and still stays off the subject line.
+release_commit_message = "chore(release): bump {summary}\n\n{body}\n\n[skip ci]"
 
 [components.api]
 paths      = [

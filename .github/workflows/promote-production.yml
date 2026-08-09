@@ -21,7 +21,20 @@
 
 name: promote-production
 
+# Runs after ci, like infra-plan, and for the same reason: this job reads
+# the staging pins off main, so it must not read a main that is still being
+# written. release-bump is not the last job in ci — promote-staging pushes
+# after it, and promote-staging is exactly what moves the staging pins this
+# job promotes.
+#
+# It proposes on every completion and opens nothing when the pins already
+# match, so a quiet cycle costs one short job. Dispatch remains, for a
+# promotion decided rather than detected.
 on:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
     inputs:
       reason:
@@ -38,6 +51,12 @@ permissions:
 
 jobs:
   promote:
+    # A failed or cancelled ci has not finished writing to main, so the pins
+    # it would read are not the ones that will be there. workflow_dispatch
+    # has no parent run, hence the second clause.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     # No `environment:` here. This job proposes; gitops-apply.yml gates.
     # Gating both would ask for the same approval twice, and the useful
