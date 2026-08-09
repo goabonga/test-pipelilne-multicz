@@ -135,24 +135,26 @@ jobs:
             exit 1
           fi
 
-      # No multicz here any more. This job reads the version out of the
-      # merged tree and tags it; it never computes one. Installing the tool
-      # would only invite someone to re-derive a number that has already
-      # been reviewed.
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
+        with:
+          python-version: "3.12"
+      - uses: goabonga/multicz-action@95e90628797bc7dec0d2ad7d9abc6278f3465ed2  # v1
 
       - name: Read the version this deploy releases
         id: version
         run: |
           set -euo pipefail
-          # The version comes from the merged tree, not from a fresh
-          # computation. infra-plan wrote it into config.yaml on the PR
-          # branch and terragrunt planned against it, so re-deriving it here
-          # could only produce a different answer — and a different answer
-          # would mean applying something other than what was approved.
-          VERSION=$(grep -oP '^version:\s*\K\S+' \
-            "infrastructure/configs/${ENV}/config.yaml")
+          # `multicz get` READS the component's version from its bump_file;
+          # it computes nothing. That distinction is the whole design here:
+          # infra-plan already ran `multicz bump`, wrote this number into
+          # config.yaml and had terragrunt plan against it, and a reviewer
+          # approved that exact diff. Running `multicz bump` again would see
+          # an already-bumped config.yaml with no tag yet and propose
+          # 0.1.0 -> 0.2.0 — releasing a version nobody planned and applying
+          # something other than what was approved.
+          VERSION=$(multicz get "configs-${ENV}")
           if [ -z "$VERSION" ]; then
-            echo "::error::no version: key in infrastructure/configs/${ENV}/config.yaml"
+            echo "::error::multicz could not read the version of configs-${ENV}"
             exit 1
           fi
 
@@ -248,6 +250,7 @@ jobs:
           git tag -a $SIGN_FLAG -m "configs-${ENV} v${VERSION} (applied)" "$TAG"
 
       - name: Push the tag and fast-forward main
+        id: push
         env:
           TAG: ${{ steps.version.outputs.tag }}
           ENV: ${{ needs.resolve-env.outputs.env }}
@@ -263,4 +266,23 @@ jobs:
           # in which case failing loudly is right, and the next infra-plan
           # rebuilds the proposal from the new main anyway.
           git push origin "HEAD:main" "refs/tags/${TAG}"
-          echo "main fast-forwarded onto deploy/${ENV} — ${TAG} released"
+          echo "main fast-forwarded onto deploy/${ENV} — ${TAG} pushed"
+
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          # Same shape as every release-<component> job in ci.yml: multicz
+          # renders the notes for the tag, gh publishes them. `--tag` reads
+          # a tag that already exists, which is why this runs after the push
+          # and not before.
+          #
+          # The notes carry the upstream section multicz's upstream-notes
+          # plugin builds from this component's depends_on — the infra and
+          # infra-modules-* commits this deploy actually shipped. That is the
+          # part a reader of the release wants and cannot reconstruct from
+          # a version number.
+          multicz release-notes --tag "$TAG" \
+            | gh release create "$TAG" --title "$TAG" --notes-file -
