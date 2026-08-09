@@ -58,8 +58,20 @@ jobs:
     name: apply (${{ needs.resolve-env.outputs.env }})
     needs: [resolve-env]
     runs-on: ubuntu-latest
-    # The gate. Settings -> Environments -> required reviewers.
-    environment: ${{ needs.resolve-env.outputs.env }}
+    # NO `environment:` GATE.
+    #
+    # The authorisation is the pull request. deploy/* and gitops/* now
+    # require one approving review from a code owner, so merging IS the
+    # decision — taken where the diff and the plan artifact are, rather
+    # than on a run page afterwards.
+    #
+    # Asking twice was not twice the safety: the gate branches required
+    # zero approvals, so the merge authorised nothing and the environment
+    # carried the whole weight. Moving the requirement onto the PR puts it
+    # in front of the evidence.
+    #
+    # What this gives up: the pause immediately before the apply. Merging
+    # now means running. That is the trade, and it is deliberate.
     concurrency:
       group: gitops-apply-${{ needs.resolve-env.outputs.env }}
       cancel-in-progress: false

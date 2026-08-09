@@ -1,0 +1,34 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Code owners for review requirements.
+#
+# WHY THIS FILE EXISTS
+#
+# `require_code_owner_reviews` was already enabled on main's ruleset and on
+# the deploy gate branches, with no CODEOWNERS anywhere in the repository.
+# GitHub requires a code owner review only for paths a CODEOWNERS rule
+# matches — with no file, nothing matched, and the setting asked for
+# nothing. It read as a second layer of protection and was not one.
+#
+# The catch-all is deliberate: every path has an owner, so no file can be
+# merged without one. The specific rules below add nothing to the
+# permission model today (same owner) — they are there so that adding a
+# second maintainer later is an edit to those lines rather than a decision
+# nobody remembers having to make.
+
+*                       @goabonga
+
+# The deploy surface. A change here decides what runs in an environment,
+# not just what the code does.
+/infrastructure/        @goabonga
+/gitops/                @goabonga
+
+# The pipeline itself: anything able to publish, sign, tag or deploy.
+/.github/               @goabonga
+/multicz.toml           @goabonga
+/scripts/               @goabonga
+
+# Packaging that lands on a host as root.
+/packages/*/debian/     @goabonga
+/packages/bdd/*/debian/ @goabonga
