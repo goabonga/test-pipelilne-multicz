@@ -7,6 +7,16 @@ Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
 ### Releases
 
+- **configs-staging** minor — 0.0.0 → 0.1.0
+
+### Features
+
+- **configs-staging**: terragrunt landing zone with per-environment deploy gating (`9d50feb`)
+
+## 2026-08-09
+
+### Releases
+
 - **gitops-staging** minor — 0.0.0 → 0.1.0
 
 ### Features
