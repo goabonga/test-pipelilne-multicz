@@ -7,6 +7,12 @@ Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
 ### Releases
 
+- **docs** patch — 1.0.0 → 1.0.1  _(cascade from configs-production)_
+
+## 2026-08-09
+
+### Releases
+
 - **configs-staging** minor — 0.0.0 → 0.1.0
 
 ### Features
