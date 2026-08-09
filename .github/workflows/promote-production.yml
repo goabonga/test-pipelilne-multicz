@@ -58,9 +58,10 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
-    # No `environment:` here. This job proposes; gitops-apply.yml gates.
-    # Gating both would ask for the same approval twice, and the useful
-    # place to ask is the one that changes what production runs.
+    # No `environment:` here — and none on gitops-apply either, since the
+    # approval moved onto the pull request. This job only proposes; the
+    # decision is the code-owner review on the PR it opens, taken in front
+    # of the diff and the pin table rather than on a run page afterwards.
     permissions:
       contents: write        # push the promotion branch
       pull-requests: write   # open / update the PR
