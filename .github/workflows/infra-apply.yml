@@ -2,20 +2,31 @@
 # Copyright (c) 2026 Chris <goabonga@pm.me>
 
 # Runs `terragrunt apply` for an environment when its deploy PR — opened by
-# infra-plan.yml from `deploy/<env>` into `main` — is MERGED.
+# infra-plan.yml from `deploy/<env>-<version>` into `deploy/<env>` — is
+# MERGED, then fast-forwards main onto the result.
 #
-# THE PR GOES INTO main, NOT INTO deploy/<env>
+# WHY THE PR STOPS AT deploy/<env>
 #
-# The bump has to reach main, and main's ruleset allows exactly one way in:
-# a reviewed pull request, rebase-merged. This workflow used to apply first
-# and then `git push origin HEAD:main`, which that ruleset rejects with
-# GH013 — there was no version of that push that could have worked. Now the
-# release commit arrives through the merge, and this job pushes no branch at
-# all. Only a tag, which no branch rule governs.
+# `on.pull_request` can only filter the base branch, never the head. A PR
+# into main therefore matches every workflow watching for PRs into main —
+# ci and dependabot-rewrite-signal both opened empty runs on it, and no
+# job-level `if` can stop a run record from being created. Keeping the PR
+# inside deploy/* means those triggers simply do not match.
+#
+# main is reached from here instead, after the apply has succeeded, so main
+# never records a version that was not deployed.
+#
+# THE PUSH TO main
+#
+# Authenticated with RELEASE_PAT. Its owner is a bypass actor on main's
+# ruleset (`bypass_mode: always`), so the push is not subject to the
+# pull_request / required_signatures / non_fast_forward rules. An earlier
+# attempt at this push failed with GH013 — not because the ruleset forbids
+# it, but because the job checked out with GITHUB_TOKEN. The review has not
+# been skipped, it happened on the deploy PR.
 #
 # `closed` fires on both merge and close-without-merge, hence the
-# `merged == true` guard: abandoning a deploy PR must not deploy. The head
-# check is what separates a deploy PR from every other PR into main.
+# `merged == true` guard: abandoning a deploy PR must not deploy.
 #
 # WHAT THIS JOB DOES NOT DO
 #
@@ -40,10 +51,10 @@ name: infra-apply
 
 on:
   pull_request:
-    # `branches:` filters on the PR's BASE, which is now main. The head
-    # branch is what identifies a deploy PR, and that is checked below —
-    # `on:` has no head filter.
-    branches: [main]
+    # `branches:` filters on the PR's BASE, so this is "PRs targeting a
+    # deploy branch". `*` does not match `/`, so this catches
+    # deploy/staging but not a nested name.
+    branches: ["deploy/*"]
     types: [closed]
 
 concurrency:
@@ -56,20 +67,20 @@ permissions:
 jobs:
   resolve-env:
     name: resolve-env
-    # Merged, not merely closed — and a deploy PR, not any other PR into
-    # main. Every ordinary PR reaches this workflow now that the base is
-    # main, so the head-branch check is load-bearing, not decoration.
-    if: >-
-      github.event.pull_request.merged == true &&
-      startsWith(github.event.pull_request.head.ref, 'deploy/')
+    # Merged, not merely closed.
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     outputs:
       env: ${{ steps.name.outputs.env }}
     steps:
       - id: name
         env:
-          HEAD: ${{ github.event.pull_request.head.ref }}
-        run: echo "env=${HEAD#deploy/}" >> "$GITHUB_OUTPUT"
+          BASE: ${{ github.event.pull_request.base.ref }}
+        # The BASE names the environment: deploy/staging -> staging. The
+        # head carries the version too (deploy/staging-0.1.0) and is
+        # deliberately not used for this — the version is read from the
+        # merged tree, which is the only copy that was planned against.
+        run: echo "env=${BASE#deploy/}" >> "$GITHUB_OUTPUT"
 
   apply:
     name: apply (${{ needs.resolve-env.outputs.env }})
@@ -89,11 +100,17 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          # The merge result, not the branch tip: what was approved is what
-          # gets applied. main's ruleset rebase-merges, so this SHA is the
-          # replayed commit on main — which is also where the tag belongs.
+          # The merge commit itself, not the branch tip: what was approved
+          # is what gets applied, even if the branch moves meanwhile.
           ref: ${{ github.event.pull_request.merge_commit_sha }}
           fetch-depth: 0
+          # RELEASE_PAT, not GITHUB_TOKEN. The owner is a bypass actor on
+          # main's ruleset; the bot is not, and the push below is refused
+          # with GH013 under GITHUB_TOKEN. Falling back to it keeps the
+          # apply and the tag working on a fork or without the secret — the
+          # push to main is the only step that then fails, and it fails
+          # loudly.
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
           persist-credentials: true
       - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e  # v4
         with:
@@ -230,12 +247,20 @@ jobs:
           # version nobody planned.
           git tag -a $SIGN_FLAG -m "configs-${ENV} v${VERSION} (applied)" "$TAG"
 
-      - name: Push the tag
+      - name: Push the tag and fast-forward main
         env:
           TAG: ${{ steps.version.outputs.tag }}
+          ENV: ${{ needs.resolve-env.outputs.env }}
         run: |
           set -euo pipefail
-          # A tag, and nothing else. No branch is written by this workflow —
-          # main's ruleset would refuse the push, and it has nothing to say
-          # that the merge has not already said.
-          git push origin "refs/tags/${TAG}"
+          # Both in one command, so the tag can never land without the
+          # commit that explains it. That split is not hypothetical: tags
+          # once went through while the branch push was declined, leaving
+          # both environments tagged v0.1.0 with config.yaml reading 0.0.0.
+          #
+          # Not forced. deploy/<env> was reset to main at the start of this
+          # cycle, so this is a fast-forward unless main moved meanwhile —
+          # in which case failing loudly is right, and the next infra-plan
+          # rebuilds the proposal from the new main anyway.
+          git push origin "HEAD:main" "refs/tags/${TAG}"
+          echo "main fast-forwarded onto deploy/${ENV} — ${TAG} released"
