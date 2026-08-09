@@ -61,3 +61,12 @@ packages/ssr/src/shomer_ssr/static/*.map
 .terraform/
 .terraform.lock.hcl
 generated_*.tf
+
+# Bootstrap state. These roots run with LOCAL state by design — they create
+# the backend the rest of the tree uses. The file is not a secret to be
+# hidden so much as a thing that must never be committed: two people with
+# two copies is how a bucket ends up managed twice.
+infrastructure/bootstrap/*/terraform.tfstate
+infrastructure/bootstrap/*/terraform.tfstate.backup
+infrastructure/bootstrap/*/.terraform/
+infrastructure/bootstrap/*/.terraform.lock.hcl

@@ -53,11 +53,41 @@ locals {
 # empty cache every job, so every plan looks like a first apply. Wire this
 # before the first unit declares a resource that costs money.
 #
+# The bucket is created once, by hand, by bootstrap/<cloud> — Terraform
+# cannot keep its state in a bucket Terraform has not created yet. Run
+# `make infra-bootstrap CLOUD=aws|gcp ...`, paste its `remote_state_yaml`
+# output under `remote_state:` in configs/<env>/config.yaml, then uncomment
+# the block for your cloud below.
+#
+# Do NOT uncomment before the bucket exists and CI has credentials: this
+# takes effect at `init`, so every plan — including the ones infra-plan
+# runs on a PR — would fail to reach the backend.
+#
+# AWS. `use_lockfile` is native S3 locking (Terraform >= 1.10); below that,
+# swap it for `dynamodb_table` and add the table to bootstrap/aws.
+#
 # remote_state {
-#   backend = "<name>"
+#   backend = "s3"
 #   config = {
-#     # ... driven by local.config.remote_state.* in configs/<env>/config.yaml
-#     key = "${format("%s/%s", local.environment, path_relative_to_include())}/terraform.tfstate"
+#     bucket       = local.config.remote_state.bucket
+#     region       = local.config.remote_state.region
+#     encrypt      = true
+#     use_lockfile = true
+#     key          = "${format("%s/%s", local.environment, path_relative_to_include())}/terraform.tfstate"
+#   }
+#   generate = {
+#     path      = "generated_backend.tf"
+#     if_exists = "overwrite_terragrunt"
+#   }
+# }
+#
+# GCP. The gcs backend locks natively; there is nothing to add.
+#
+# remote_state {
+#   backend = "gcs"
+#   config = {
+#     bucket = local.config.remote_state.bucket
+#     prefix = format("%s/%s", local.environment, path_relative_to_include())
 #   }
 #   generate = {
 #     path      = "generated_backend.tf"

@@ -20,8 +20,19 @@ tags:
   environment: production
   managed-by: terragrunt
 
-# provider: {}       # TODO — fill in when a provider is wired, see
-# remote_state: {}   #        services/terragrunt.hcl
+# provider: {}     # TODO — fill in when a provider is wired.
+#
+# remote_state — pasted from the bootstrap's `remote_state_yaml` output
+# (`make infra-bootstrap CLOUD=aws|gcp ...`), then uncomment the matching
+# block in ../../root.hcl. The bucket must exist first: Terraform cannot
+# keep its state in a bucket Terraform has not created yet.
+#
+# remote_state:
+#   backend: s3
+#   bucket: shomer-tfstate
+#   region: eu-west-3
+#   encrypt: true
+#   use_lockfile: true
 
 services:
   example:

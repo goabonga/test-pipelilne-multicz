@@ -4,7 +4,7 @@
         kind-forward infra-fmt infra-fmt-check infra-test infra-plan \
         infra-new-module infra-docs infra-docs-check infra-checkov \
         infra-fmt-check-root infra-lint \
-        infra-clean clean
+        infra-bootstrap infra-clean clean
 
 VENV     := .venv
 UV       := uv
@@ -58,6 +58,7 @@ help:
 	@echo "  make infra-test        terraform test on the modules (M=<name> for one)"
 	@echo "  make infra-checkov     checkov on the modules (M=<name> for one)"
 	@echo "  make infra-plan        terragrunt plan for one env (ENV=staging by default)"
+	@echo "  make infra-bootstrap CLOUD=aws|gcp  create the state backend bucket (once, by hand)"
 	@echo "  make infra-docs        regenerate every module README with terraform-docs"
 	@echo "  make infra-docs-check  verify those READMEs are up to date (what CI runs)"
 	@echo "  make infra-new-module NAME=<name>  scaffold + register a Terraform module"
@@ -164,21 +165,28 @@ ENV ?= staging
 # M=<name> narrows every infra target to one module. Without it they sweep
 # the whole tree, which is the useful local default; CI passes M so each
 # component gets its own job, the same way api-* / job-* / chart-* do.
+# One place resolves M to a directory, so `M=bootstrap/aws` means the same
+# thing to every target. These two used to hardcode `modules/$(M)` while
+# infra-test and infra-docs-check went through MODULES, which is why the
+# bootstrap roots formatted, documented and tested fine but failed
+# fmt-check with "no such directory".
+MODULE_DIR = $(INFRA_DIR)/$(if $(findstring bootstrap/,$(M)),,modules/)$(M)
+
 infra-fmt:
 	@set -eu; \
 	if [ -n "$(M)" ]; then \
-		terraform fmt -recursive $(INFRA_DIR)/modules/$(M); \
+		terraform fmt -recursive $(MODULE_DIR); \
 	else \
-		terraform fmt -recursive $(INFRA_DIR)/modules; \
+		terraform fmt -recursive $(INFRA_DIR)/modules $(INFRA_DIR)/bootstrap; \
 		terragrunt --working-dir $(INFRA_DIR) hcl format; \
 	fi
 
 infra-fmt-check:
 	@set -eu; \
 	if [ -n "$(M)" ]; then \
-		terraform fmt -check -recursive $(INFRA_DIR)/modules/$(M); \
+		terraform fmt -check -recursive $(MODULE_DIR); \
 	else \
-		terraform fmt -check -recursive $(INFRA_DIR)/modules; \
+		terraform fmt -check -recursive $(INFRA_DIR)/modules $(INFRA_DIR)/bootstrap; \
 		terragrunt --working-dir $(INFRA_DIR) hcl format --check; \
 	fi
 
@@ -223,8 +231,11 @@ infra-lint:
 # _template is excluded from the default sweep: it is a scaffold, not a
 # module — nothing consumes it and it declares no resources, so testing and
 # scanning it is noise. `M=_template` still targets it explicitly.
-MODULES = $(if $(M),$(INFRA_DIR)/modules/$(M)/,\
-            $(filter-out %/_template/,$(wildcard $(INFRA_DIR)/modules/*/)))
+# `M=bootstrap/aws` works because the path is joined, not the basename —
+# the bootstrap roots live one level deeper than the modules.
+MODULES = $(if $(M),$(MODULE_DIR)/,\
+            $(filter-out %/_template/,$(wildcard $(INFRA_DIR)/modules/*/)) \
+            $(wildcard $(INFRA_DIR)/bootstrap/*/))
 
 # `mock_provider` intercepts every provider call, so this needs no
 # credentials and no network — which is why the CI job has no cloud login.
@@ -247,6 +258,29 @@ infra-checkov:
 		echo "==> checkov $${dir}"; \
 		$(CHECKOV) -d "$${dir}" --framework terraform --quiet --compact; \
 	done
+
+# ─────────────────────────── bootstrap ───────────────────────────
+# Creates the bucket that holds every other unit's state. Applied by hand,
+# with LOCAL state, because the thing it creates IS the backend — see
+# infrastructure/bootstrap/README.md.
+#
+# Not part of the terragrunt run graph and not run by CI: it needs
+# permissions the deploy identity does not have, and it runs once.
+infra-bootstrap:
+	@set -eu; \
+	test -n "$(CLOUD)"  || { echo "usage: make infra-bootstrap CLOUD=aws|gcp BUCKET=<name> ..."; exit 1; }; \
+	test -n "$(BUCKET)" || { echo "BUCKET is required"; exit 1; }; \
+	case "$(CLOUD)" in \
+	  aws) test -n "$(REGION)"  || { echo "REGION is required for aws"; exit 1; }; \
+	       ARGS="-var bucket=$(BUCKET) -var region=$(REGION)" ;; \
+	  gcp) test -n "$(PROJECT)" || { echo "PROJECT is required for gcp"; exit 1; }; \
+	       test -n "$(LOCATION)" || { echo "LOCATION is required for gcp"; exit 1; }; \
+	       ARGS="-var bucket=$(BUCKET) -var project=$(PROJECT) -var location=$(LOCATION)" ;; \
+	  *) echo "CLOUD must be aws or gcp"; exit 1 ;; \
+	esac; \
+	cd $(INFRA_DIR)/bootstrap/$(CLOUD); \
+	terraform init -input=false; \
+	terraform apply -input=false $$ARGS
 
 # ENV picks the configs/<env>/config.yaml the units read: make infra-plan ENV=production
 infra-plan:
