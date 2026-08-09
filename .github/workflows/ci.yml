@@ -3060,7 +3060,39 @@ jobs:
             | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+      # The emulator action runs `sdkmanager --install` before it can boot
+      # anything, and that download is the least reliable thing in this
+      # workflow. A run failed with:
+      #
+      #   Warning: Failed to download any source lists!
+      #   Warning: IO exception while downloading manifest
+      #   Warning: Failed to find package 'build-tools;37.0.0'
+      #   error: could not connect to TCP port 5554: Connection refused
+      #
+      # Nothing was tested — the SDK never resolved, so the emulator never
+      # started and adb had nothing to talk to. That is worth retrying,
+      # unlike a failure where the app actually ran.
+      #
+      # Two explicit attempts rather than a retry action: no new
+      # third-party dependency to pin and audit, and the log shows plainly
+      # that a second attempt happened.
       - name: Maestro E2E on Android emulator
+        id: e2e
+        continue-on-error: true
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d  # v2.38.0
+        with:
+          api-level: 34
+          arch: x86_64
+          profile: pixel_6
+          script: |
+            adb install -r /tmp/app-release.apk
+            maestro test packages/app/.maestro
+
+      - name: Maestro E2E on Android emulator (retry)
+        # No continue-on-error here: if the second attempt fails, the job
+        # fails, and a genuine test failure is reported twice rather than
+        # swallowed.
+        if: steps.e2e.outcome == 'failure'
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d  # v2.38.0
         with:
           api-level: 34
