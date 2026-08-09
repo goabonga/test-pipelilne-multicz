@@ -117,6 +117,18 @@ jobs:
           VERSION=$(jq -s -r '[.[] | .bumps // {}] | add | ."gitops-production".next_version // empty' /tmp/bump.json)
           [ -n "$VERSION" ] || { echo "::error::gitops-production bumped to nothing"; exit 1; }
 
+          # STRIP THE SKIP-CI MARKER — same reason as infra-plan.
+          #
+          # multicz's release_commit_message carries it so release commits
+          # pushed to main do not start another ci run, and GitHub applies
+          # that marker to `pull_request` events too. Left in place, this
+          # commit becomes the head of the promotion PR and suppresses the
+          # `closed` event gitops-apply triggers on: the PR merges and
+          # nothing runs. That is exactly what happened to the deploy PR.
+          git commit --amend --no-edit \
+            -m "chore(release): promote chart pins, bump gitops-production to v${VERSION}" \
+            -m "Released by gitops-apply once this PR is merged and the production environment reviewers approve."
+
           BASE="gitops/production"
           TOPIC="gitops/production-${VERSION}"
 

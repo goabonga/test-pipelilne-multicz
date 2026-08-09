@@ -197,6 +197,23 @@ jobs:
             echo "::error::configs-${ENV_NAME} was reported changed but bumps to nothing"
             exit 1
           fi
+          # STRIP THE SKIP-CI MARKER.
+          #
+          # multicz's release_commit_message carries it so a release commit
+          # pushed to main does not start another ci run. That marker is
+          # inherited here — and GitHub applies it to `pull_request` events
+          # as well as `push`, so this commit, once it became the head of the
+          # deploy PR, silently suppressed the `closed` event infra-apply
+          # triggers on. PR #185 merged and nothing ran at all.
+          #
+          # The message is rewritten rather than the template changed: main
+          # still wants the marker on the release commits ci itself pushes.
+          # When infra-apply later lands this commit on main it costs one ci
+          # run, which finds nothing pending and skips its whole matrix.
+          git commit --amend --no-edit \
+            -m "chore(release): bump configs-${ENV_NAME} to v${VERSION}" \
+            -m "Applied by infra-apply once this deploy PR is merged and the ${ENV_NAME} environment reviewers approve."
+
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "planning ${ENV_NAME} as configs-${ENV_NAME} v${VERSION}"
 
