@@ -4,18 +4,20 @@
 # Promote the chart versions currently running in staging to production, by
 # opening a PR that moves the production pins.
 #
-# TWO GATES, and neither of them is this file:
+# This workflow only PROPOSES. It writes the pins and the version bump onto
+# `gitops/production-<version>` and opens a PR into `gitops/production`;
+# merging that PR runs gitops-apply.yml, which is where the `production`
+# Environment gate and the push to main live.
 #
-#   1. the `production` GitHub Environment — protect it with required
-#      reviewers and this workflow waits for a human before it even runs;
-#   2. the pull request it opens — nothing reaches production until that is
-#      reviewed and merged.
+# The same shape as infra-plan / infra-apply, for the same reason: the PR
+# never targets main, so no workflow watching PRs into main opens an empty
+# run on it. `on.pull_request` can only filter the base branch, and no
+# job-level `if` prevents the run record itself.
 #
 # What this workflow deliberately does NOT do is touch a cluster. Flux pulls
-# from git, so no credential here can reach production; the Environment gates
-# the PROMOTION, not the deployment. A job that ran `helm upgrade` against a
-# kubeconfig would put production one workflow injection away from CI — the
-# thing the pull model exists to prevent.
+# from git, so no credential here can reach production. A job that ran
+# `helm upgrade` against a kubeconfig would put production one workflow
+# injection away from CI — the thing the pull model exists to prevent.
 
 name: promote-production
 
@@ -37,16 +39,22 @@ permissions:
 jobs:
   promote:
     runs-on: ubuntu-latest
-    # First gate. Add required reviewers under Settings -> Environments.
-    environment: production
+    # No `environment:` here. This job proposes; gitops-apply.yml gates.
+    # Gating both would ask for the same approval twice, and the useful
+    # place to ask is the one that changes what production runs.
     permissions:
       contents: write        # push the promotion branch
       pull-requests: write   # open / update the PR
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: main
           fetch-depth: 0
           token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
+        with:
+          python-version: "3.12"
+      - uses: goabonga/multicz-action@95e90628797bc7dec0d2ad7d9abc6278f3465ed2  # v1
 
       - name: Copy the staging pins onto production
         id: pins
@@ -68,24 +76,47 @@ jobs:
             git diff --stat -- gitops/apps/production
           fi
 
-      - name: Open or update the promotion PR
+      - name: Bump gitops-production and open the promotion PR
         if: steps.pins.outputs.moved == 'true'
         env:
           GH_TOKEN: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
           REASON: ${{ inputs.reason }}
         run: |
           set -euo pipefail
-          BRANCH="promote/production"
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout -B "$BRANCH"
+
           git add gitops/apps/production
           git commit -m "deploy(production): promote chart pins from staging"
-          git push --force-with-lease origin "$BRANCH"
+
+          # The bump rides in the same proposal, so the diff a reviewer
+          # approves is the whole change: the pins AND the version they will
+          # be released as. gitops-apply reads that number back with
+          # `multicz get` rather than recomputing it.
+          multicz bump --component gitops-production --force gitops-production:patch \
+            --commit --output json > /tmp/bump.json
+          VERSION=$(jq -s -r '[.[] | .bumps // {}] | add | ."gitops-production".next_version // empty' /tmp/bump.json)
+          [ -n "$VERSION" ] || { echo "::error::gitops-production bumped to nothing"; exit 1; }
+
+          BASE="gitops/production"
+          TOPIC="gitops/production-${VERSION}"
+
+          # Create the gate branch on first use — it carries no protection
+          # and no history, it only exists to be a PR target.
+          #
+          # Force: gitops/<env> is levelled with main at the start of every
+          # promotion. After a merge it holds a merge commit and main is then
+          # fast-forwarded onto it, so the two converge — but only once
+          # gitops-apply has run. Resetting here guarantees a clean base
+          # either way. Safe with a PR open: its head carries a commit the
+          # base does not, so moving the base cannot merge it.
+          git push --force origin "origin/main:refs/heads/${BASE}"
+          git push --force origin "HEAD:refs/heads/${TOPIC}"
 
           BODY=$(mktemp)
           {
-            echo "Promotes the chart versions currently pinned in **staging** to **production**."
+            echo "Promotes the chart versions currently pinned in **staging** to **production**,"
+            echo "and releases \`gitops-production\` **v${VERSION}**."
             echo
             echo '```'
             for c in api job ssr migrations; do
@@ -94,24 +125,34 @@ jobs:
             echo '```'
             echo
             if [ -n "${REASON}" ]; then echo "Reason: ${REASON}"; echo; fi
-            echo "Merging this applies nothing on its own — Flux reconciles from \`main\`."
-            echo "The \`gitops-production\` component is bumped by the release-gitops-production"
-            echo "job once the merge lands."
+            echo "Merging this asks the \`production\` environment reviewers to approve, then"
+            echo "lands the commit on \`main\` and tags it. Flux reconciles from \`main\`, so that"
+            echo "commit is the deploy."
           } > "$BODY"
 
-          PR=$(gh pr list --base main --head "$BRANCH" --state open --json number --jq '.[0].number // empty')
+          PR=$(gh pr list --base "$BASE" --head "$TOPIC" --state open --json number --jq '.[0].number // empty')
           if [ -z "$PR" ]; then
-            gh pr create --base main --head "$BRANCH" \
-              --title "deploy(production): promote chart pins from staging" \
+            gh pr create --base "$BASE" --head "$TOPIC" \
+              --title "deploy(production): promote chart pins, release gitops-production v${VERSION}" \
               --body-file "$BODY"
           else
             gh pr edit "$PR" --body-file "$BODY"
             echo "updated existing PR #${PR}"
           fi
 
+          # A superseded proposal at another version: its pins and its
+          # release number are both stale, and two open PRs would each claim
+          # to promote production.
+          gh pr list --base "$BASE" --state open --json number,headRefName \
+            --jq '.[] | select(.headRefName != "'"$TOPIC"'") | .number' \
+          | while read -r stale; do
+              gh pr comment "$stale" --body "Superseded by gitops-production v${VERSION}. Closing."
+              gh pr close "$stale" --delete-branch
+            done
+
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
           title: promote-production
-          body: 'Copied the staging pins onto `gitops/apps/production/` and opened the promotion PR.'
+          body: 'Copied the staging pins onto `gitops/apps/production/`, bumped `gitops-production` and opened the promotion PR into `gitops/production`.'

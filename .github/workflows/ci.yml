@@ -4492,64 +4492,16 @@ jobs:
   #
   # Separate from release-bump because gitops-production is deploy-gated
   # and filtered out there, for the same reason configs-<env> is.
-  release-gitops-production:
-    needs: [detect, release-bump]
-    # Serialised against every other job that writes to main. promote-staging
-    # and release-gitops-production both hang off release-bump, so they ran
-    # in parallel and raced: one pushed, the other died on
-    # `! [rejected] HEAD -> main (fetch first)`.
-    #
-    # Queue rather than rebase-and-retry. Both push with --follow-tags, and a
-    # rebase moves the commit out from under the tag multicz just created —
-    # leaving a tag pointing at a commit no branch reaches, which is the
-    # partial state already repaired twice here.
-    concurrency:
-      group: push-to-main
-      cancel-in-progress: false
-    if: |
-      !failure() && !cancelled() &&
-      contains(fromJson(needs.detect.outputs.changed).changed, 'gitops-production')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: main
-          fetch-depth: 0
-          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
-        with:
-          python-version: "3.12"
-      - uses: goabonga/multicz-action@95e90628797bc7dec0d2ad7d9abc6278f3465ed2  # v1
-      - name: Configure git
-        env:
-          AUTHOR_NAME: ${{ github.event.head_commit.author.name }}
-          AUTHOR_EMAIL: ${{ github.event.head_commit.author.email }}
-        run: |
-          git config user.name  "${AUTHOR_NAME:-github-actions[bot]}"
-          git config user.email "${AUTHOR_EMAIL:-41898282+github-actions[bot]@users.noreply.github.com}"
-      - name: Bump gitops-production
-        run: |
-          set -euo pipefail
-          # --force for the same reason infra-apply uses it: a pin edit is
-          # not a conventional-commit bump of its own, but the promotion is
-          # real and has to be recorded.
-          #
-          # --component is NOT redundant with --force — see the identical
-          # note on promote-staging. This exact command, without the
-          # restriction, produced commit 1553ebf: "bump configs-staging
-          # 0.0.0 -> 0.1.0, configs-production 0.0.0 -> 0.1.0, ..." — two
-          # environments released as deployed while no apply had run.
-          multicz bump --component gitops-production --force gitops-production:patch \
-            --commit --tag --output json
-          git push origin HEAD:main --follow-tags
-      - name: Summary
-        if: always()
-        uses: ./.github/actions/summary
-        with:
-          title: release-gitops-production
-          body: 'Recorded the production promotion: bumped and tagged `gitops-production`.'
+  # release-gitops-production lived here and pushed the bump straight to
+  # main. It is gone: promote-production.yml now proposes the pins and the
+  # bump together on gitops/production-<version>, and gitops-apply.yml lands
+  # them once the `production` environment reviewers approve the merge.
+  #
+  # Two things that job got wrong, both fixed by the move. It ran
+  # `multicz bump --force gitops-production:patch` with no --component, so
+  # it also released every other pending component — including the
+  # deploy-gated configs-*, which are only allowed to move after a real
+  # apply. And it wrote to production with no gate at all.
 
   release-docs:
     # Consume the already-built `docs-site` artifact (produced by

@@ -1,0 +1,215 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Lands a gitops promotion on `main` when its PR — opened by
+# promote-production.yml from `gitops/<env>-<version>` into `gitops/<env>` —
+# is MERGED and the environment's reviewers have approved.
+#
+# The same shape as infra-apply.yml, and deliberately so: a proposal branch
+# named with its version, a PR that never touches main, a protected
+# environment as the gate, then rebase, tag, atomic push, release.
+#
+# WHAT "APPLY" MEANS HERE
+#
+# Nothing is executed against a cluster from this runner. The chart pins in
+# gitops/apps/<env>/ ARE the desired state, and Flux reconciles them from
+# `main` — so landing the commit on main IS the deploy. That is why the
+# environment gate sits on this job rather than on the promotion: this is
+# the step that changes what runs.
+#
+# WHY THE PR STOPS AT gitops/<env>
+#
+# `on.pull_request` filters the base branch and nothing else — there is no
+# head filter. A PR into main matches every workflow watching PRs into main,
+# and no job-level `if` prevents the empty run records that follow. Keeping
+# the PR inside gitops/* means those triggers never match.
+
+name: gitops-apply
+
+on:
+  pull_request:
+    # `branches:` filters the PR's BASE. `*` does not match `/`, so this
+    # catches gitops/production but not a nested name.
+    branches: ["gitops/*"]
+    types: [closed]
+
+permissions:
+  contents: read
+
+jobs:
+  resolve-env:
+    name: resolve-env
+    # Merged, not merely closed: abandoning a promotion must not deploy.
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    outputs:
+      env: ${{ steps.name.outputs.env }}
+    steps:
+      - id: name
+        env:
+          BASE: ${{ github.event.pull_request.base.ref }}
+        # The BASE names the environment: gitops/production -> production.
+        # The head carries the version too, and is deliberately not used for
+        # it — the version is read from the merged tree, the only copy the
+        # reviewer actually saw.
+        run: echo "env=${BASE#gitops/}" >> "$GITHUB_OUTPUT"
+
+  apply:
+    name: apply (${{ needs.resolve-env.outputs.env }})
+    needs: [resolve-env]
+    runs-on: ubuntu-latest
+    # The gate. Settings -> Environments -> required reviewers.
+    environment: ${{ needs.resolve-env.outputs.env }}
+    concurrency:
+      group: gitops-apply-${{ needs.resolve-env.outputs.env }}
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The merge commit, not the branch tip: what was approved is what
+          # lands, even if the branch moves meanwhile.
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 0
+          # RELEASE_PAT, not GITHUB_TOKEN. The owner is a bypass actor on
+          # main's ruleset; the bot is not, and the push below is refused
+          # with GH013 under GITHUB_TOKEN.
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+          persist-credentials: true
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
+        with:
+          python-version: "3.12"
+      - uses: goabonga/multicz-action@95e90628797bc7dec0d2ad7d9abc6278f3465ed2  # v1
+
+      - name: Guard against an unknown environment
+        env:
+          ENV: ${{ needs.resolve-env.outputs.env }}
+        run: |
+          set -euo pipefail
+          # Any gitops/<anything> branch reaches this workflow. Without the
+          # check, gitops/oops would tag a component that does not exist and
+          # the failure would read as a multicz problem rather than a typo.
+          if [ ! -d "gitops/apps/${ENV}" ]; then
+            echo "::error::no gitops/apps/${ENV} — '${ENV}' is not a known environment"
+            exit 1
+          fi
+
+      - name: Read the version this promotion releases
+        id: version
+        env:
+          ENV: ${{ needs.resolve-env.outputs.env }}
+        run: |
+          set -euo pipefail
+          # `multicz get` READS the component's bump_file; it computes
+          # nothing. promote-production already ran `multicz bump`, wrote
+          # this number, and a reviewer approved that exact diff. Running
+          # `multicz bump` here would see an already-bumped VERSION with no
+          # tag yet and propose the version after it.
+          VERSION=$(multicz get "gitops-${ENV}")
+          if [ -z "$VERSION" ]; then
+            echo "::error::multicz could not read the version of gitops-${ENV}"
+            exit 1
+          fi
+
+          TAG="gitops-${ENV}-v${VERSION}"
+          if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
+            echo "::error::${TAG} already exists — this promotion has already been released"
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "releasing ${TAG}"
+
+      - name: Configure git
+        env:
+          ACTOR: ${{ github.event.pull_request.merged_by.login }}
+        run: |
+          git config user.name  "${ACTOR:-github-actions[bot]}"
+          git config user.email "${ACTOR:-41898282+github-actions[bot]}@users.noreply.github.com"
+
+      - name: Detect GPG availability
+        id: gpg
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          if [ -n "$GPG_PRIVATE_KEY" ] && [ -n "$GPG_PASSPHRASE" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Import and unlock GPG key
+        if: steps.gpg.outputs.available == 'true'
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+          echo test | gpg --batch --yes --passphrase "$GPG_PASSPHRASE" \
+            --pinentry-mode loopback --sign > /dev/null
+          KEY_ID=$(gpg --list-secret-keys --with-colons | awk -F: '/^sec/{print $5; exit}')
+          git config user.signingkey "$KEY_ID"
+
+      - name: Rebase onto main, tag, and push atomically
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+          ENV: ${{ needs.resolve-env.outputs.env }}
+        run: |
+          set -euo pipefail
+          SIGN_FLAG=""
+          if [ "${{ steps.gpg.outputs.available }}" = "true" ]; then SIGN_FLAG="-s"; fi
+
+          # gitops/<env> was levelled with main when the promotion was
+          # proposed, but the reviewer takes as long as they take and ci
+          # writes release commits meanwhile. A plain push would be rejected
+          # as non-fast-forward. The rebase replays a single commit — the
+          # pin promotion plus its bump — and drops the merge.
+          #
+          # --atomic because `git push origin HEAD:main refs/tags/X` is not
+          # atomic by default: the tag can land while the branch is
+          # rejected, which is how components have twice ended up tagged at
+          # a version their files did not carry.
+          pushed=false
+          for attempt in 1 2 3; do
+            git fetch --quiet origin main
+
+            if ! git rebase origin/main; then
+              git rebase --abort || true
+              echo "::error::the ${TAG} promotion conflicts with main. Rebase gitops/apps/${ENV} onto main by hand, then tag ${TAG} and push."
+              exit 1
+            fi
+
+            git tag -f -a $SIGN_FLAG -m "gitops-${ENV} v${VERSION} (promoted)" "$TAG"
+
+            if git push --atomic origin "HEAD:main" "refs/tags/${TAG}"; then
+              pushed=true
+              echo "main fast-forwarded onto the ${TAG} promotion"
+              break
+            fi
+            echo "main moved during attempt ${attempt} — refetching and replaying"
+          done
+
+          if [ "$pushed" != "true" ]; then
+            echo "::error::could not land ${TAG} on main after 3 attempts. Push the promotion and the tag by hand."
+            exit 1
+          fi
+
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          # Same shape as every release-<component> job in ci.yml.
+          multicz release-notes --tag "$TAG" \
+            | gh release create "$TAG" --title "$TAG" --notes-file -
+
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: gitops-apply (${{ needs.resolve-env.outputs.env }})
+          body: 'Landed the approved chart pins on `main` and released `gitops-${{ needs.resolve-env.outputs.env }}`. Flux reconciles from `main`, so this commit is the deploy.'
