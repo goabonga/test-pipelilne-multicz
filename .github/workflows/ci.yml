@@ -634,6 +634,66 @@ jobs:
 
   # ─────────────────────── job ───────────────────────
 
+  migrations-deb:
+    # migrations ships the only packaged path to a schema: shomer-api,
+    # shomer-job and shomer-ssr carry none of their own. Without this
+    # .deb a host install can run the services and never create their
+    # tables.
+    needs: [migrations-bandit, audit, detect]
+    if: '!failure() && !cancelled() && contains(fromJson(needs.detect.outputs.changed).changed, ''migrations'')'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
+      - name: Install debian build tooling
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            build-essential debhelper dh-python python3-all \
+            python3-hatchling pybuild-plugin-pyproject dpkg-dev
+      - name: Build migrations .deb
+        run: |
+          set -euo pipefail
+          WORK=/tmp/build-migrations
+          rm -rf "$WORK" && mkdir -p "$WORK"
+          # packages/bdd/migrations, not packages/migrations — the only
+          # place this differs from the other three .deb builds.
+          cp -r packages/bdd/migrations "$WORK/shomer-migrations"
+          cd "$WORK/shomer-migrations"
+          dpkg-buildpackage -us -uc -b
+          mv "$WORK"/shomer-migrations_*.deb "$WORK"/shomer-migrations_*.buildinfo "$WORK"/shomer-migrations_*.changes /tmp/
+      - uses: actions/upload-artifact@v7
+        with: { name: migrations-deb, path: /tmp/shomer-migrations_*.deb, retention-days: 1 }
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: migrations-deb
+          body: 'Built `shomer-migrations_*.deb` (artifact `migrations-deb`).'
+
+  migrations-deb-validate:
+    needs: [migrations-deb]
+    if: '!failure() && !cancelled() && needs.migrations-deb.result == ''success'''
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write   # delete-artifact (cleanup on validation failure)
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/bump-preview
+      - uses: ./.github/actions/validate-deb
+        with:
+          component: migrations
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: migrations-deb-validate
+          body: 'lintian + install tests + `systemd-analyze security` against the freshly built `shomer-migrations` .deb.'
+
   job-lint:
     needs: [detect, headers]
     if: contains(fromJson(needs.detect.outputs.changed).changed, 'job')
@@ -4229,6 +4289,14 @@ jobs:
           owner: ${{ needs.release-bump.outputs.owner }}
           repo: ${{ needs.release-bump.outputs.repo }}
           token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+      - uses: ./.github/actions/publish-deb
+        with:
+          component: migrations
+      - uses: ./.github/actions/sign-blob
+        id: sign_deb
+        with:
+          path: /tmp/shomer-migrations_*.deb
+
       - name: gh release create migrations-v${{ needs.release-bump.outputs.migrations_version }}
         env:
           GH_TOKEN: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
@@ -4236,7 +4304,7 @@ jobs:
           set -euo pipefail
           TAG="migrations-v${{ needs.release-bump.outputs.migrations_version }}"
           multicz release-notes --tag "$TAG" \
-            | gh release create "$TAG" --title "$TAG" --notes-file -
+            | gh release create "$TAG" --title "$TAG" --notes-file - ${{ steps.sign_deb.outputs.files }}
       - name: Delete consumed CI artifacts
         uses: geekyeggo/delete-artifact@176a747ab7e287e3ff4787bf8a148716375ca118  # v6
         with:

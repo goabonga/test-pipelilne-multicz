@@ -315,6 +315,7 @@ paths      = [
     "packages/bdd/migrations/pyproject.toml",
     "packages/bdd/migrations/Dockerfile",
     "packages/bdd/migrations/alembic.ini",
+    "packages/bdd/migrations/debian/**",
 ]
 bump_files = [
     { file = "packages/bdd/migrations/pyproject.toml", key = "project.version" },
@@ -330,6 +331,14 @@ changelog  = "packages/bdd/migrations/CHANGELOG.md"
 # cascades a patch so the migration image rebuilds with the new models.
 depends_on = ["database"]
 post_bump  = ["uv lock"]
+
+[[components.migrations.writers]]
+type            = "debian-changelog"
+file            = "packages/bdd/migrations/debian/changelog"
+package         = "shomer-migrations"
+distribution    = "unstable"
+maintainer      = "Chris <goabonga@pm.me>"
+debian_revision = 1
 
 [[components.migrations.artifacts]]
 type = "docker"

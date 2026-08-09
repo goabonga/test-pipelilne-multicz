@@ -1,0 +1,50 @@
+[Unit]
+Description=Shomer database migrations (alembic upgrade head)
+Documentation=https://github.com/goabonga/shomer
+After=network-online.target
+Wants=network-online.target
+# Ordering only. shomer-api does not Require= this unit: a host that
+# migrates from elsewhere — a CI job, a DBA, the migrations container —
+# must not be forced to run it locally.
+Before=shomer-api.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/shomer-migrate
+
+DynamicUser=yes
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+PrivateUsers=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+ProcSubset=pid
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RestrictRealtime=yes
+RestrictNamespaces=yes
+RestrictSUIDSGID=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+AmbientCapabilities=
+DevicePolicy=closed
+DeviceAllow=
+IPAddressDeny=any
+IPAddressAllow=0.0.0.0/0 ::/0
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+UMask=0077
+
+# No [Install] section, on purpose. `systemctl enable` has nothing to
+# hook onto, so the unit cannot start at boot. A schema change is an
+# operator decision, not a side effect of apt.

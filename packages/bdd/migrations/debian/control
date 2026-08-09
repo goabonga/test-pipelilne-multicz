@@ -1,0 +1,24 @@
+Source: shomer-migrations
+Maintainer: Chris <goabonga@pm.me>
+Section: database
+Priority: optional
+Standards-Version: 4.6.2
+Build-Depends:
+ debhelper-compat (= 13),
+ dh-python,
+ python3-all,
+ python3-hatchling,
+ pybuild-plugin-pyproject,
+Homepage: https://github.com/goabonga/shomer
+
+Package: shomer-migrations
+Architecture: all
+Depends: ${python3:Depends}, ${misc:Depends}
+Description: Shomer database migrations (Alembic).
+ Ships the Alembic revisions and the shomer-migrate runner that applies
+ them. Required by any host install of shomer-api, shomer-job or
+ shomer-ssr: those packages carry no schema of their own.
+ .
+ The bundled systemd unit is oneshot and deliberately NOT enabled —
+ installing a package must never migrate a database on its own. Run it
+ when you mean to: systemctl start shomer-migrations.
