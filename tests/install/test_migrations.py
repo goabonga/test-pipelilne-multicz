@@ -35,18 +35,29 @@ def test_module_imports_and_version_matches(run, system_python, versions) -> Non
     )
 
 
-def test_alembic_revisions_are_packaged(run, system_python) -> None:
-    """The revisions are the payload. A package that installs the runner
-    but not the migrations would pass every other check here and then do
-    nothing on a real host."""
+def test_alembic_tree_is_packaged(run, system_python) -> None:
+    """The alembic tree is the payload. A wheel that ships only the
+    runner would pass every other check here and then fail on a real
+    host with "No 'script_location' directory".
+
+    Note what this does NOT assert: the number of revisions. There are
+    none yet — `versions/` holds a .gitkeep — and a revision count is a
+    statement about the project's schema history, not about whether the
+    package was built correctly. Asserting it here failed the build for
+    a reason that had nothing to do with packaging."""
     out = run(
         system_python,
         "-c",
         "import shomer_migrations, pathlib;"
-        "p = pathlib.Path(shomer_migrations.__file__).parent / 'versions';"
-        "print(len(list(p.glob('*.py'))))",
+        "root = pathlib.Path(shomer_migrations.__file__).parent / 'migrations';"
+        "print(int((root / 'env.py').is_file()),"
+        " int((root / 'script.py.mako').is_file()),"
+        " int((root / 'versions').is_dir()))",
     )
-    assert int(out.stdout.strip()) > 0, "no alembic revisions found beside the installed package"
+    env_py, mako, versions = out.stdout.split()
+    assert env_py == "1", "migrations/env.py missing — alembic has no environment to run in"
+    assert mako == "1", "migrations/script.py.mako missing — `alembic revision` would fail"
+    assert versions == "1", "migrations/versions/ missing — nowhere for revisions to live"
 
 
 def test_systemd_unit_installed() -> None:
@@ -65,8 +76,13 @@ def test_unit_cannot_be_enabled() -> None:
     at boot and apt cannot migrate a database as a side effect of
     installing a package. If someone adds `[Install]` later, this fails
     and they have to argue for it."""
-    body = UNIT.read_text()
-    assert "[Install]" not in body, (
-        "shomer-migrations.service declares [Install]: installing the package "
-        "would let systemd run migrations unattended"
+    # Line-anchored, not a substring search. The unit's own comment
+    # explains why there is no such section, and a naive `"[Install]" in
+    # body` matched that comment and failed the build — a test fooled by
+    # prose is worse than no test.
+    sections = [line.strip() for line in UNIT.read_text().splitlines()
+                if line.strip().startswith("[") and line.strip().endswith("]")]
+    assert "[Install]" not in sections, (
+        "shomer-migrations.service declares an [Install] section: installing "
+        "the package would let systemd run migrations unattended"
     )
