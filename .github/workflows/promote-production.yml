@@ -98,7 +98,17 @@ jobs:
       - name: Bump gitops-production and open the promotion PR
         if: steps.pins.outputs.moved == 'true'
         env:
-          GH_TOKEN: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+          # github.token, not RELEASE_PAT. The PAT is needed to PUSH to the
+          # protected branches — it is the checkout token for exactly that
+          # reason — but `gh pr` goes through GraphQL, and resolving a login
+          # there needs the `read:org` scope the PAT does not carry:
+          #
+          #   GraphQL: ... The 'login' field requires one of the following
+          #   scopes: ['read:org']
+          #
+          # The branches were pushed and then no PR was opened. infra-plan
+          # has always used github.token for its `gh` calls; this matches it.
+          GH_TOKEN: ${{ github.token }}
           REASON: ${{ inputs.reason }}
         run: |
           set -euo pipefail

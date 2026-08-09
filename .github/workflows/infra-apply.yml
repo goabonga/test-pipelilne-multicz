@@ -232,6 +232,10 @@ jobs:
           TAG: ${{ steps.version.outputs.tag }}
           VERSION: ${{ steps.version.outputs.version }}
           ENV: ${{ needs.resolve-env.outputs.env }}
+          # Through env:, never interpolated into the run: body — a login is
+          # attacker-influenced and ${{ }} is substituted before bash sees it.
+          MERGER: ${{ github.event.pull_request.merged_by.login }}
+          MERGER_ID: ${{ github.event.pull_request.merged_by.id }}
         run: |
           set -euo pipefail
           SIGN_FLAG=""
@@ -273,6 +277,21 @@ jobs:
               # infrastructure is live and only the record is missing.
               echo "::error::the ${TAG} bump conflicts with main. The apply SUCCEEDED — infrastructure is live but unrecorded. Rebase infrastructure/configs/${ENV} onto main by hand, then tag ${TAG} and push."
               exit 1
+            fi
+
+            # Re-attribute the commit to whoever merged.
+            #
+            # The bump is written by the planner, long before anyone merges,
+            # so at creation time the merger is unknown and the author is the
+            # bot. The rebase rewrites the commit anyway — this is the first
+            # moment the answer exists, and the last moment it can be set.
+            #
+            # `Configure git` above only fixes the COMMITTER; a rebase keeps
+            # the original author, which is why release commits on main read
+            # "github-actions[bot]" with a human committer.
+            if [ -n "${MERGER:-}" ]; then
+              git commit --amend --no-edit \
+                --author="${MERGER} <${MERGER_ID}+${MERGER}@users.noreply.github.com>"
             fi
 
             git tag -f -a $SIGN_FLAG -m "configs-${ENV} v${VERSION} (applied)" "$TAG"
