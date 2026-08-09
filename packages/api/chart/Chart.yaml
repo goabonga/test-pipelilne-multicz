@@ -3,8 +3,8 @@ name: shomer-api
 description: Shomer authorization HTTP API (FastAPI + uvicorn, OIDC discovery + 
   healthz).
 type: application
-version: 0.0.0
-appVersion: "0.0.0"
+version: 1.0.0
+appVersion: "0.1.0"
 icon: https://raw.githubusercontent.com/goabonga/shomer/main/assets/shomer.svg
 home: https://github.com/goabonga/test-pipelilne-multicz
 sources:

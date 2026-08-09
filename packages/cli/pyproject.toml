@@ -1,6 +1,6 @@
 [project]
 name = "shomer-cli"
-version = "0.0.0"
+version = "0.1.0"
 description = "Shomer admin CLI."
 requires-python = ">=3.11"
 license = "MIT"
