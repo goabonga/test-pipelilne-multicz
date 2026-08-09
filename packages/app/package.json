@@ -1,6 +1,6 @@
 {
   "name": "@shomer/app",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Shomer React Native app (iOS + Android). Shares validation/types with the web client through @shomer/lib.",
   "license": "MIT",
   "author": "Chris <goabonga@pm.me>",
