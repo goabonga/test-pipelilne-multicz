@@ -37,10 +37,18 @@ root_changelog    = "CHANGELOG.md"
 # per-component jobs all skip. What was left was a full graph of skipped jobs
 # cluttering the run list.
 #
-# It skips EVERY workflow, sync-deploy-branches included — so release-bump
-# dispatches that one explicitly, since a release commit is precisely when
-# the deploy branches stop owing anything and can catch up.
-release_commit_message = "chore(release): bump {summary}\n\n{body}\n\nskip-checks: true"
+# It skips EVERY workflow. infra-plan is unaffected: it triggers on
+# `workflow_run` when ci completes, not on the push itself.
+#
+# THE TRAILER NEEDS **TWO** BLANK LINES BEFORE IT.
+#
+# GitHub's rule is "end the commit message with two empty lines followed by
+# skip-checks: true". With a single blank line the trailer is not recognised
+# and every release commit starts a full ci run — which is what happened:
+# one push produced four release commits, four ci runs, and five infra-plan
+# runs chained off their completions. `\n\n\n` is the fix, and it is the
+# entire difference between one run and five.
+release_commit_message = "chore(release): bump {summary}\n\n{body}\n\n\nskip-checks: true"
 
 [components.api]
 paths      = [
