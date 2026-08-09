@@ -227,7 +227,7 @@ jobs:
           terragrunt --non-interactive --working-dir infrastructure/services \
             run --all -- apply -auto-approve -input=false
 
-      - name: Tag the release
+      - name: Rebase onto main, tag, and push atomically
         env:
           TAG: ${{ steps.version.outputs.tag }}
           VERSION: ${{ steps.version.outputs.version }}
@@ -236,37 +236,59 @@ jobs:
           set -euo pipefail
           SIGN_FLAG=""
           if [ "${{ steps.gpg.outputs.available }}" = "true" ]; then SIGN_FLAG="-s"; fi
-          # An annotated tag on the merged commit — which is on main, so the
-          # tag can never point at something main does not contain. That was
-          # a real failure before: tags landed while the commit explaining
-          # them was rejected, leaving both environments tagged v0.1.0 with
-          # config.yaml still reading 0.0.0. With the commit arriving through
-          # the merge, the ordering is no longer ours to get wrong.
-          #
-          # No `multicz bump` here: the bump is already in the tree, written
-          # by infra-plan and reviewed in the PR. Re-running it would compute
-          # 0.1.0 -> 0.2.0 off the already-bumped config.yaml and release a
-          # version nobody planned.
-          git tag -a $SIGN_FLAG -m "configs-${ENV} v${VERSION} (applied)" "$TAG"
 
-      - name: Push the tag and fast-forward main
-        id: push
-        env:
-          TAG: ${{ steps.version.outputs.tag }}
-          ENV: ${{ needs.resolve-env.outputs.env }}
-        run: |
-          set -euo pipefail
-          # Both in one command, so the tag can never land without the
-          # commit that explains it. That split is not hypothetical: tags
-          # once went through while the branch push was declined, leaving
-          # both environments tagged v0.1.0 with config.yaml reading 0.0.0.
+          # WHY A REBASE AND NOT A PLAIN PUSH
           #
-          # Not forced. deploy/<env> was reset to main at the start of this
-          # cycle, so this is a fast-forward unless main moved meanwhile —
-          # in which case failing loudly is right, and the next infra-plan
-          # rebuilds the proposal from the new main anyway.
-          git push origin "HEAD:main" "refs/tags/${TAG}"
-          echo "main fast-forwarded onto deploy/${ENV} — ${TAG} pushed"
+          # deploy/<env> was levelled with main when infra-plan built the
+          # proposal, but the reviewer takes as long as they take. Any push
+          # to main in between — and ci.yml writes a chore(release) commit
+          # on most runs — leaves this push non-fast-forward. A plain
+          # `git push HEAD:main` would simply be rejected AFTER the apply had
+          # already run, leaving the infrastructure changed and nothing on
+          # main saying so.
+          #
+          # The rebase replays a single commit: the configs-<env> bump. The
+          # merge commit is dropped, which is what we want — main takes the
+          # bump, not the branch topology.
+          #
+          # WHY --atomic
+          #
+          # `git push origin HEAD:main refs/tags/X` is NOT atomic by default:
+          # the tag can land while the branch is rejected. That has happened
+          # here three times, most memorably leaving both environments tagged
+          # v0.1.0 with config.yaml still reading 0.0.0. --atomic makes the
+          # server take both or neither.
+          #
+          # The tag is created inside the loop, after the rebase, because the
+          # rebase gives the commit a new SHA each time.
+          pushed=false
+          for attempt in 1 2 3; do
+            git fetch --quiet origin main
+
+            if ! git rebase origin/main; then
+              git rebase --abort || true
+              # CHANGELOG.md and zensical.toml are the realistic conflicts:
+              # both are rewritten by every release. This is not something to
+              # resolve blind — the apply has already run, so the
+              # infrastructure is live and only the record is missing.
+              echo "::error::the ${TAG} bump conflicts with main. The apply SUCCEEDED — infrastructure is live but unrecorded. Rebase infrastructure/configs/${ENV} onto main by hand, then tag ${TAG} and push."
+              exit 1
+            fi
+
+            git tag -f -a $SIGN_FLAG -m "configs-${ENV} v${VERSION} (applied)" "$TAG"
+
+            if git push --atomic origin "HEAD:main" "refs/tags/${TAG}"; then
+              pushed=true
+              echo "main fast-forwarded onto the ${TAG} bump"
+              break
+            fi
+            echo "main moved during attempt ${attempt} — refetching and replaying"
+          done
+
+          if [ "$pushed" != "true" ]; then
+            echo "::error::could not land ${TAG} on main after 3 attempts. The apply SUCCEEDED — infrastructure is live but unrecorded. Push the bump and the tag by hand."
+            exit 1
+          fi
 
       - name: Create the GitHub release
         env:
