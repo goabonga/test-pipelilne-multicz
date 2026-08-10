@@ -7,6 +7,17 @@ Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
 ### Releases
 
+- **configs-staging** minor — 0.0.0 → 0.1.0
+
+### Features
+
+- **configs-staging**: terragrunt landing zone with per-environment deploy gating (`9d50feb`)
+- **configs-staging**: bootstrap the state backend for AWS and GCP (`fc631c5`)
+
+## 2026-08-10
+
+### Releases
+
 - **gitops-staging** minor — 0.0.0 → 0.1.0
 
 ### Features
