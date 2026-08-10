@@ -1,0 +1,106 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+name: setup commit signing
+description: |
+  Import the release GPG key and configure git so that everything it
+  creates afterwards is signed and verifiable — commits included.
+
+  WHY THIS EXISTS
+
+  Three workflows wrote to main and only one produced a verified commit.
+  release-bump signs because `multicz bump --sign` does it; promote-staging
+  imported no key at all, and the two appliers imported one, set
+  `user.signingkey`, and then never signed anything — `git commit` and
+  `git rebase` do not sign unless `commit.gpgsign` is on. The result was a
+  history where the release commits from the pipeline read "Unsigned"
+  while the ones from a laptop read "Verified".
+
+  THE COMMITTER EMAIL COMES FROM THE KEY
+
+  GitHub shows "Verified" only when the commit's committer email is one
+  the signing key carries and the account has verified. Setting it to
+  something else — an actor's @users.noreply address, say — produces a
+  correctly signed commit that GitHub reports as `bad_email`, which looks
+  identical to no signature at all in the UI.
+
+  So the identity is read out of the key rather than passed in. It cannot
+  drift from what the key can vouch for.
+
+  This does NOT set the author. Callers that want to attribute a commit to
+  a human (the person who merged, say) pass `--author` themselves; author
+  and committer are different questions and GitHub verifies the committer.
+
+inputs:
+  gpg-private-key:
+    required: false
+    default: ""
+    description: |
+      ASCII-armoured private key. Empty disables signing with a warning
+      rather than an error, so forks and secret-less repos still run.
+  gpg-passphrase:
+    required: false
+    default: ""
+    description: Passphrase for the key above.
+
+outputs:
+  available:
+    description: '"true" when a key was imported and signing is on.'
+    value: ${{ steps.gpg.outputs.available }}
+  email:
+    description: The committer email taken from the key, empty when no key.
+    value: ${{ steps.gpg.outputs.email }}
+
+runs:
+  using: composite
+  steps:
+    - name: Import the signing key and turn signing on
+      id: gpg
+      shell: bash
+      env:
+        GPG_PRIVATE_KEY: ${{ inputs.gpg-private-key }}
+        GPG_PASSPHRASE: ${{ inputs.gpg-passphrase }}
+      run: |
+        set -euo pipefail
+
+        if [ -z "${GPG_PRIVATE_KEY:-}" ] || [ -z "${GPG_PASSPHRASE:-}" ]; then
+          # A fork, or a repo without the secrets. Say so loudly: the job
+          # still works, but its commits land unverified and someone
+          # reading the history later deserves to know why.
+          echo "::warning::no GPG_PRIVATE_KEY / GPG_PASSPHRASE — commits and tags from this job will be unsigned"
+          echo "available=false" >> "$GITHUB_OUTPUT"
+          echo "email=" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+
+        # Unlock once so the agent caches the passphrase; every later
+        # signature is non-interactive.
+        echo test | gpg --batch --yes --passphrase "$GPG_PASSPHRASE" \
+          --pinentry-mode loopback --sign > /dev/null
+
+        KEY_ID=$(gpg --list-secret-keys --with-colons | awk -F: '/^sec/{print $5; exit}')
+        [ -n "$KEY_ID" ] || { echo "::error::no secret key after import"; exit 1; }
+
+        # Field 10 of a uid record is "Name <email>". The first uid is the
+        # primary one, and it is the identity GitHub will match against.
+        UID_LINE=$(gpg --list-secret-keys --with-colons | awk -F: '/^uid/{print $10; exit}')
+        NAME=$(printf '%s' "$UID_LINE" | sed 's/ *<.*//')
+        EMAIL=$(printf '%s' "$UID_LINE" | sed -n 's/.*<\(.*\)>.*/\1/p')
+        if [ -z "$EMAIL" ]; then
+          echo "::error::the signing key carries no email in its primary uid — GitHub cannot verify commits signed with it"
+          exit 1
+        fi
+
+        git config --global user.signingkey "$KEY_ID"
+        git config --global user.name  "$NAME"
+        git config --global user.email "$EMAIL"
+        # The two settings that were missing. Without them the key is
+        # imported, the config is set, and nothing is ever signed.
+        git config --global commit.gpgsign true
+        git config --global tag.gpgsign true
+
+        echo "available=true" >> "$GITHUB_OUTPUT"
+        echo "email=$EMAIL" >> "$GITHUB_OUTPUT"
+        echo "signing as ${NAME} <${EMAIL}> with ${KEY_ID}"

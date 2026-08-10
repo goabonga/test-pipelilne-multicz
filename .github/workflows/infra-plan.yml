@@ -172,12 +172,18 @@ jobs:
             exit 1
           fi
 
+      # The proposal commit is what a reviewer sees in the deploy PR, so it
+      # is signed here too. The applier rebases and re-signs it on the way
+      # to main; this is about the PR being reviewable, not about main.
+      - uses: ./.github/actions/setup-signing
+        with:
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg-passphrase: ${{ secrets.GPG_PASSPHRASE }}
+
       - name: Bump configs-<env>
         id: bump
         run: |
           set -euo pipefail
-          git config user.name  "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           # Committed locally only. Nothing is pushed unless the plan below
           # actually finds work — a clean plan must leave no trace, or a

@@ -4811,16 +4811,16 @@ jobs:
             echo "moved=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Configure git
-        if: steps.pins.outputs.moved == 'true'
-        # Through env:, never interpolated into the run: body — commit
-        # author metadata is attacker-controllable.
-        env:
-          AUTHOR_NAME: ${{ github.event.head_commit.author.name }}
-          AUTHOR_EMAIL: ${{ github.event.head_commit.author.email }}
-        run: |
-          git config user.name  "${AUTHOR_NAME:-github-actions[bot]}"
-          git config user.email "${AUTHOR_EMAIL:-41898282+github-actions[bot]@users.noreply.github.com}"
+      # This job imported no key, so both commits it pushes to main — the
+      # pin promotion and the gitops-staging bump — landed unsigned next to
+      # release-bump's signed ones in the same history. The identity comes
+      # from the key: GitHub verifies the COMMITTER email and it must be one
+      # the key carries. `github.event.head_commit` was empty here half the
+      # time anyway, since this job also runs on workflow_run.
+      - uses: ./.github/actions/setup-signing
+        with:
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg-passphrase: ${{ secrets.GPG_PASSPHRASE }}
 
       - name: Commit, bump gitops-staging, push
         if: steps.pins.outputs.moved == 'true'
@@ -4840,8 +4840,10 @@ jobs:
           # configs-staging-v0.1.0 and configs-production-v0.1.0 this way,
           # which then made sync-deploy-branches think nothing was owed and
           # auto-merge an open deploy PR.
+          # --sign, like release-bump. multicz signs only when asked;
+          # `commit.gpgsign` does not reach it.
           multicz bump --component gitops-staging --force gitops-staging:patch \
-            --commit --tag --output json
+            --commit --tag --sign --output json
           git push origin HEAD:main --follow-tags
 
       - name: Summary

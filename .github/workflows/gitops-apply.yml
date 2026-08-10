@@ -133,36 +133,21 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "releasing ${TAG}"
 
-      - name: Configure git
-        env:
-          ACTOR: ${{ github.event.pull_request.merged_by.login }}
-        run: |
-          git config user.name  "${ACTOR:-github-actions[bot]}"
-          git config user.email "${ACTOR:-41898282+github-actions[bot]}@users.noreply.github.com"
-
-      - name: Detect GPG availability
-        id: gpg
-        env:
-          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-        run: |
-          if [ -n "$GPG_PRIVATE_KEY" ] && [ -n "$GPG_PASSPHRASE" ]; then
-            echo "available=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "available=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Import and unlock GPG key
-        if: steps.gpg.outputs.available == 'true'
-        env:
-          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-        run: |
-          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
-          echo test | gpg --batch --yes --passphrase "$GPG_PASSPHRASE" \
-            --pinentry-mode loopback --sign > /dev/null
-          KEY_ID=$(gpg --list-secret-keys --with-colons | awk -F: '/^sec/{print $5; exit}')
-          git config user.signingkey "$KEY_ID"
+      # Signing, and the committer identity that makes it verifiable, in
+      # one place. The blocks this replaces imported the key and set
+      # `user.signingkey` — and never signed, because neither `git commit`
+      # nor `git rebase` does unless `commit.gpgsign` is on. Every release
+      # commit this job pushed read "Unsigned" on GitHub.
+      #
+      # The committer email now comes from the key itself. It used to be
+      # the merger's @users.noreply address, which GitHub reports as
+      # `bad_email` even on a correctly signed commit. The merger is still
+      # credited — as the AUTHOR, set below during the rebase.
+      - uses: ./.github/actions/setup-signing
+        id: signing
+        with:
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg-passphrase: ${{ secrets.GPG_PASSPHRASE }}
 
       - name: Rebase onto main, tag, and push atomically
         env:
@@ -176,7 +161,7 @@ jobs:
         run: |
           set -euo pipefail
           SIGN_FLAG=""
-          if [ "${{ steps.gpg.outputs.available }}" = "true" ]; then SIGN_FLAG="-s"; fi
+          if [ "${{ steps.signing.outputs.available }}" = "true" ]; then SIGN_FLAG="-s"; fi
 
           # gitops/<env> was levelled with main when the promotion was
           # proposed, but the reviewer takes as long as they take and ci
