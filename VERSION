@@ -46,4 +46,4 @@ gitops=0.1.0
 configs-staging=0.0.0
 configs-production=0.0.0
 gitops-staging=0.1.0
-gitops-production=0.0.0
+gitops-production=0.1.0
