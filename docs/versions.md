@@ -44,9 +44,10 @@ Consumed by the applications above; not shipped on their own.
 
 ## Infrastructure
 
-Terragrunt/Terraform under `infrastructure/`. Three kinds of version, and
-the difference between them is the point: the first two are libraries,
-released on every push to `main`; the third is deployed state.
+Terragrunt/Terraform under `infrastructure/`. The difference between the
+families below is the point: everything up to the bootstraps is a library,
+released on every push to `main` that touches it; the configurations at the
+end are deployed state, released only after a real apply.
 
 ### Terragrunt root
 
@@ -65,6 +66,20 @@ and tagged on its own; the version is recorded in the module's `README.md`.
 | module            | version                                           |
 |-------------------|---------------------------------------------------|
 | `example`         | {{ config.extra.versions.infra_modules_example }} |
+
+### State backend bootstraps
+
+The roots that create the bucket every other unit stores its state in.
+Applied by hand, once, with local state — Terraform cannot keep its state
+in a bucket Terraform has not created yet. They are versioned like the
+modules above because someone has to be able to say which revision created
+the bucket their state lives in; the number does **not** mean the bucket
+has been re-created since.
+
+| bootstrap        | version                                        |
+|------------------|------------------------------------------------|
+| `bootstrap/aws`  | {{ config.extra.versions.infra_bootstrap_aws }} |
+| `bootstrap/gcp`  | {{ config.extra.versions.infra_bootstrap_gcp }} |
 
 ### Flux wiring
 
