@@ -54,9 +54,27 @@ jobs:
     # A failed or cancelled ci has not finished writing to main, so the pins
     # it would read are not the ones that will be there. workflow_dispatch
     # has no parent run, hence the second clause.
+    # A `chore(release): bump configs-<env>` commit is what infra-apply
+    # pushes AFTER a deploy has been applied and released. It reaches main
+    # without the skip marker on purpose — the marker on the proposal
+    # commit would have suppressed the pull_request event the applier
+    # triggers on — so it starts a ci run, whose completion lands here.
+    #
+    # There is nothing to plan on it. The environment it names was just
+    # released, so multicz reports it as not pending, and every one of
+    # these runs discovered an empty set and stopped. Skipping is one
+    # fewer run per deploy, not a behaviour change.
+    #
+    # Deliberately narrow. `gitops-` bumps are NOT skipped: promote-staging
+    # moves the staging pins in the same breath, which is exactly when
+    # production may have something new to promote.
+    #
+    # `head_commit` on a workflow_run event is the commit the parent run
+    # was for — the release commit itself.
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      github.event.workflow_run.conclusion == 'success'
+      (github.event.workflow_run.conclusion == 'success' &&
+       !startsWith(github.event.workflow_run.head_commit.message, 'chore(release): bump configs-'))
     runs-on: ubuntu-latest
     # No `environment:` here — and none on gitops-apply either, since the
     # approval moved onto the pull request. This job only proposes; the
