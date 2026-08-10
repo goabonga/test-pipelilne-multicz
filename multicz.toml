@@ -489,6 +489,7 @@ paths      = [
 bump_files = [
     { file = "infrastructure/VERSION" },
     { file = "zensical.toml", key = "project.extra.versions.infra" },
+    { file = "VERSION", key = 'regex:^infra=(.+)$' },
 ]
 changelog  = "infrastructure/CHANGELOG.md"
 
@@ -500,6 +501,7 @@ paths      = ["infrastructure/configs/staging/**"]
 bump_files = [
     { file = "infrastructure/configs/staging/config.yaml", key = "version" },
     { file = "zensical.toml", key = "project.extra.versions.configs_staging" },
+    { file = "VERSION", key = 'regex:^configs-staging=(.+)$' },
 ]
 changelog  = "infrastructure/configs/staging/CHANGELOG.md"
 # Whatever this environment deploys. new-terraform-module.sh appends each new
@@ -514,6 +516,7 @@ paths      = ["infrastructure/configs/production/**"]
 bump_files = [
     { file = "infrastructure/configs/production/config.yaml", key = "version" },
     { file = "zensical.toml", key = "project.extra.versions.configs_production" },
+    { file = "VERSION", key = 'regex:^configs-production=(.+)$' },
 ]
 changelog  = "infrastructure/configs/production/CHANGELOG.md"
 depends_on = ["infra", "infra-modules-example"]
@@ -528,6 +531,7 @@ paths      = ["infrastructure/modules/example/**"]
 bump_files = [
     { file = "infrastructure/modules/example/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
     { file = "zensical.toml", key = "project.extra.versions.infra_modules_example" },
+    { file = "VERSION", key = 'regex:^infra-modules-example=(.+)$' },
 ]
 changelog  = "infrastructure/modules/example/CHANGELOG.md"
 post_bump  = ["terraform-docs -c infrastructure/modules/example/.terraform-docs.yml infrastructure/modules/example"]
@@ -546,6 +550,7 @@ paths      = ["infrastructure/bootstrap/aws/**"]
 bump_files = [
     { file = "infrastructure/bootstrap/aws/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
     { file = "zensical.toml", key = "project.extra.versions.infra_bootstrap_aws" },
+    { file = "VERSION", key = 'regex:^infra-bootstrap-aws=(.+)$' },
 ]
 changelog  = "infrastructure/bootstrap/aws/CHANGELOG.md"
 post_bump  = ["terraform-docs -c infrastructure/bootstrap/aws/.terraform-docs.yml infrastructure/bootstrap/aws"]
@@ -555,6 +560,7 @@ paths      = ["infrastructure/bootstrap/gcp/**"]
 bump_files = [
     { file = "infrastructure/bootstrap/gcp/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
     { file = "zensical.toml", key = "project.extra.versions.infra_bootstrap_gcp" },
+    { file = "VERSION", key = 'regex:^infra-bootstrap-gcp=(.+)$' },
 ]
 changelog  = "infrastructure/bootstrap/gcp/CHANGELOG.md"
 post_bump  = ["terraform-docs -c infrastructure/bootstrap/gcp/.terraform-docs.yml infrastructure/bootstrap/gcp"]
@@ -598,6 +604,7 @@ paths      = [
 bump_files = [
     { file = "gitops/VERSION" },
     { file = "zensical.toml", key = "project.extra.versions.gitops" },
+    { file = "VERSION", key = 'regex:^gitops=(.+)$' },
 ]
 changelog  = "gitops/CHANGELOG.md"
 
@@ -606,6 +613,7 @@ paths      = ["gitops/apps/staging/**"]
 bump_files = [
     { file = "gitops/apps/staging/VERSION" },
     { file = "zensical.toml", key = "project.extra.versions.gitops_staging" },
+    { file = "VERSION", key = 'regex:^gitops-staging=(.+)$' },
 ]
 changelog  = "gitops/apps/staging/CHANGELOG.md"
 depends_on = ["gitops", "chart-api", "chart-job", "chart-ssr", "chart-migrations"]
@@ -615,6 +623,7 @@ paths      = ["gitops/apps/production/**"]
 bump_files = [
     { file = "gitops/apps/production/VERSION" },
     { file = "zensical.toml", key = "project.extra.versions.gitops_production" },
+    { file = "VERSION", key = 'regex:^gitops-production=(.+)$' },
 ]
 changelog  = "gitops/apps/production/CHANGELOG.md"
 depends_on = ["gitops", "chart-api", "chart-job", "chart-ssr", "chart-migrations"]

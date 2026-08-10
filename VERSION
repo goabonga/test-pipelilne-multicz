@@ -1,3 +1,22 @@
+# Every component's current version, in one place.
+#
+# multicz owns this file — each entry is a `bump_files` target, so nothing
+# here is maintained by hand and none of it can drift from the component's
+# own copy (pyproject.toml, Chart.yaml, README.md, config.yaml, ...).
+#
+# Read by tests/install/conftest.py, which asserts an installed .deb
+# reports the version the build was told to produce, and by
+# scripts/grype-allowlist-sweep.py, which resolves the image tag to
+# rescan. Both skip comments and blank lines.
+#
+# THE THIRD SECTION IS NOT LIKE THE OTHER TWO. Libraries release on every
+# push to main that touches them, so their version says what the
+# repository contains. Deployed state moves only after a real apply, so
+# its version says what is actually live — and it stays put while the code
+# around it moves on. Reading a `configs-*` number as "the current code" is
+# the mistake this grouping exists to prevent.
+
+# ── applications and libraries ──────────────────────────────────────────
 api=0.0.0
 job=0.0.0
 cli=0.0.0
@@ -12,3 +31,19 @@ chart-job=0.0.0
 chart-ssr=0.0.0
 chart-migrations=0.0.0
 docs=0.0.0
+
+# ── infrastructure and gitops code ──────────────────────────────────────
+# Libraries too: released on every push to main that touches them.
+infra=0.0.0
+infra-modules-example=0.0.0
+infra-bootstrap-aws=0.0.0
+infra-bootstrap-gcp=0.0.0
+gitops=0.0.0
+
+# ── deployed state ──────────────────────────────────────────────────────
+# Bumped only by infra-apply / gitops-apply, after an apply that succeeded.
+# These are the versions running in each environment right now.
+configs-staging=0.0.0
+configs-production=0.0.0
+gitops-staging=0.0.0
+gitops-production=0.0.0
