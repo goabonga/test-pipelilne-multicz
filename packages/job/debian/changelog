@@ -1,3 +1,19 @@
+shomer-job (1.0.0-1) unstable; urgency=medium
+
+  * refactor!: Rename components (worker->job, web->ssr, web-frontend->web)
+  * fix(job): Pin Chainguard python base by digest and refresh the grype allowlist
+  * fix(job): Log the iteration index from tick()
+  * feat(job): Run as a celery worker backed by redis
+  * fix(job): Satisfy mypy --strict on the celery worker
+  * fix(job): Write the celery beat schedule to a writable path
+  * fix(job): Bump chainguard/python in /packages/job
+  * feat: Cut a synchronized release baseline across all components
+  * fix(job): Refresh grype allowlist against the current base image
+  * feat(job): Publish package metadata and a PEP 561 marker
+  * feat(api,job,ssr,migrations): Declare the OCI annotations in the Dockerfiles
+
+ -- Chris <goabonga@pm.me>  Mon, 10 Aug 2026 20:07:34 +0000
+
 shomer-job (1.4.0-1) unstable; urgency=medium
 
   * feat(api,job,ssr,migrations): Declare the OCI annotations in the Dockerfiles
