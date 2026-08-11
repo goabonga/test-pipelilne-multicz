@@ -194,7 +194,38 @@ if row not in text:
     vers.write_text(text.replace(anchor, anchor + "\n" + row, 1))
 ZPY
 
-# --- 5. validate --------------------------------------------------------
+# --- 5. CI jobs ---------------------------------------------------------
+# Generated, not printed. This used to be an item in the "Next:" list,
+# which meant four blocks pasted by hand into a 4000-line workflow for
+# every module — and forgetting them registered the module everywhere
+# except the one place that checks it. A module that releases but is never
+# tested is worse than one that does not exist.
+CI="${REPO_ROOT}/.github/workflows/ci.yml"
+TMPL="${REPO_ROOT}/scripts/templates/ci-module-jobs.yml.tmpl"
+if grep -q "^  infra-modules-${NAME}-fmt:" "$CI" 2>/dev/null; then
+  log "CI jobs for ${NAME} already present, leaving them alone"
+elif [ ! -f "$TMPL" ]; then
+  die "missing ${TMPL}"
+else
+  RENDERED=$(mktemp)
+  sed "s/@NAME@/${NAME}/g" "$TMPL" > "$RENDERED"
+  # Inserted before release-bump, where the other infra-modules-* jobs
+  # live. awk rather than sed: the block is multi-line and contains the
+  # slashes and quotes that make a sed insert unreadable.
+  awk -v f="$RENDERED" '
+    /^  release-bump:$/ && !done {
+      while ((getline line < f) > 0) print line
+      print ""
+      done = 1
+    }
+    { print }
+  ' "$CI" > "${CI}.new" && mv "${CI}.new" "$CI"
+  rm -f "$RENDERED"
+  log "added 4 CI jobs for ${NAME}"
+fi
+
+
+# --- 6. validate --------------------------------------------------------
 if command -v multicz >/dev/null 2>&1; then
   multicz validate --strict
 elif command -v uvx >/dev/null 2>&1; then
@@ -210,20 +241,9 @@ cat <<EOF
   Next:
     1. declare the resources in infrastructure/modules/${NAME}/main.tf
     2. write real assertions in infrastructure/modules/${NAME}/tests/
-    3. add its CI jobs to .github/workflows/ci.yml — one job per check, the
-       same shape as api-* / chart-*. Paste this next to the other
-       infra-modules-* jobs, plus a release-infra-modules-${NAME} job
-       modelled on release-infra-modules-example, and add them to
-       release-bump's needs / gate / outputs:
-
-         infra-modules-${NAME}-fmt:
-           needs: [detect, headers]
-           if: contains(fromJson(needs.detect.outputs.changed).changed, 'infra-modules-${NAME}')
-           ...  run: make infra-fmt-check M=${NAME}
-
-         infra-modules-${NAME}-test      -> make infra-test M=${NAME}
-         infra-modules-${NAME}-checkov   -> checkov-action, directory: infrastructure/modules/${NAME}
-         infra-modules-${NAME}-docs      -> make infra-docs-check M=${NAME}
+    3. add a release-infra-modules-${NAME} job modelled on
+       release-infra-modules-example, and wire it into release-bump's
+       outputs (the four check jobs were generated for you)
 
     4. consume it from a unit:
 

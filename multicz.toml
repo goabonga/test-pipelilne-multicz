@@ -425,6 +425,30 @@ depends_on = [
     # the next push to main rather than at apply time. One cycle late, by
     # construction.
     "infra", "infra-modules-example", "configs-staging", "configs-production",
+    "infra-modules-vms-proxy-aws",
+    "infra-modules-vms-proxy-gcp",
+    "infra-modules-k8s-nodes-aws",
+    "infra-modules-k8s-nodes-gcp",
+    "infra-modules-k8s-cluster-aws",
+    "infra-modules-k8s-cluster-gcp",
+    "infra-modules-dns-public-aws",
+    "infra-modules-dns-public-gcp",
+    "infra-modules-dns-private-aws",
+    "infra-modules-dns-private-gcp",
+    "infra-modules-network-nat-aws",
+    "infra-modules-network-nat-gcp",
+    "infra-modules-network-routes-aws",
+    "infra-modules-network-routes-gcp",
+    "infra-modules-network-firewall-aws",
+    "infra-modules-network-firewall-gcp",
+    "infra-modules-network-addresses-public-aws",
+    "infra-modules-network-addresses-public-gcp",
+    "infra-modules-network-addresses-private-aws",
+    "infra-modules-network-addresses-private-gcp",
+    "infra-modules-network-subnets-aws",
+    "infra-modules-network-subnets-gcp",
+    "infra-modules-network-vpc-aws",
+    "infra-modules-network-vpc-gcp",
     "gitops", "gitops-staging", "gitops-production",
 ]
 bump_rules = { docs = "patch" }
@@ -506,7 +530,7 @@ bump_files = [
 changelog  = "infrastructure/configs/staging/CHANGELOG.md"
 # Whatever this environment deploys. new-terraform-module.sh appends each new
 # infra-modules-* here so upstream-notes can resolve it.
-depends_on = ["infra", "infra-modules-example"]
+depends_on = ["infra", "infra-modules-example", "infra-modules-network-vpc-gcp", "infra-modules-network-vpc-aws", "infra-modules-network-subnets-gcp", "infra-modules-network-subnets-aws", "infra-modules-network-addresses-private-gcp", "infra-modules-network-addresses-private-aws", "infra-modules-network-addresses-public-gcp", "infra-modules-network-addresses-public-aws", "infra-modules-network-firewall-gcp", "infra-modules-network-firewall-aws", "infra-modules-network-routes-gcp", "infra-modules-network-routes-aws", "infra-modules-network-nat-gcp", "infra-modules-network-nat-aws", "infra-modules-dns-private-gcp", "infra-modules-dns-private-aws", "infra-modules-dns-public-gcp", "infra-modules-dns-public-aws", "infra-modules-k8s-cluster-gcp", "infra-modules-k8s-cluster-aws", "infra-modules-k8s-nodes-gcp", "infra-modules-k8s-nodes-aws", "infra-modules-vms-proxy-gcp", "infra-modules-vms-proxy-aws"]
 
 [components.configs-production]
 paths      = ["infrastructure/configs/production/**"]
@@ -519,7 +543,7 @@ bump_files = [
     { file = "VERSION", key = 'regex:^configs-production=(.+)$' },
 ]
 changelog  = "infrastructure/configs/production/CHANGELOG.md"
-depends_on = ["infra", "infra-modules-example"]
+depends_on = ["infra", "infra-modules-example", "infra-modules-k8s-nodes-gcp", "infra-modules-k8s-nodes-aws", "infra-modules-vms-proxy-gcp", "infra-modules-vms-proxy-aws"]
 
 [components.infra-modules-example]
 paths      = ["infrastructure/modules/example/**"]
@@ -628,3 +652,339 @@ bump_files = [
 changelog  = "gitops/apps/production/CHANGELOG.md"
 depends_on = ["gitops", "chart-api", "chart-job", "chart-ssr", "chart-migrations"]
 
+
+[components.infra-modules-network-vpc-gcp]
+paths      = ["infrastructure/modules/network-vpc-gcp/**"]
+# The version lives in README.md — there is no VERSION file. post_bump
+# regenerates the terraform-docs block right after the rewrite, so a
+# released module always ships docs matching the code that was tagged;
+# `mode: inject` only touches what sits between the BEGIN/END markers, so
+# the **Version:** line survives.
+bump_files = [
+    { file = "infrastructure/modules/network-vpc-gcp/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
+    { file = "zensical.toml", key = "project.extra.versions.infra_modules_network_vpc_gcp" },
+]
+changelog  = "infrastructure/modules/network-vpc-gcp/CHANGELOG.md"
+post_bump  = ["terraform-docs -c infrastructure/modules/network-vpc-gcp/.terraform-docs.yml infrastructure/modules/network-vpc-gcp"]
+
+[components.infra-modules-network-vpc-aws]
+paths      = ["infrastructure/modules/network-vpc-aws/**"]
+# The version lives in README.md — there is no VERSION file. post_bump
+# regenerates the terraform-docs block right after the rewrite, so a
+# released module always ships docs matching the code that was tagged;
+# `mode: inject` only touches what sits between the BEGIN/END markers, so
+# the **Version:** line survives.
+bump_files = [
+    { file = "infrastructure/modules/network-vpc-aws/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
+    { file = "zensical.toml", key = "project.extra.versions.infra_modules_network_vpc_aws" },
+]
+changelog  = "infrastructure/modules/network-vpc-aws/CHANGELOG.md"
+post_bump  = ["terraform-docs -c infrastructure/modules/network-vpc-aws/.terraform-docs.yml infrastructure/modules/network-vpc-aws"]
+
+[components.infra-modules-network-subnets-gcp]
+paths      = ["infrastructure/modules/network-subnets-gcp/**"]
+# The version lives in README.md — there is no VERSION file. post_bump
+# regenerates the terraform-docs block right after the rewrite, so a
+# released module always ships docs matching the code that was tagged;
+# `mode: inject` only touches what sits between the BEGIN/END markers, so
+# the **Version:** line survives.
+bump_files = [
+    { file = "infrastructure/modules/network-subnets-gcp/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
+    { file = "zensical.toml", key = "project.extra.versions.infra_modules_network_subnets_gcp" },
+]
+changelog  = "infrastructure/modules/network-subnets-gcp/CHANGELOG.md"
+post_bump  = ["terraform-docs -c infrastructure/modules/network-subnets-gcp/.terraform-docs.yml infrastructure/modules/network-subnets-gcp"]
+
+[components.infra-modules-network-subnets-aws]
+paths      = ["infrastructure/modules/network-subnets-aws/**"]
+# The version lives in README.md — there is no VERSION file. post_bump
+# regenerates the terraform-docs block right after the rewrite, so a
+# released module always ships docs matching the code that was tagged;
+# `mode: inject` only touches what sits between the BEGIN/END markers, so
+# the **Version:** line survives.
+bump_files = [
+    { file = "infrastructure/modules/network-subnets-aws/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
+    { file = "zensical.toml", key = "project.extra.versions.infra_modules_network_subnets_aws" },
+]
+changelog  = "infrastructure/modules/network-subnets-aws/CHANGELOG.md"
+post_bump  = ["terraform-docs -c infrastructure/modules/network-subnets-aws/.terraform-docs.yml infrastructure/modules/network-subnets-aws"]
+
+[components.infra-modules-network-addresses-private-gcp]
+paths      = ["infrastructure/modules/network-addresses-private-gcp/**"]
+# The version lives in README.md — there is no VERSION file. post_bump
+# regenerates the terraform-docs block right after the rewrite, so a
+# released module always ships docs matching the code that was tagged;
+# `mode: inject` only touches what sits between the BEGIN/END markers, so
+# the **Version:** line survives.
+bump_files = [
+    { file = "infrastructure/modules/network-addresses-private-gcp/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
+    { file = "zensical.toml", key = "project.extra.versions.infra_modules_network_addresses_private_gcp" },
+]
+changelog  = "infrastructure/modules/network-addresses-private-gcp/CHANGELOG.md"
+post_bump  = ["terraform-docs -c infrastructure/modules/network-addresses-private-gcp/.terraform-docs.yml infrastructure/modules/network-addresses-private-gcp"]
+
+[components.infra-modules-network-addresses-private-aws]
+paths      = ["infrastructure/modules/network-addresses-private-aws/**"]
+# The version lives in README.md — there is no VERSION file. post_bump
+# regenerates the terraform-docs block right after the rewrite, so a
+# released module always ships docs matching the code that was tagged;
+# `mode: inject` only touches what sits between the BEGIN/END markers, so
+# the **Version:** line survives.
+bump_files = [
+    { file = "infrastructure/modules/network-addresses-private-aws/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
+    { file = "zensical.toml", key = "project.extra.versions.infra_modules_network_addresses_private_aws" },
+]
+changelog  = "infrastructure/modules/network-addresses-private-aws/CHANGELOG.md"
+post_bump  = ["terraform-docs -c infrastructure/modules/network-addresses-private-aws/.terraform-docs.yml infrastructure/modules/network-addresses-private-aws"]
+
+[components.infra-modules-network-addresses-public-gcp]
+paths      = ["infrastructure/modules/network-addresses-public-gcp/**"]
+# The version lives in README.md — there is no VERSION file. post_bump
+# regenerates the terraform-docs block right after the rewrite, so a
+# released module always ships docs matching the code that was tagged;
+# `mode: inject` only touches what sits between the BEGIN/END markers, so
+# the **Version:** line survives.
+bump_files = [
+    { file = "infrastructure/modules/network-addresses-public-gcp/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
+    { file = "zensical.toml", key = "project.extra.versions.infra_modules_network_addresses_public_gcp" },
+]
+changelog  = "infrastructure/modules/network-addresses-public-gcp/CHANGELOG.md"
+post_bump  = ["terraform-docs -c infrastructure/modules/network-addresses-public-gcp/.terraform-docs.yml infrastructure/modules/network-addresses-public-gcp"]
+
+[components.infra-modules-network-addresses-public-aws]
+paths      = ["infrastructure/modules/network-addresses-public-aws/**"]
+# The version lives in README.md — there is no VERSION file. post_bump
+# regenerates the terraform-docs block right after the rewrite, so a
+# released module always ships docs matching the code that was tagged;
+# `mode: inject` only touches what sits between the BEGIN/END markers, so
+# the **Version:** line survives.
+bump_files = [
+    { file = "infrastructure/modules/network-addresses-public-aws/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
+    { file = "zensical.toml", key = "project.extra.versions.infra_modules_network_addresses_public_aws" },
+]
+changelog  = "infrastructure/modules/network-addresses-public-aws/CHANGELOG.md"
+post_bump  = ["terraform-docs -c infrastructure/modules/network-addresses-public-aws/.terraform-docs.yml infrastructure/modules/network-addresses-public-aws"]
+
+[components.infra-modules-network-firewall-gcp]
+paths      = ["infrastructure/modules/network-firewall-gcp/**"]
+# The version lives in README.md — there is no VERSION file. post_bump
+# regenerates the terraform-docs block right after the rewrite, so a
+# released module always ships docs matching the code that was tagged;
+# `mode: inject` only touches what sits between the BEGIN/END markers, so
+# the **Version:** line survives.
+bump_files = [
+    { file = "infrastructure/modules/network-firewall-gcp/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
+    { file = "zensical.toml", key = "project.extra.versions.infra_modules_network_firewall_gcp" },
+]
+changelog  = "infrastructure/modules/network-firewall-gcp/CHANGELOG.md"
+post_bump  = ["terraform-docs -c infrastructure/modules/network-firewall-gcp/.terraform-docs.yml infrastructure/modules/network-firewall-gcp"]
+
+[components.infra-modules-network-firewall-aws]
+paths      = ["infrastructure/modules/network-firewall-aws/**"]
+# The version lives in README.md — there is no VERSION file. post_bump
+# regenerates the terraform-docs block right after the rewrite, so a
+# released module always ships docs matching the code that was tagged;
+# `mode: inject` only touches what sits between the BEGIN/END markers, so
+# the **Version:** line survives.
+bump_files = [
+    { file = "infrastructure/modules/network-firewall-aws/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
+    { file = "zensical.toml", key = "project.extra.versions.infra_modules_network_firewall_aws" },
+]
+changelog  = "infrastructure/modules/network-firewall-aws/CHANGELOG.md"
+post_bump  = ["terraform-docs -c infrastructure/modules/network-firewall-aws/.terraform-docs.yml infrastructure/modules/network-firewall-aws"]
+
+[components.infra-modules-network-routes-gcp]
+paths      = ["infrastructure/modules/network-routes-gcp/**"]
+# The version lives in README.md — there is no VERSION file. post_bump
+# regenerates the terraform-docs block right after the rewrite, so a
+# released module always ships docs matching the code that was tagged;
+# `mode: inject` only touches what sits between the BEGIN/END markers, so
+# the **Version:** line survives.
+bump_files = [
+    { file = "infrastructure/modules/network-routes-gcp/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
+    { file = "zensical.toml", key = "project.extra.versions.infra_modules_network_routes_gcp" },
+]
+changelog  = "infrastructure/modules/network-routes-gcp/CHANGELOG.md"
+post_bump  = ["terraform-docs -c infrastructure/modules/network-routes-gcp/.terraform-docs.yml infrastructure/modules/network-routes-gcp"]
+
+[components.infra-modules-network-routes-aws]
+paths      = ["infrastructure/modules/network-routes-aws/**"]
+# The version lives in README.md — there is no VERSION file. post_bump
+# regenerates the terraform-docs block right after the rewrite, so a
+# released module always ships docs matching the code that was tagged;
+# `mode: inject` only touches what sits between the BEGIN/END markers, so
+# the **Version:** line survives.
+bump_files = [
+    { file = "infrastructure/modules/network-routes-aws/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
+    { file = "zensical.toml", key = "project.extra.versions.infra_modules_network_routes_aws" },
+]
+changelog  = "infrastructure/modules/network-routes-aws/CHANGELOG.md"
+post_bump  = ["terraform-docs -c infrastructure/modules/network-routes-aws/.terraform-docs.yml infrastructure/modules/network-routes-aws"]
+
+[components.infra-modules-network-nat-gcp]
+paths      = ["infrastructure/modules/network-nat-gcp/**"]
+# The version lives in README.md — there is no VERSION file. post_bump
+# regenerates the terraform-docs block right after the rewrite, so a
+# released module always ships docs matching the code that was tagged;
+# `mode: inject` only touches what sits between the BEGIN/END markers, so
+# the **Version:** line survives.
+bump_files = [
+    { file = "infrastructure/modules/network-nat-gcp/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
+    { file = "zensical.toml", key = "project.extra.versions.infra_modules_network_nat_gcp" },
+]
+changelog  = "infrastructure/modules/network-nat-gcp/CHANGELOG.md"
+post_bump  = ["terraform-docs -c infrastructure/modules/network-nat-gcp/.terraform-docs.yml infrastructure/modules/network-nat-gcp"]
+
+[components.infra-modules-network-nat-aws]
+paths      = ["infrastructure/modules/network-nat-aws/**"]
+# The version lives in README.md — there is no VERSION file. post_bump
+# regenerates the terraform-docs block right after the rewrite, so a
+# released module always ships docs matching the code that was tagged;
+# `mode: inject` only touches what sits between the BEGIN/END markers, so
+# the **Version:** line survives.
+bump_files = [
+    { file = "infrastructure/modules/network-nat-aws/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
+    { file = "zensical.toml", key = "project.extra.versions.infra_modules_network_nat_aws" },
+]
+changelog  = "infrastructure/modules/network-nat-aws/CHANGELOG.md"
+post_bump  = ["terraform-docs -c infrastructure/modules/network-nat-aws/.terraform-docs.yml infrastructure/modules/network-nat-aws"]
+
+[components.infra-modules-dns-private-gcp]
+paths      = ["infrastructure/modules/dns-private-gcp/**"]
+# The version lives in README.md — there is no VERSION file. post_bump
+# regenerates the terraform-docs block right after the rewrite, so a
+# released module always ships docs matching the code that was tagged;
+# `mode: inject` only touches what sits between the BEGIN/END markers, so
+# the **Version:** line survives.
+bump_files = [
+    { file = "infrastructure/modules/dns-private-gcp/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
+    { file = "zensical.toml", key = "project.extra.versions.infra_modules_dns_private_gcp" },
+]
+changelog  = "infrastructure/modules/dns-private-gcp/CHANGELOG.md"
+post_bump  = ["terraform-docs -c infrastructure/modules/dns-private-gcp/.terraform-docs.yml infrastructure/modules/dns-private-gcp"]
+
+[components.infra-modules-dns-private-aws]
+paths      = ["infrastructure/modules/dns-private-aws/**"]
+# The version lives in README.md — there is no VERSION file. post_bump
+# regenerates the terraform-docs block right after the rewrite, so a
+# released module always ships docs matching the code that was tagged;
+# `mode: inject` only touches what sits between the BEGIN/END markers, so
+# the **Version:** line survives.
+bump_files = [
+    { file = "infrastructure/modules/dns-private-aws/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
+    { file = "zensical.toml", key = "project.extra.versions.infra_modules_dns_private_aws" },
+]
+changelog  = "infrastructure/modules/dns-private-aws/CHANGELOG.md"
+post_bump  = ["terraform-docs -c infrastructure/modules/dns-private-aws/.terraform-docs.yml infrastructure/modules/dns-private-aws"]
+
+[components.infra-modules-dns-public-gcp]
+paths      = ["infrastructure/modules/dns-public-gcp/**"]
+# The version lives in README.md — there is no VERSION file. post_bump
+# regenerates the terraform-docs block right after the rewrite, so a
+# released module always ships docs matching the code that was tagged;
+# `mode: inject` only touches what sits between the BEGIN/END markers, so
+# the **Version:** line survives.
+bump_files = [
+    { file = "infrastructure/modules/dns-public-gcp/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
+    { file = "zensical.toml", key = "project.extra.versions.infra_modules_dns_public_gcp" },
+]
+changelog  = "infrastructure/modules/dns-public-gcp/CHANGELOG.md"
+post_bump  = ["terraform-docs -c infrastructure/modules/dns-public-gcp/.terraform-docs.yml infrastructure/modules/dns-public-gcp"]
+
+[components.infra-modules-dns-public-aws]
+paths      = ["infrastructure/modules/dns-public-aws/**"]
+# The version lives in README.md — there is no VERSION file. post_bump
+# regenerates the terraform-docs block right after the rewrite, so a
+# released module always ships docs matching the code that was tagged;
+# `mode: inject` only touches what sits between the BEGIN/END markers, so
+# the **Version:** line survives.
+bump_files = [
+    { file = "infrastructure/modules/dns-public-aws/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
+    { file = "zensical.toml", key = "project.extra.versions.infra_modules_dns_public_aws" },
+]
+changelog  = "infrastructure/modules/dns-public-aws/CHANGELOG.md"
+post_bump  = ["terraform-docs -c infrastructure/modules/dns-public-aws/.terraform-docs.yml infrastructure/modules/dns-public-aws"]
+
+[components.infra-modules-k8s-cluster-gcp]
+paths      = ["infrastructure/modules/k8s-cluster-gcp/**"]
+# The version lives in README.md — there is no VERSION file. post_bump
+# regenerates the terraform-docs block right after the rewrite, so a
+# released module always ships docs matching the code that was tagged;
+# `mode: inject` only touches what sits between the BEGIN/END markers, so
+# the **Version:** line survives.
+bump_files = [
+    { file = "infrastructure/modules/k8s-cluster-gcp/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
+    { file = "zensical.toml", key = "project.extra.versions.infra_modules_k8s_cluster_gcp" },
+]
+changelog  = "infrastructure/modules/k8s-cluster-gcp/CHANGELOG.md"
+post_bump  = ["terraform-docs -c infrastructure/modules/k8s-cluster-gcp/.terraform-docs.yml infrastructure/modules/k8s-cluster-gcp"]
+
+[components.infra-modules-k8s-cluster-aws]
+paths      = ["infrastructure/modules/k8s-cluster-aws/**"]
+# The version lives in README.md — there is no VERSION file. post_bump
+# regenerates the terraform-docs block right after the rewrite, so a
+# released module always ships docs matching the code that was tagged;
+# `mode: inject` only touches what sits between the BEGIN/END markers, so
+# the **Version:** line survives.
+bump_files = [
+    { file = "infrastructure/modules/k8s-cluster-aws/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
+    { file = "zensical.toml", key = "project.extra.versions.infra_modules_k8s_cluster_aws" },
+]
+changelog  = "infrastructure/modules/k8s-cluster-aws/CHANGELOG.md"
+post_bump  = ["terraform-docs -c infrastructure/modules/k8s-cluster-aws/.terraform-docs.yml infrastructure/modules/k8s-cluster-aws"]
+
+[components.infra-modules-k8s-nodes-gcp]
+paths      = ["infrastructure/modules/k8s-nodes-gcp/**"]
+# The version lives in README.md — there is no VERSION file. post_bump
+# regenerates the terraform-docs block right after the rewrite, so a
+# released module always ships docs matching the code that was tagged;
+# `mode: inject` only touches what sits between the BEGIN/END markers, so
+# the **Version:** line survives.
+bump_files = [
+    { file = "infrastructure/modules/k8s-nodes-gcp/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
+    { file = "zensical.toml", key = "project.extra.versions.infra_modules_k8s_nodes_gcp" },
+]
+changelog  = "infrastructure/modules/k8s-nodes-gcp/CHANGELOG.md"
+post_bump  = ["terraform-docs -c infrastructure/modules/k8s-nodes-gcp/.terraform-docs.yml infrastructure/modules/k8s-nodes-gcp"]
+
+[components.infra-modules-k8s-nodes-aws]
+paths      = ["infrastructure/modules/k8s-nodes-aws/**"]
+# The version lives in README.md — there is no VERSION file. post_bump
+# regenerates the terraform-docs block right after the rewrite, so a
+# released module always ships docs matching the code that was tagged;
+# `mode: inject` only touches what sits between the BEGIN/END markers, so
+# the **Version:** line survives.
+bump_files = [
+    { file = "infrastructure/modules/k8s-nodes-aws/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
+    { file = "zensical.toml", key = "project.extra.versions.infra_modules_k8s_nodes_aws" },
+]
+changelog  = "infrastructure/modules/k8s-nodes-aws/CHANGELOG.md"
+post_bump  = ["terraform-docs -c infrastructure/modules/k8s-nodes-aws/.terraform-docs.yml infrastructure/modules/k8s-nodes-aws"]
+
+[components.infra-modules-vms-proxy-gcp]
+paths      = ["infrastructure/modules/vms-proxy-gcp/**"]
+# The version lives in README.md — there is no VERSION file. post_bump
+# regenerates the terraform-docs block right after the rewrite, so a
+# released module always ships docs matching the code that was tagged;
+# `mode: inject` only touches what sits between the BEGIN/END markers, so
+# the **Version:** line survives.
+bump_files = [
+    { file = "infrastructure/modules/vms-proxy-gcp/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
+    { file = "zensical.toml", key = "project.extra.versions.infra_modules_vms_proxy_gcp" },
+]
+changelog  = "infrastructure/modules/vms-proxy-gcp/CHANGELOG.md"
+post_bump  = ["terraform-docs -c infrastructure/modules/vms-proxy-gcp/.terraform-docs.yml infrastructure/modules/vms-proxy-gcp"]
+
+[components.infra-modules-vms-proxy-aws]
+paths      = ["infrastructure/modules/vms-proxy-aws/**"]
+# The version lives in README.md — there is no VERSION file. post_bump
+# regenerates the terraform-docs block right after the rewrite, so a
+# released module always ships docs matching the code that was tagged;
+# `mode: inject` only touches what sits between the BEGIN/END markers, so
+# the **Version:** line survives.
+bump_files = [
+    { file = "infrastructure/modules/vms-proxy-aws/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
+    { file = "zensical.toml", key = "project.extra.versions.infra_modules_vms_proxy_aws" },
+]
+changelog  = "infrastructure/modules/vms-proxy-aws/CHANGELOG.md"
+post_bump  = ["terraform-docs -c infrastructure/modules/vms-proxy-aws/.terraform-docs.yml infrastructure/modules/vms-proxy-aws"]

@@ -66,6 +66,30 @@ and tagged on its own; the version is recorded in the module's `README.md`.
 | module            | version                                           |
 |-------------------|---------------------------------------------------|
 | `example`         | {{ config.extra.versions.infra_modules_example }} |
+| `vms-proxy-aws` | {{ config.extra.versions.infra_modules_vms_proxy_aws }} |
+| `vms-proxy-gcp` | {{ config.extra.versions.infra_modules_vms_proxy_gcp }} |
+| `k8s-nodes-aws` | {{ config.extra.versions.infra_modules_k8s_nodes_aws }} |
+| `k8s-nodes-gcp` | {{ config.extra.versions.infra_modules_k8s_nodes_gcp }} |
+| `k8s-cluster-aws` | {{ config.extra.versions.infra_modules_k8s_cluster_aws }} |
+| `k8s-cluster-gcp` | {{ config.extra.versions.infra_modules_k8s_cluster_gcp }} |
+| `dns-public-aws` | {{ config.extra.versions.infra_modules_dns_public_aws }} |
+| `dns-public-gcp` | {{ config.extra.versions.infra_modules_dns_public_gcp }} |
+| `dns-private-aws` | {{ config.extra.versions.infra_modules_dns_private_aws }} |
+| `dns-private-gcp` | {{ config.extra.versions.infra_modules_dns_private_gcp }} |
+| `network-nat-aws` | {{ config.extra.versions.infra_modules_network_nat_aws }} |
+| `network-nat-gcp` | {{ config.extra.versions.infra_modules_network_nat_gcp }} |
+| `network-routes-aws` | {{ config.extra.versions.infra_modules_network_routes_aws }} |
+| `network-routes-gcp` | {{ config.extra.versions.infra_modules_network_routes_gcp }} |
+| `network-firewall-aws` | {{ config.extra.versions.infra_modules_network_firewall_aws }} |
+| `network-firewall-gcp` | {{ config.extra.versions.infra_modules_network_firewall_gcp }} |
+| `network-addresses-public-aws` | {{ config.extra.versions.infra_modules_network_addresses_public_aws }} |
+| `network-addresses-public-gcp` | {{ config.extra.versions.infra_modules_network_addresses_public_gcp }} |
+| `network-addresses-private-aws` | {{ config.extra.versions.infra_modules_network_addresses_private_aws }} |
+| `network-addresses-private-gcp` | {{ config.extra.versions.infra_modules_network_addresses_private_gcp }} |
+| `network-subnets-aws` | {{ config.extra.versions.infra_modules_network_subnets_aws }} |
+| `network-subnets-gcp` | {{ config.extra.versions.infra_modules_network_subnets_gcp }} |
+| `network-vpc-aws` | {{ config.extra.versions.infra_modules_network_vpc_aws }} |
+| `network-vpc-gcp` | {{ config.extra.versions.infra_modules_network_vpc_gcp }} |
 
 ### State backend bootstraps
 
