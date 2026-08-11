@@ -7,6 +7,12 @@ Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
 ### Releases
 
+- **gitops-staging** patch — 0.1.0 → 0.1.1
+
+## 2026-08-11
+
+### Releases
+
 - **api** patch — 0.1.0 → 0.1.1  _(cascade from database 0.1.1)_
 - **chart-api** patch — 1.0.0 → 1.0.1  _(cascade from api 0.1.1)_
 - **chart-job** patch — 1.0.0 → 1.0.1  _(cascade from job 1.0.1)_
