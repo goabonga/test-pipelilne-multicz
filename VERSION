@@ -22,15 +22,15 @@ job=1.0.1
 cli=0.1.0
 database=0.1.1
 migrations=0.1.1
-ssr=1.0.0
-web=1.0.0
+ssr=1.0.1
+web=1.0.1
 lib=0.1.0
 app=0.1.0
 chart-api=1.0.1
 chart-job=1.0.1
-chart-ssr=1.0.0
+chart-ssr=1.0.1
 chart-migrations=0.1.1
-docs=1.0.2
+docs=1.0.3
 
 # ── infrastructure and gitops code ──────────────────────────────────────
 # Libraries too: released on every push to main that touches them.

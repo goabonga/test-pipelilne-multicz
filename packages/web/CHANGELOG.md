@@ -2,6 +2,12 @@
 
 All notable changes to this component are documented here.
 
+## [1.0.1] - 2026-08-11
+
+### Fixes
+
+- **web**: validate the server config before spreading it (`2328b54`)
+
 ## [1.0.0] - 2026-08-11
 
 ### Breaking changes

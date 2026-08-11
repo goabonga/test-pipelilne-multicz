@@ -7,6 +7,19 @@ Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
 ### Releases
 
+- **chart-ssr** patch — 1.0.0 → 1.0.1  _(cascade from ssr 1.0.1)_
+- **docs** patch — 1.0.2 → 1.0.3  _(cascade from ssr 1.0.1)_
+- **ssr** patch — 1.0.0 → 1.0.1  _(cascade from web 1.0.1)_
+- **web** patch — 1.0.0 → 1.0.1
+
+### Fixes
+
+- **web**: validate the server config before spreading it (`2328b54`)
+
+## 2026-08-11
+
+### Releases
+
 - **gitops-staging** patch — 0.1.0 → 0.1.1
 
 ## 2026-08-11
