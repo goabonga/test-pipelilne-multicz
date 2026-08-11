@@ -511,6 +511,12 @@ paths      = [
     # scripts sitting next to them don't get swept into infra's history.
     "scripts/terragrunt.sh",
     "scripts/new-terraform-module.sh",
+    # The shared bootstrap README, which documents both bootstraps and
+    # belonged to neither — editing it released nothing. It cannot go on
+    # the bootstrap components: multicz rejects two components claiming
+    # the same file, and rightly so. It sits here because it describes
+    # the infrastructure as a whole, like the terragrunt wiring does.
+    "infrastructure/bootstrap/README.md",
 ]
 bump_files = [
     { file = "infrastructure/VERSION" },
