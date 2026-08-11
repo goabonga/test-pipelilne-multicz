@@ -73,5 +73,5 @@ infra-modules-vms-proxy-gcp=0.1.0
 # These are the versions running in each environment right now.
 configs-staging=0.0.0
 configs-production=0.0.0
-gitops-staging=0.0.0
+gitops-staging=0.1.0
 gitops-production=0.0.0
