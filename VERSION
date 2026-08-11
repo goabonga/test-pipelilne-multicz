@@ -30,7 +30,7 @@ chart-api=1.0.0
 chart-job=1.0.0
 chart-ssr=1.0.0
 chart-migrations=0.1.0
-docs=1.0.0
+docs=1.0.1
 
 # ── infrastructure and gitops code ──────────────────────────────────────
 # Libraries too: released on every push to main that touches them.
