@@ -35,3 +35,14 @@ def test_run_boots_worker_with_embedded_beat(monkeypatch: pytest.MonkeyPatch) ->
 
     assert captured[0] == "worker"
     assert "--beat" in captured
+
+
+def test_worker_retries_the_broker_on_startup() -> None:
+    """A worker that boots before Redis must wait, not exit.
+
+    Celery 5 leaves this unset and warns that 6.0 will flip the default to
+    "do not retry". Compose and Kubernetes start the worker alongside
+    Redis rather than after it, so inheriting that default would turn a
+    normal cold start into a crash.
+    """
+    assert main.app.conf.broker_connection_retry_on_startup is True

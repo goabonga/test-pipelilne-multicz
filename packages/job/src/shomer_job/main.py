@@ -31,6 +31,17 @@ REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 
 app = Celery("shomer-job", broker=REDIS_URL, backend=REDIS_URL)
 
+# Wait for the broker instead of dying when it is not up yet.
+#
+# Left unset, Celery 5 warns on every start that this default will flip in
+# 6.0, and once it does a worker that boots before Redis is ready exits
+# rather than retrying. That is the normal case on a cold start: compose
+# and Kubernetes both bring the worker up alongside Redis, not after it.
+# Pinning it here makes the behaviour the deployment needs explicit
+# instead of inherited, and silences a warning that would otherwise be
+# ignored until the day it stops being one.
+app.conf.broker_connection_retry_on_startup = True
+
 # Fire `tick` once a minute. Embedded beat (`worker --beat`) drives this
 # in the single-worker skeleton; a real deployment would run a dedicated
 # `celery beat` process instead.
