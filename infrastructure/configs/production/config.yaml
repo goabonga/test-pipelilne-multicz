@@ -33,10 +33,91 @@ tags:
 #   region: eu-west-3
 #   encrypt: true
 #   use_lockfile: true
+# ── provider ────────────────────────────────────────────────────────────
+# Selects which implementation of each unit runs. Every unit under
+# services/ carries an `exclude` keyed on this, so switching it swaps the
+# whole stack rather than half of it.
+provider: gcp
 
+region: europe-west1
+# One zone in staging, three in production. Read by the units that place
+# zonal resources; the HA flags below decide whether they spread.
+zones: ["europe-west1-b", "europe-west1-c", "europe-west1-d"]
+
+# GCP only — ignored when provider is aws.
+project: shomer-production
+
+# ── network ─────────────────────────────────────────────────────────────
+network:
+  cidr: 10.60.0.0/16
+
+  # Three purposes, three subnets, and the separation is load-bearing:
+  # `workload` has NO route to the internet and no NAT, so its only way
+  # out is the proxy. Giving it a NAT would make the proxy optional, and
+  # optional means bypassed.
+  subnets:
+    workload: { cidr: 10.60.0.0/20, purpose: workload }
+    proxy:    { cidr: 10.60.16.0/24, purpose: egress }
+    lb:       { cidr: 10.60.17.0/24, purpose: public-lb }
+
+  # Secondary ranges for pods and services. GKE needs them declared on the
+  # subnet; EKS derives them from the subnet itself and ignores these.
+  pods:     10.70.0.0/16
+  services: 10.80.0.0/20
+
+  nat:
+    # Egress addresses reserved by network/addresses/public and consumed by
+    # network/nat. Extending the pool is this number — the addresses are
+    # created and attached, nothing else changes.
+    #
+    # It bounds concurrent outbound connections: each address gives ~64k
+    # ports shared across the proxy fleet. One is plenty for staging.
+    ip_count: 3
+
+# ── access ──────────────────────────────────────────────────────────────
+# No bastion VM. Access is tunnelled through the cloud control plane —
+# IAP TCP forwarding on GCP, Session Manager on AWS — so there is no host
+# to patch, no port 22 reachable, and the right to connect is an IAM grant
+# that can be revoked centrally and shows up in the audit log.
+access:
+  method: control-plane-tunnel
+  # Source ranges allowed to reach the tunnel front-end. Not "anywhere":
+  # the tunnel authenticates, but an allow-list keeps the attack surface
+  # off the public internet in the first place.
+  allowed_cidrs: ["0.0.0.0/0"]  # TODO: narrow to the office / VPN ranges
+
+# ── services ────────────────────────────────────────────────────────────
+# `enabled: false` removes a unit from the run graph entirely (terragrunt
+# `exclude`), so a stack can be brought up in layers.
+#
+# `ha` is the only difference between the environments that is not an
+# address: false is a single zonal instance, true is a managed group
+# spread across `zones` with an internal load balancer in front.
 services:
+  network:
+    vpc:      { enabled: true }
+    subnets:  { enabled: true }
+    firewall: { enabled: true }
+    routes:   { enabled: true }
+    nat:      { enabled: true }
+    addresses:
+      private: { enabled: true }
+      public:  { enabled: true }
+  vms:
+    proxy:
+      enabled: true
+      ha: true
+      # Squid listener. Workload subnets reach it through the route in
+      # network/routes; nothing else may talk to it.
+      port: 3128
+  k8s:
+    cluster: { enabled: true, ha: true }
+    nodes:   { enabled: true, ha: true }
+  dns:
+    private: { enabled: true }
+    # Only the k8s load balancer belongs here. Everything else in this
+    # infrastructure is private and must not appear in a public zone.
+    public:  { enabled: true }
   example:
-    # Off in production: the reference unit consumes modules/_template,
-    # which declares nothing. Flip to true only for real units.
-    enabled: false
+    enabled: true
     name: shomer-production-example
