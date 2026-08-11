@@ -450,6 +450,7 @@ depends_on = [
     "infra-modules-network-vpc-aws",
     "infra-modules-network-vpc-gcp",
     "gitops", "gitops-staging", "gitops-production",
+    "infra-bootstrap-aws", "infra-bootstrap-gcp",
 ]
 bump_rules = { docs = "patch" }
 
