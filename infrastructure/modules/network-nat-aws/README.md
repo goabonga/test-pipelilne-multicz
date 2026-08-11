@@ -1,6 +1,6 @@
 # network-nat-aws
 
-**Version:** 0.0.0
+**Version:** 0.1.0
 
 <!--
   The line above is this module's version and the only place it is

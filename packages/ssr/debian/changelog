@@ -1,3 +1,23 @@
+shomer-ssr (1.0.0-1) unstable; urgency=medium
+
+  * refactor!: Rename components (worker->job, web->ssr, web-frontend->web)
+  * fix(deps): Update uvicorn[standard] requirement from >=0.32 to >=0.48.0
+  * fix(ssr): Bump python-multipart from 0.0.29 to 0.0.32
+  * fix(ssr): Satisfy mypy --strict in app.py after the DevAwareStaticFiles refactor
+  * fix(ssr): Pin Chainguard python base by digest and refresh the grype allowlist
+  * fix(ssr): Tighten the DevAwareStaticFiles docstring
+  * feat(web): Render the login form as a React island
+  * feat(web): Convert the frontend to a React Router SPA
+  * fix(deps): Bump fastapi from 0.136.3 to 0.137.0
+  * fix(ssr): Bump chainguard/python in /packages/ssr
+  * feat: Cut a synchronized release baseline across all components
+  * fix(ssr): Refresh grype allowlist against the current base image
+  * fix(deps): Bump fastapi from 0.137.0 to 0.141.0
+  * feat(ssr): Publish package metadata and a PEP 561 marker
+  * feat(api,job,ssr,migrations): Declare the OCI annotations in the Dockerfiles
+
+ -- Chris <goabonga@pm.me>  Tue, 11 Aug 2026 15:04:30 +0000
+
 shomer-ssr (1.4.0-1) unstable; urgency=medium
 
   * feat(api,job,ssr,migrations): Declare the OCI annotations in the Dockerfiles

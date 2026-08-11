@@ -5,3 +5,49 @@ template, `terragrunt.sh`) are documented here. Versions follow
 [Semantic Versioning](https://semver.org) and are derived from
 [Conventional Commits](https://www.conventionalcommits.org) scoped to this
 directory, tagged `infra-v<version>`.
+
+## [0.1.0] - 2026-08-11
+
+### Features
+
+- **infra**: terragrunt landing zone with per-environment deploy gating (`9d50feb`)
+- **infra**: stamp the deployed config version onto resources (`6fa50f9`)
+- **ci**: lint the terragrunt wiring, not just its formatting (`f72d10d`)
+- **infra**: bootstrap the state backend for AWS and GCP (`fc631c5`)
+- **infra**: scaffold the private k8s stack — 12 units, 24 empty modules (`d629e2d`)
+- **ci**: release every terraform module, and waive the OpenSSL High (`f14d55c`)
+
+### Fixes
+
+- **ci**: pin every action the infra jobs use, drop action-terragrunt (`fb515f9`)
+- list every terraform module in VERSION and in the docs (`3ceb7d8`)
+- **infra**: make the terragrunt wiring depend on the modules it consumes (`41b95a6`)
+- **ci**: make release-bump wait on every terraform module check (`0214fd4`)
+
+### Dependencies
+
+- Track `infra-modules-example` `0.1.0`
+- Track `infra-modules-network-vpc-gcp` `0.1.0`
+- Track `infra-modules-network-vpc-aws` `0.1.0`
+- Track `infra-modules-network-subnets-gcp` `0.1.0`
+- Track `infra-modules-network-subnets-aws` `0.1.0`
+- Track `infra-modules-network-addresses-private-gcp` `0.1.0`
+- Track `infra-modules-network-addresses-private-aws` `0.1.0`
+- Track `infra-modules-network-addresses-public-gcp` `0.1.0`
+- Track `infra-modules-network-addresses-public-aws` `0.1.0`
+- Track `infra-modules-network-firewall-gcp` `0.1.0`
+- Track `infra-modules-network-firewall-aws` `0.1.0`
+- Track `infra-modules-network-routes-gcp` `0.1.0`
+- Track `infra-modules-network-routes-aws` `0.1.0`
+- Track `infra-modules-network-nat-gcp` `0.1.0`
+- Track `infra-modules-network-nat-aws` `0.1.0`
+- Track `infra-modules-dns-private-gcp` `0.1.0`
+- Track `infra-modules-dns-private-aws` `0.1.0`
+- Track `infra-modules-dns-public-gcp` `0.1.0`
+- Track `infra-modules-dns-public-aws` `0.1.0`
+- Track `infra-modules-k8s-cluster-gcp` `0.1.0`
+- Track `infra-modules-k8s-cluster-aws` `0.1.0`
+- Track `infra-modules-k8s-nodes-gcp` `0.1.0`
+- Track `infra-modules-k8s-nodes-aws` `0.1.0`
+- Track `infra-modules-vms-proxy-gcp` `0.1.0`
+- Track `infra-modules-vms-proxy-aws` `0.1.0`
