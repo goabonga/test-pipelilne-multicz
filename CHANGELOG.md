@@ -7,6 +7,18 @@ Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
 ### Releases
 
+- **configs-production** minor — 0.0.0 → 0.1.0
+
+### Features
+
+- **configs-production**: terragrunt landing zone with per-environment deploy gating (`9d50feb`)
+- **configs-production**: bootstrap the state backend for AWS and GCP (`fc631c5`)
+- **configs-production**: config schema for the private k8s stack, and a module matrix (`1a2db60`)
+
+## 2026-08-11
+
+### Releases
+
 - **docs** patch — 1.0.0 → 1.0.1  _(cascade from configs-staging)_
 
 ## 2026-08-11

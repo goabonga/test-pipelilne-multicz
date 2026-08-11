@@ -8,7 +8,7 @@
 #
 # Terragrunt reads it as `local.config.version` like any other key, which
 # makes it usable as a resource tag once a provider is wired.
-version: 0.0.0
+version: 0.1.0
 # Inputs for the `production` environment. Same shape as
 # config.staging.yaml — the units are shared, only these values differ.
 #
@@ -56,13 +56,13 @@ network:
   # out is the proxy. Giving it a NAT would make the proxy optional, and
   # optional means bypassed.
   subnets:
-    workload: { cidr: 10.60.0.0/20, purpose: workload }
-    proxy:    { cidr: 10.60.16.0/24, purpose: egress }
-    lb:       { cidr: 10.60.17.0/24, purpose: public-lb }
+    workload: {cidr: 10.60.0.0/20, purpose: workload}
+    proxy: {cidr: 10.60.16.0/24, purpose: egress}
+    lb: {cidr: 10.60.17.0/24, purpose: public-lb}
 
   # Secondary ranges for pods and services. GKE needs them declared on the
   # subnet; EKS derives them from the subnet itself and ignores these.
-  pods:     10.70.0.0/16
+  pods: 10.70.0.0/16
   services: 10.80.0.0/20
 
   nat:
@@ -95,14 +95,14 @@ access:
 # spread across `zones` with an internal load balancer in front.
 services:
   network:
-    vpc:      { enabled: true }
-    subnets:  { enabled: true }
-    firewall: { enabled: true }
-    routes:   { enabled: true }
-    nat:      { enabled: true }
+    vpc: {enabled: true}
+    subnets: {enabled: true}
+    firewall: {enabled: true}
+    routes: {enabled: true}
+    nat: {enabled: true}
     addresses:
-      private: { enabled: true }
-      public:  { enabled: true }
+      private: {enabled: true}
+      public: {enabled: true}
   vms:
     proxy:
       enabled: true
@@ -111,13 +111,13 @@ services:
       # network/routes; nothing else may talk to it.
       port: 3128
   k8s:
-    cluster: { enabled: true, ha: true }
-    nodes:   { enabled: true, ha: true }
+    cluster: {enabled: true, ha: true}
+    nodes: {enabled: true, ha: true}
   dns:
-    private: { enabled: true }
+    private: {enabled: true}
     # Only the k8s load balancer belongs here. Everything else in this
     # infrastructure is private and must not appear in a public zone.
-    public:  { enabled: true }
+    public: {enabled: true}
   example:
     enabled: true
     name: shomer-production-example
