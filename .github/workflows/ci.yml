@@ -4160,6 +4160,13 @@ jobs:
       infra_modules_example_version: ${{ steps.bump.outputs.infra_modules_example_version }}
       infra_bootstrap_aws_version: ${{ steps.bump.outputs.infra_bootstrap_aws_version }}
       infra_bootstrap_gcp_version: ${{ steps.bump.outputs.infra_bootstrap_gcp_version }}
+      # The whole bump map, as JSON. The per-component outputs above are
+      # kept for the jobs that already read them, but nothing new needs
+      # one: a release job reads its own entry out of this. Adding a
+      # component used to mean editing this block, the extraction step and
+      # the job — three places, and forgetting the first two produced a
+      # component that bumped, tagged, and was never released.
+      bumps: ${{ steps.bump.outputs.bumps }}
       owner: ${{ steps.owner.outputs.value }}
       repo: ${{ steps.names.outputs.repo }}
 
@@ -4351,6 +4358,8 @@ jobs:
           echo "infra_modules_example_version=$INFRA_MOD_EXAMPLE" >> "$GITHUB_OUTPUT"
           echo "infra_bootstrap_aws_version=$BOOT_AWS" >> "$GITHUB_OUTPUT"
           echo "infra_bootstrap_gcp_version=$BOOT_GCP" >> "$GITHUB_OUTPUT"
+          # Compact so it survives GITHUB_OUTPUT's one-line-per-value rule.
+          echo "bumps=$(jq -c '.bumps // {}' /tmp/release.json)" >> "$GITHUB_OUTPUT"
 
       - name: Compute lowercase owner
         id: owner
@@ -5440,3 +5449,411 @@ jobs:
             Reused `docs-site` artifact from `docs-build`, deployed docs `${{ needs.release-bump.outputs.docs_version }}` to ${{ steps.deploy.outputs.page_url }},
             cut GitHub Release `docs-v${{ needs.release-bump.outputs.docs_version }}`.
             CI artifact (`docs-site`) deleted post-publish.
+
+  release-infra-modules-dns-private-aws:
+    needs: [release-bump]
+    if: >-
+      !failure() && !cancelled() &&
+      fromJson(needs.release-bump.outputs.bumps)['infra-modules-dns-private-aws'].next_version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/publish-release
+        with:
+          tag: infra-modules-dns-private-aws-v${{ fromJson(needs.release-bump.outputs.bumps)['infra-modules-dns-private-aws'].next_version }}
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+
+  release-infra-modules-dns-private-gcp:
+    needs: [release-bump]
+    if: >-
+      !failure() && !cancelled() &&
+      fromJson(needs.release-bump.outputs.bumps)['infra-modules-dns-private-gcp'].next_version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/publish-release
+        with:
+          tag: infra-modules-dns-private-gcp-v${{ fromJson(needs.release-bump.outputs.bumps)['infra-modules-dns-private-gcp'].next_version }}
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+
+  release-infra-modules-dns-public-aws:
+    needs: [release-bump]
+    if: >-
+      !failure() && !cancelled() &&
+      fromJson(needs.release-bump.outputs.bumps)['infra-modules-dns-public-aws'].next_version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/publish-release
+        with:
+          tag: infra-modules-dns-public-aws-v${{ fromJson(needs.release-bump.outputs.bumps)['infra-modules-dns-public-aws'].next_version }}
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+
+  release-infra-modules-dns-public-gcp:
+    needs: [release-bump]
+    if: >-
+      !failure() && !cancelled() &&
+      fromJson(needs.release-bump.outputs.bumps)['infra-modules-dns-public-gcp'].next_version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/publish-release
+        with:
+          tag: infra-modules-dns-public-gcp-v${{ fromJson(needs.release-bump.outputs.bumps)['infra-modules-dns-public-gcp'].next_version }}
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+
+  release-infra-modules-k8s-cluster-aws:
+    needs: [release-bump]
+    if: >-
+      !failure() && !cancelled() &&
+      fromJson(needs.release-bump.outputs.bumps)['infra-modules-k8s-cluster-aws'].next_version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/publish-release
+        with:
+          tag: infra-modules-k8s-cluster-aws-v${{ fromJson(needs.release-bump.outputs.bumps)['infra-modules-k8s-cluster-aws'].next_version }}
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+
+  release-infra-modules-k8s-cluster-gcp:
+    needs: [release-bump]
+    if: >-
+      !failure() && !cancelled() &&
+      fromJson(needs.release-bump.outputs.bumps)['infra-modules-k8s-cluster-gcp'].next_version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/publish-release
+        with:
+          tag: infra-modules-k8s-cluster-gcp-v${{ fromJson(needs.release-bump.outputs.bumps)['infra-modules-k8s-cluster-gcp'].next_version }}
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+
+  release-infra-modules-k8s-nodes-aws:
+    needs: [release-bump]
+    if: >-
+      !failure() && !cancelled() &&
+      fromJson(needs.release-bump.outputs.bumps)['infra-modules-k8s-nodes-aws'].next_version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/publish-release
+        with:
+          tag: infra-modules-k8s-nodes-aws-v${{ fromJson(needs.release-bump.outputs.bumps)['infra-modules-k8s-nodes-aws'].next_version }}
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+
+  release-infra-modules-k8s-nodes-gcp:
+    needs: [release-bump]
+    if: >-
+      !failure() && !cancelled() &&
+      fromJson(needs.release-bump.outputs.bumps)['infra-modules-k8s-nodes-gcp'].next_version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/publish-release
+        with:
+          tag: infra-modules-k8s-nodes-gcp-v${{ fromJson(needs.release-bump.outputs.bumps)['infra-modules-k8s-nodes-gcp'].next_version }}
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+
+  release-infra-modules-network-addresses-private-aws:
+    needs: [release-bump]
+    if: >-
+      !failure() && !cancelled() &&
+      fromJson(needs.release-bump.outputs.bumps)['infra-modules-network-addresses-private-aws'].next_version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/publish-release
+        with:
+          tag: infra-modules-network-addresses-private-aws-v${{ fromJson(needs.release-bump.outputs.bumps)['infra-modules-network-addresses-private-aws'].next_version }}
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+
+  release-infra-modules-network-addresses-private-gcp:
+    needs: [release-bump]
+    if: >-
+      !failure() && !cancelled() &&
+      fromJson(needs.release-bump.outputs.bumps)['infra-modules-network-addresses-private-gcp'].next_version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/publish-release
+        with:
+          tag: infra-modules-network-addresses-private-gcp-v${{ fromJson(needs.release-bump.outputs.bumps)['infra-modules-network-addresses-private-gcp'].next_version }}
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+
+  release-infra-modules-network-addresses-public-aws:
+    needs: [release-bump]
+    if: >-
+      !failure() && !cancelled() &&
+      fromJson(needs.release-bump.outputs.bumps)['infra-modules-network-addresses-public-aws'].next_version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/publish-release
+        with:
+          tag: infra-modules-network-addresses-public-aws-v${{ fromJson(needs.release-bump.outputs.bumps)['infra-modules-network-addresses-public-aws'].next_version }}
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+
+  release-infra-modules-network-addresses-public-gcp:
+    needs: [release-bump]
+    if: >-
+      !failure() && !cancelled() &&
+      fromJson(needs.release-bump.outputs.bumps)['infra-modules-network-addresses-public-gcp'].next_version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/publish-release
+        with:
+          tag: infra-modules-network-addresses-public-gcp-v${{ fromJson(needs.release-bump.outputs.bumps)['infra-modules-network-addresses-public-gcp'].next_version }}
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+
+  release-infra-modules-network-firewall-aws:
+    needs: [release-bump]
+    if: >-
+      !failure() && !cancelled() &&
+      fromJson(needs.release-bump.outputs.bumps)['infra-modules-network-firewall-aws'].next_version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/publish-release
+        with:
+          tag: infra-modules-network-firewall-aws-v${{ fromJson(needs.release-bump.outputs.bumps)['infra-modules-network-firewall-aws'].next_version }}
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+
+  release-infra-modules-network-firewall-gcp:
+    needs: [release-bump]
+    if: >-
+      !failure() && !cancelled() &&
+      fromJson(needs.release-bump.outputs.bumps)['infra-modules-network-firewall-gcp'].next_version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/publish-release
+        with:
+          tag: infra-modules-network-firewall-gcp-v${{ fromJson(needs.release-bump.outputs.bumps)['infra-modules-network-firewall-gcp'].next_version }}
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+
+  release-infra-modules-network-nat-aws:
+    needs: [release-bump]
+    if: >-
+      !failure() && !cancelled() &&
+      fromJson(needs.release-bump.outputs.bumps)['infra-modules-network-nat-aws'].next_version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/publish-release
+        with:
+          tag: infra-modules-network-nat-aws-v${{ fromJson(needs.release-bump.outputs.bumps)['infra-modules-network-nat-aws'].next_version }}
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+
+  release-infra-modules-network-nat-gcp:
+    needs: [release-bump]
+    if: >-
+      !failure() && !cancelled() &&
+      fromJson(needs.release-bump.outputs.bumps)['infra-modules-network-nat-gcp'].next_version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/publish-release
+        with:
+          tag: infra-modules-network-nat-gcp-v${{ fromJson(needs.release-bump.outputs.bumps)['infra-modules-network-nat-gcp'].next_version }}
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+
+  release-infra-modules-network-routes-aws:
+    needs: [release-bump]
+    if: >-
+      !failure() && !cancelled() &&
+      fromJson(needs.release-bump.outputs.bumps)['infra-modules-network-routes-aws'].next_version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/publish-release
+        with:
+          tag: infra-modules-network-routes-aws-v${{ fromJson(needs.release-bump.outputs.bumps)['infra-modules-network-routes-aws'].next_version }}
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+
+  release-infra-modules-network-routes-gcp:
+    needs: [release-bump]
+    if: >-
+      !failure() && !cancelled() &&
+      fromJson(needs.release-bump.outputs.bumps)['infra-modules-network-routes-gcp'].next_version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/publish-release
+        with:
+          tag: infra-modules-network-routes-gcp-v${{ fromJson(needs.release-bump.outputs.bumps)['infra-modules-network-routes-gcp'].next_version }}
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+
+  release-infra-modules-network-subnets-aws:
+    needs: [release-bump]
+    if: >-
+      !failure() && !cancelled() &&
+      fromJson(needs.release-bump.outputs.bumps)['infra-modules-network-subnets-aws'].next_version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/publish-release
+        with:
+          tag: infra-modules-network-subnets-aws-v${{ fromJson(needs.release-bump.outputs.bumps)['infra-modules-network-subnets-aws'].next_version }}
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+
+  release-infra-modules-network-subnets-gcp:
+    needs: [release-bump]
+    if: >-
+      !failure() && !cancelled() &&
+      fromJson(needs.release-bump.outputs.bumps)['infra-modules-network-subnets-gcp'].next_version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/publish-release
+        with:
+          tag: infra-modules-network-subnets-gcp-v${{ fromJson(needs.release-bump.outputs.bumps)['infra-modules-network-subnets-gcp'].next_version }}
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+
+  release-infra-modules-network-vpc-aws:
+    needs: [release-bump]
+    if: >-
+      !failure() && !cancelled() &&
+      fromJson(needs.release-bump.outputs.bumps)['infra-modules-network-vpc-aws'].next_version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/publish-release
+        with:
+          tag: infra-modules-network-vpc-aws-v${{ fromJson(needs.release-bump.outputs.bumps)['infra-modules-network-vpc-aws'].next_version }}
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+
+  release-infra-modules-network-vpc-gcp:
+    needs: [release-bump]
+    if: >-
+      !failure() && !cancelled() &&
+      fromJson(needs.release-bump.outputs.bumps)['infra-modules-network-vpc-gcp'].next_version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/publish-release
+        with:
+          tag: infra-modules-network-vpc-gcp-v${{ fromJson(needs.release-bump.outputs.bumps)['infra-modules-network-vpc-gcp'].next_version }}
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+
+  release-infra-modules-vms-proxy-aws:
+    needs: [release-bump]
+    if: >-
+      !failure() && !cancelled() &&
+      fromJson(needs.release-bump.outputs.bumps)['infra-modules-vms-proxy-aws'].next_version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/publish-release
+        with:
+          tag: infra-modules-vms-proxy-aws-v${{ fromJson(needs.release-bump.outputs.bumps)['infra-modules-vms-proxy-aws'].next_version }}
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+
+  release-infra-modules-vms-proxy-gcp:
+    needs: [release-bump]
+    if: >-
+      !failure() && !cancelled() &&
+      fromJson(needs.release-bump.outputs.bumps)['infra-modules-vms-proxy-gcp'].next_version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/publish-release
+        with:
+          tag: infra-modules-vms-proxy-gcp-v${{ fromJson(needs.release-bump.outputs.bumps)['infra-modules-vms-proxy-gcp'].next_version }}
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}

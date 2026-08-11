@@ -285,9 +285,9 @@ cat <<EOF
   Next:
     1. declare the resources in infrastructure/modules/${NAME}/main.tf
     2. write real assertions in infrastructure/modules/${NAME}/tests/
-    3. add a release-infra-modules-${NAME} job modelled on
-       release-infra-modules-example, and wire it into release-bump's
-       outputs (the four check jobs were generated for you)
+    3. nothing — the four check jobs and the release job were generated
+       for you, and the release job reads release-bump's `bumps` output,
+       so there is nothing to wire there either
 
     4. consume it from a unit:
 

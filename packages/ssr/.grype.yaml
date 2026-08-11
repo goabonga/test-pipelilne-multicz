@@ -16,3 +16,24 @@
 #      again under --fail-on high.
 
 ignore:
+  # CVE-2026-54876 — OpenSSL, High. No patched apk exists: Chainguard's
+  # current python:latest digest still ships 3.6.3-r3 (checked by pulling
+  # it and reading /usr/lib/apk/db/installed), so bumping the base image
+  # does not clear it. The newer digest only moves python 3.14.6-r4 ->
+  # 3.14.7-r0, which fixes Mediums that never failed this gate.
+  #
+  # The version pin is what resolves this automatically: the moment a
+  # patched libcrypto3 ships, the version stops matching and the CVE
+  # surfaces again under --fail-on high.
+  # expires: 2026-11-09
+  - vulnerability: CVE-2026-54876
+    package:
+      name: libcrypto3
+      version: 3.6.3-r3
+
+  # Same CVE, same package version, second binary package.
+  # expires: 2026-11-09
+  - vulnerability: CVE-2026-54876
+    package:
+      name: libssl3
+      version: 3.6.3-r3

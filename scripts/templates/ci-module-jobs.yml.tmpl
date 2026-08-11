@@ -42,3 +42,20 @@
           fetch-depth: 0
       - uses: ./.github/actions/infra-module-check
         with: { module: @NAME@, check: docs }
+
+  release-infra-modules-@NAME@:
+    needs: [release-bump]
+    if: >-
+      !failure() && !cancelled() &&
+      fromJson(needs.release-bump.outputs.bumps)['infra-modules-@NAME@'].next_version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/publish-release
+        with:
+          tag: infra-modules-@NAME@-v${{ fromJson(needs.release-bump.outputs.bumps)['infra-modules-@NAME@'].next_version }}
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
