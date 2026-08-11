@@ -3,8 +3,8 @@ name: shomer-ssr
 description: Shomer authorization SSR frontend (login + account UI, OIDC 
   client).
 type: application
-version: 0.0.0
-appVersion: "0.0.0"
+version: 1.0.0
+appVersion: "1.0.0"
 icon: https://raw.githubusercontent.com/goabonga/shomer/main/assets/shomer.svg
 home: https://github.com/goabonga/test-pipelilne-multicz
 sources:

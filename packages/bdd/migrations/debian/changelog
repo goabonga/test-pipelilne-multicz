@@ -1,3 +1,15 @@
+shomer-migrations (0.1.0-1) unstable; urgency=medium
+
+  * feat(migrations): Add shomer-migrations package
+  * fix(migrations): Document the shomer-migrate entrypoint
+  * feat: Cut a synchronized release baseline across all components
+  * fix(migrations): Refresh grype allowlist against the current base image
+  * feat(migrations): Publish package metadata
+  * feat(api,job,ssr,migrations): Declare the OCI annotations in the Dockerfiles
+  * feat(migrations): Ship shomer-migrations as a .deb
+
+ -- Chris <goabonga@pm.me>  Tue, 11 Aug 2026 11:39:54 +0000
+
 shomer-migrations (0.0.0-1) unstable; urgency=medium
 
   * Initial Debian packaging.
