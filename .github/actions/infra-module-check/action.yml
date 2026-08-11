@@ -1,0 +1,85 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+name: infra module check
+description: |
+  Run one gate against one Terraform module under infrastructure/.
+
+  WHY THIS EXISTS
+
+  Each module needs four checks and each check was eighteen lines of the
+  same six steps, differing only in a name. Twenty-five modules made that
+  a hundred jobs and roughly eighteen hundred lines of workflow whose only
+  content was setup — and every one of them a place to drift: a pinned
+  action bumped in ninety-nine jobs and forgotten in the hundredth reads
+  as noise in a diff, not as a bug.
+
+  The job shell stays per-module on purpose. That is what carries the
+  `contains(changed, ...)` gate, so an unchanged module still runs
+  nothing, and what makes a red module identifiable by name in the checks
+  list. Only the body moves here.
+
+  REQUIRES the calling job to have already run `actions/checkout` with
+  `fetch-depth: 0`. Local actions are resolved before any step runs, so an
+  action cannot check out the repository it is then read from.
+
+inputs:
+  module:
+    required: true
+    description: |
+      Path under infrastructure/, as `make` takes it: `example`,
+      `network-vpc-gcp`, or `bootstrap/aws`.
+  check:
+    required: true
+    description: fmt | test | checkov | docs
+
+runs:
+  using: composite
+  steps:
+    # terraform for fmt and test; docs needs it too because terraform-docs
+    # reads the module's variable types. checkov brings its own container.
+    - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e  # v4
+      if: inputs.check != 'checkov'
+      with:
+        terraform_wrapper: false
+
+    # test and docs observe the POST-bump version: the README carries it,
+    # so a docs check against the pre-bump tree fails on the release run.
+    - uses: ./.github/actions/bump-preview
+      if: inputs.check == 'test' || inputs.check == 'docs'
+
+    - uses: ./.github/actions/setup-terraform-docs
+      if: inputs.check == 'docs'
+
+    - name: fmt
+      if: inputs.check == 'fmt'
+      shell: bash
+      run: make infra-fmt-check M=${{ inputs.module }}
+
+    - name: test
+      if: inputs.check == 'test'
+      shell: bash
+      run: make infra-test M=${{ inputs.module }}
+
+    - name: docs
+      if: inputs.check == 'docs'
+      shell: bash
+      run: make infra-docs-check M=${{ inputs.module }}
+
+    # The one gate that cannot go through make: the action runs checkov in
+    # its own container and reports through the GitHub problem matcher.
+    - uses: bridgecrewio/checkov-action@7b972723c44fb3d256283fac96fae5d7c1894bb7  # v12
+      if: inputs.check == 'checkov'
+      with:
+        directory: infrastructure/${{ contains(inputs.module, '/') && inputs.module || format('modules/{0}', inputs.module) }}
+        framework: terraform
+        quiet: true
+        output_format: cli
+        soft_fail: false
+
+    - name: Summary
+      if: always()
+      uses: ./.github/actions/summary
+      with:
+        title: infra-module ${{ inputs.module }} — ${{ inputs.check }}
+        body: '`make infra-${{ inputs.check }}` on `infrastructure/${{ inputs.module }}`.'
