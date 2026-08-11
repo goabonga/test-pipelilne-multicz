@@ -1013,3 +1013,4 @@ bump_files = [
 ]
 changelog  = "infrastructure/modules/vms-proxy-aws/CHANGELOG.md"
 post_bump  = ["terraform-docs -c infrastructure/modules/vms-proxy-aws/.terraform-docs.yml infrastructure/modules/vms-proxy-aws"]
+

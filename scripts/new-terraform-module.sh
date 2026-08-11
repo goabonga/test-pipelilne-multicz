@@ -290,6 +290,31 @@ else
   rm -f "$RENDERED"
   log "added 4 CI jobs for ${NAME}"
 fi
+  # ...and wire them into release-bump's needs.
+  #
+  # Without this the module is checked and released independently:
+  # release-bump does not wait for it, so a module whose terraform test or
+  # checkov fails is still bumped, tagged and published. That is exactly
+  # what happened to the twenty-four modules scaffolded before this step
+  # existed — release-bump listed four check jobs out of a hundred and
+  # eight.
+  python3 - "$CI" "$NAME" <<'NEEDPY'
+import pathlib, sys
+ci, name = pathlib.Path(sys.argv[1]), sys.argv[2]
+lines = ci.read_text().splitlines(keepends=True)
+start = next(i for i, l in enumerate(lines)
+             if l.rstrip() == "    needs:"
+             and any("release-bump:" in lines[j] for j in range(max(0, i - 30), i)))
+end = start + 1
+while end < len(lines) and lines[end].lstrip().startswith("- "):
+    end += 1
+have = "".join(lines[start:end])
+new = [f"      - infra-modules-{name}-{c}\n"
+       for c in ("fmt", "test", "checkov", "docs")
+       if f"infra-modules-{name}-{c}\n" not in have]
+lines[end:end] = new
+ci.write_text("".join(lines))
+NEEDPY
 
 
 # --- 6. validate --------------------------------------------------------

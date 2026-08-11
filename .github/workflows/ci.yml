@@ -4032,6 +4032,7 @@ jobs:
       - uses: ./.github/actions/infra-module-check
         with: { module: bootstrap/gcp, check: docs }
 
+
   release-bump:
     # Single bump stage that the whole CI graph funnels into. multicz
     # discovers which components changed since their last tag,
@@ -4078,6 +4079,115 @@ jobs:
       - infra-modules-example-test
       - infra-modules-example-checkov
       - infra-modules-example-docs
+    # Every infra module check is listed, all four per module — not just
+    # the three leaves. `fmt` is upstream of the other three, so a failing
+    # fmt SKIPS them rather than failing them, and a skipped need does not
+    # trip `!failure()`. Listing fmt directly is what makes a formatting
+    # failure block the release instead of quietly letting it through.
+      - infra-bootstrap-aws-checkov
+      - infra-bootstrap-aws-docs
+      - infra-bootstrap-aws-fmt
+      - infra-bootstrap-aws-test
+      - infra-bootstrap-gcp-checkov
+      - infra-bootstrap-gcp-docs
+      - infra-bootstrap-gcp-fmt
+      - infra-bootstrap-gcp-test
+      - infra-modules-dns-private-aws-checkov
+      - infra-modules-dns-private-aws-docs
+      - infra-modules-dns-private-aws-fmt
+      - infra-modules-dns-private-aws-test
+      - infra-modules-dns-private-gcp-checkov
+      - infra-modules-dns-private-gcp-docs
+      - infra-modules-dns-private-gcp-fmt
+      - infra-modules-dns-private-gcp-test
+      - infra-modules-dns-public-aws-checkov
+      - infra-modules-dns-public-aws-docs
+      - infra-modules-dns-public-aws-fmt
+      - infra-modules-dns-public-aws-test
+      - infra-modules-dns-public-gcp-checkov
+      - infra-modules-dns-public-gcp-docs
+      - infra-modules-dns-public-gcp-fmt
+      - infra-modules-dns-public-gcp-test
+      - infra-modules-k8s-cluster-aws-checkov
+      - infra-modules-k8s-cluster-aws-docs
+      - infra-modules-k8s-cluster-aws-fmt
+      - infra-modules-k8s-cluster-aws-test
+      - infra-modules-k8s-cluster-gcp-checkov
+      - infra-modules-k8s-cluster-gcp-docs
+      - infra-modules-k8s-cluster-gcp-fmt
+      - infra-modules-k8s-cluster-gcp-test
+      - infra-modules-k8s-nodes-aws-checkov
+      - infra-modules-k8s-nodes-aws-docs
+      - infra-modules-k8s-nodes-aws-fmt
+      - infra-modules-k8s-nodes-aws-test
+      - infra-modules-k8s-nodes-gcp-checkov
+      - infra-modules-k8s-nodes-gcp-docs
+      - infra-modules-k8s-nodes-gcp-fmt
+      - infra-modules-k8s-nodes-gcp-test
+      - infra-modules-network-addresses-private-aws-checkov
+      - infra-modules-network-addresses-private-aws-docs
+      - infra-modules-network-addresses-private-aws-fmt
+      - infra-modules-network-addresses-private-aws-test
+      - infra-modules-network-addresses-private-gcp-checkov
+      - infra-modules-network-addresses-private-gcp-docs
+      - infra-modules-network-addresses-private-gcp-fmt
+      - infra-modules-network-addresses-private-gcp-test
+      - infra-modules-network-addresses-public-aws-checkov
+      - infra-modules-network-addresses-public-aws-docs
+      - infra-modules-network-addresses-public-aws-fmt
+      - infra-modules-network-addresses-public-aws-test
+      - infra-modules-network-addresses-public-gcp-checkov
+      - infra-modules-network-addresses-public-gcp-docs
+      - infra-modules-network-addresses-public-gcp-fmt
+      - infra-modules-network-addresses-public-gcp-test
+      - infra-modules-network-firewall-aws-checkov
+      - infra-modules-network-firewall-aws-docs
+      - infra-modules-network-firewall-aws-fmt
+      - infra-modules-network-firewall-aws-test
+      - infra-modules-network-firewall-gcp-checkov
+      - infra-modules-network-firewall-gcp-docs
+      - infra-modules-network-firewall-gcp-fmt
+      - infra-modules-network-firewall-gcp-test
+      - infra-modules-network-nat-aws-checkov
+      - infra-modules-network-nat-aws-docs
+      - infra-modules-network-nat-aws-fmt
+      - infra-modules-network-nat-aws-test
+      - infra-modules-network-nat-gcp-checkov
+      - infra-modules-network-nat-gcp-docs
+      - infra-modules-network-nat-gcp-fmt
+      - infra-modules-network-nat-gcp-test
+      - infra-modules-network-routes-aws-checkov
+      - infra-modules-network-routes-aws-docs
+      - infra-modules-network-routes-aws-fmt
+      - infra-modules-network-routes-aws-test
+      - infra-modules-network-routes-gcp-checkov
+      - infra-modules-network-routes-gcp-docs
+      - infra-modules-network-routes-gcp-fmt
+      - infra-modules-network-routes-gcp-test
+      - infra-modules-network-subnets-aws-checkov
+      - infra-modules-network-subnets-aws-docs
+      - infra-modules-network-subnets-aws-fmt
+      - infra-modules-network-subnets-aws-test
+      - infra-modules-network-subnets-gcp-checkov
+      - infra-modules-network-subnets-gcp-docs
+      - infra-modules-network-subnets-gcp-fmt
+      - infra-modules-network-subnets-gcp-test
+      - infra-modules-network-vpc-aws-checkov
+      - infra-modules-network-vpc-aws-docs
+      - infra-modules-network-vpc-aws-fmt
+      - infra-modules-network-vpc-aws-test
+      - infra-modules-network-vpc-gcp-checkov
+      - infra-modules-network-vpc-gcp-docs
+      - infra-modules-network-vpc-gcp-fmt
+      - infra-modules-network-vpc-gcp-test
+      - infra-modules-vms-proxy-aws-checkov
+      - infra-modules-vms-proxy-aws-docs
+      - infra-modules-vms-proxy-aws-fmt
+      - infra-modules-vms-proxy-aws-test
+      - infra-modules-vms-proxy-gcp-checkov
+      - infra-modules-vms-proxy-gcp-docs
+      - infra-modules-vms-proxy-gcp-fmt
+      - infra-modules-vms-proxy-gcp-test
     # Per-component success-required gate. The earlier
     # `!failure() && !cancelled() && main && !chore(release)` shape
     # was too permissive: it accepted skipped upstreams as "fine",
