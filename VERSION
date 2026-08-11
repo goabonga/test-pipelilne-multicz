@@ -35,7 +35,6 @@ docs=0.0.0
 # ── infrastructure and gitops code ──────────────────────────────────────
 # Libraries too: released on every push to main that touches them.
 infra=0.0.0
-infra-modules-example=0.0.0
 infra-bootstrap-aws=0.0.0
 infra-bootstrap-gcp=0.0.0
 gitops=0.0.0
@@ -47,6 +46,7 @@ infra-modules-dns-private-aws=0.0.0
 infra-modules-dns-private-gcp=0.0.0
 infra-modules-dns-public-aws=0.0.0
 infra-modules-dns-public-gcp=0.0.0
+infra-modules-example=0.0.0
 infra-modules-k8s-cluster-aws=0.0.0
 infra-modules-k8s-cluster-gcp=0.0.0
 infra-modules-k8s-nodes-aws=0.0.0

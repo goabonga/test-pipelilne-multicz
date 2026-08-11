@@ -256,7 +256,7 @@ for l in rest:
     out.append(l)
     if l.startswith("# which appends here") and not done:
         out.extend(sorted(lines)); done = True
-p.write_text("\n".join(out) + tail)
+p.write_text("\n".join(out) + "\n" + tail.lstrip("\n"))
 VPY
   log "added ${COMPONENT} to VERSION"
 fi
