@@ -6,6 +6,12 @@ template, `terragrunt.sh`) are documented here. Versions follow
 [Conventional Commits](https://www.conventionalcommits.org) scoped to this
 directory, tagged `infra-v<version>`.
 
+## [0.1.1] - 2026-08-11
+
+### Dependencies
+
+- Track `infra-modules-network-vpc-gcp` `0.2.0`
+
 ## [0.1.0] - 2026-08-11
 
 ### Features

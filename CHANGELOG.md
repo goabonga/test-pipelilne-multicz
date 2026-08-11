@@ -7,6 +7,18 @@ Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
 ### Releases
 
+- **docs** patch — 1.0.5 → 1.0.6  _(cascade from configs-staging)_
+- **infra** patch — 0.1.0 → 0.1.1  _(cascade from infra-modules-network-vpc-gcp 0.2.0)_
+- **infra-modules-network-vpc-gcp** minor — 0.1.0 → 0.2.0
+
+### Features
+
+- **infra-modules-network-vpc-gcp**: implement the VPC, without a way out by default (`da38756`)
+
+## 2026-08-11
+
+### Releases
+
 - **gitops-staging** patch — 0.1.3 → 0.1.4
 
 ## 2026-08-11
