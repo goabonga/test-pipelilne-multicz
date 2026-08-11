@@ -9,7 +9,7 @@ from shomer_database.engine import build_url, create_engine_from_settings
 from shomer_database.models import Base
 from shomer_database.session import Database
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 __all__ = [
     "Base",

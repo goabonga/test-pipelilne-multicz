@@ -7,6 +7,23 @@ Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
 ### Releases
 
+- **api** patch — 0.1.0 → 0.1.1  _(cascade from database 0.1.1)_
+- **chart-api** patch — 1.0.0 → 1.0.1  _(cascade from api 0.1.1)_
+- **chart-job** patch — 1.0.0 → 1.0.1  _(cascade from job 1.0.1)_
+- **chart-migrations** patch — 0.1.0 → 0.1.1  _(cascade from migrations 0.1.1)_
+- **database** patch — 0.1.0 → 0.1.1
+- **docs** patch — 1.0.1 → 1.0.2  _(cascade from api 0.1.1)_
+- **job** patch — 1.0.0 → 1.0.1  _(cascade from database 0.1.1)_
+- **migrations** patch — 0.1.0 → 0.1.1  _(cascade from database 0.1.1)_
+
+### Fixes
+
+- **database**: roll back get_session when the caller raises (`8a201a5`)
+
+## 2026-08-11
+
+### Releases
+
 - **docs** patch — 1.0.0 → 1.0.1  _(cascade from configs-staging)_
 
 ## 2026-08-11

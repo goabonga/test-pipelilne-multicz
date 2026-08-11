@@ -2,6 +2,12 @@
 
 All notable changes to this component are documented here.
 
+## [0.1.1] - 2026-08-11
+
+### Fixes
+
+- **database**: roll back get_session when the caller raises (`8a201a5`)
+
 ## [0.1.0] - 2026-08-11
 
 ### Features
