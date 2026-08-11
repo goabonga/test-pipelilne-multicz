@@ -33,3 +33,39 @@ variable "project" {
   default     = null
   description = "GCP project. Null on AWS, where the account is implicit in the credentials."
 }
+
+variable "routing_mode" {
+  type        = string
+  default     = "REGIONAL"
+  description = <<-EOT
+    REGIONAL or GLOBAL. Regional keeps Cloud Router advertisements inside
+    the region, which is what a single-region deployment wants; GLOBAL is
+    for a network spanning regions and costs cross-region traffic.
+  EOT
+
+  validation {
+    condition     = contains(["REGIONAL", "GLOBAL"], var.routing_mode)
+    error_message = "routing_mode must be REGIONAL or GLOBAL."
+  }
+}
+
+variable "delete_default_routes" {
+  type        = bool
+  default     = true
+  description = <<-EOT
+    Remove the 0.0.0.0/0 route to the internet gateway at creation.
+
+    True is the design: workloads leave only through the egress proxy, and
+    services/network/routes installs the routes that are actually wanted.
+  EOT
+}
+
+variable "allow_default_internet_route" {
+  type        = bool
+  default     = false
+  description = <<-EOT
+    Acknowledge that keeping the default route is intended. Only read when
+    delete_default_routes is false — it exists so that turning the guard
+    off is a deliberate second act rather than a single flag flip.
+  EOT
+}
