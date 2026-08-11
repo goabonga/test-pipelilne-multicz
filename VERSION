@@ -40,6 +40,34 @@ infra-bootstrap-aws=0.0.0
 infra-bootstrap-gcp=0.0.0
 gitops=0.0.0
 
+# ── terraform modules ───────────────────────────────────────────────────
+# One per unit per provider. Scaffolded by scripts/new-terraform-module.sh,
+# which appends here so this file cannot fall behind multicz.toml.
+infra-modules-dns-private-aws=0.0.0
+infra-modules-dns-private-gcp=0.0.0
+infra-modules-dns-public-aws=0.0.0
+infra-modules-dns-public-gcp=0.0.0
+infra-modules-k8s-cluster-aws=0.0.0
+infra-modules-k8s-cluster-gcp=0.0.0
+infra-modules-k8s-nodes-aws=0.0.0
+infra-modules-k8s-nodes-gcp=0.0.0
+infra-modules-network-addresses-private-aws=0.0.0
+infra-modules-network-addresses-private-gcp=0.0.0
+infra-modules-network-addresses-public-aws=0.0.0
+infra-modules-network-addresses-public-gcp=0.0.0
+infra-modules-network-firewall-aws=0.0.0
+infra-modules-network-firewall-gcp=0.0.0
+infra-modules-network-nat-aws=0.0.0
+infra-modules-network-nat-gcp=0.0.0
+infra-modules-network-routes-aws=0.0.0
+infra-modules-network-routes-gcp=0.0.0
+infra-modules-network-subnets-aws=0.0.0
+infra-modules-network-subnets-gcp=0.0.0
+infra-modules-network-vpc-aws=0.0.0
+infra-modules-network-vpc-gcp=0.0.0
+infra-modules-vms-proxy-aws=0.0.0
+infra-modules-vms-proxy-gcp=0.0.0
+
 # ── deployed state ──────────────────────────────────────────────────────
 # Bumped only by infra-apply / gitops-apply, after an apply that succeeded.
 # These are the versions running in each environment right now.

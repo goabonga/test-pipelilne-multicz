@@ -185,14 +185,58 @@ if f'"{component}"' not in docs_block:
     text = text[:start] + docs_block.replace(marker, marker + f'\n    "{component}",', 1) + text[start + len(docs_block):]
     mz.write_text(text)
 
-# one row in the modules table
+# one row in the modules table, inserted in sorted position.
+#
+# This used to anchor on the literal `example` row, so reformatting that
+# row silently stopped every future module from being listed — the module
+# released, and the only page that answers "what version is X" never
+# mentioned it. Anchoring on the section instead survives edits to the
+# table's contents.
 vers = root / "docs" / "versions.md"
 text = vers.read_text()
-anchor = "| `example`         | {{ config.extra.versions.infra_modules_example }} |"
 row = f"| `{name}` | {{{{ config.extra.versions.{zkey} }}}} |"
 if row not in text:
-    vers.write_text(text.replace(anchor, anchor + "\n" + row, 1))
+    start = text.index("### Terraform modules")
+    end = text.index("###", start + 3)
+    seg = text[start:end]
+    lines = seg.splitlines(keepends=True)
+    body = [i for i, l in enumerate(lines) if l.startswith("| `")]
+    if not body:
+        raise SystemExit("docs/versions.md: no module rows found under '### Terraform modules'")
+    rows = sorted([lines[i] for i in body] + [row + "\n"])
+    seg = "".join(lines[:body[0]]) + "".join(rows) + "".join(lines[body[-1] + 1:])
+    vers.write_text(text[:start] + seg + text[end:])
 ZPY
+
+# --- 4b. VERSION --------------------------------------------------------
+# VERSION lists every component. It was added to the module bump_files by
+# hand once, which is exactly the kind of registration that falls behind:
+# twenty-four modules were scaffolded and none of them landed here, so the
+# file claimed 23 components while multicz.toml knew 47.
+VERSION_FILE="${REPO_ROOT}/VERSION"
+if grep -q "^${COMPONENT}=" "$VERSION_FILE" 2>/dev/null; then
+  log "${COMPONENT} already in VERSION"
+else
+  python3 - "$VERSION_FILE" "$COMPONENT" <<'VPY'
+import pathlib, sys
+p, comp = pathlib.Path(sys.argv[1]), sys.argv[2]
+t = p.read_text()
+marker = "\n# \u2500\u2500 deployed state "
+i = t.index(marker)
+head, tail = t[:i], t[i:]
+# keep the module list sorted so a diff shows one added line
+lines = [l for l in head.splitlines() if l.startswith("infra-modules-")]
+lines.append(f"{comp}=0.0.0")
+rest = [l for l in head.splitlines() if not l.startswith("infra-modules-")]
+out, done = [], False
+for l in rest:
+    out.append(l)
+    if l.startswith("# which appends here") and not done:
+        out.extend(sorted(lines)); done = True
+p.write_text("\n".join(out) + tail)
+VPY
+  log "added ${COMPONENT} to VERSION"
+fi
 
 # --- 5. CI jobs ---------------------------------------------------------
 # Generated, not printed. This used to be an item in the "Next:" list,

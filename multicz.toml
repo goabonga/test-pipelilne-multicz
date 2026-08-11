@@ -663,6 +663,7 @@ paths      = ["infrastructure/modules/network-vpc-gcp/**"]
 bump_files = [
     { file = "infrastructure/modules/network-vpc-gcp/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
     { file = "zensical.toml", key = "project.extra.versions.infra_modules_network_vpc_gcp" },
+    { file = "VERSION", key = 'regex:^infra-modules-network-vpc-gcp=(.+)$' },
 ]
 changelog  = "infrastructure/modules/network-vpc-gcp/CHANGELOG.md"
 post_bump  = ["terraform-docs -c infrastructure/modules/network-vpc-gcp/.terraform-docs.yml infrastructure/modules/network-vpc-gcp"]
@@ -677,6 +678,7 @@ paths      = ["infrastructure/modules/network-vpc-aws/**"]
 bump_files = [
     { file = "infrastructure/modules/network-vpc-aws/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
     { file = "zensical.toml", key = "project.extra.versions.infra_modules_network_vpc_aws" },
+    { file = "VERSION", key = 'regex:^infra-modules-network-vpc-aws=(.+)$' },
 ]
 changelog  = "infrastructure/modules/network-vpc-aws/CHANGELOG.md"
 post_bump  = ["terraform-docs -c infrastructure/modules/network-vpc-aws/.terraform-docs.yml infrastructure/modules/network-vpc-aws"]
@@ -691,6 +693,7 @@ paths      = ["infrastructure/modules/network-subnets-gcp/**"]
 bump_files = [
     { file = "infrastructure/modules/network-subnets-gcp/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
     { file = "zensical.toml", key = "project.extra.versions.infra_modules_network_subnets_gcp" },
+    { file = "VERSION", key = 'regex:^infra-modules-network-subnets-gcp=(.+)$' },
 ]
 changelog  = "infrastructure/modules/network-subnets-gcp/CHANGELOG.md"
 post_bump  = ["terraform-docs -c infrastructure/modules/network-subnets-gcp/.terraform-docs.yml infrastructure/modules/network-subnets-gcp"]
@@ -705,6 +708,7 @@ paths      = ["infrastructure/modules/network-subnets-aws/**"]
 bump_files = [
     { file = "infrastructure/modules/network-subnets-aws/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
     { file = "zensical.toml", key = "project.extra.versions.infra_modules_network_subnets_aws" },
+    { file = "VERSION", key = 'regex:^infra-modules-network-subnets-aws=(.+)$' },
 ]
 changelog  = "infrastructure/modules/network-subnets-aws/CHANGELOG.md"
 post_bump  = ["terraform-docs -c infrastructure/modules/network-subnets-aws/.terraform-docs.yml infrastructure/modules/network-subnets-aws"]
@@ -719,6 +723,7 @@ paths      = ["infrastructure/modules/network-addresses-private-gcp/**"]
 bump_files = [
     { file = "infrastructure/modules/network-addresses-private-gcp/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
     { file = "zensical.toml", key = "project.extra.versions.infra_modules_network_addresses_private_gcp" },
+    { file = "VERSION", key = 'regex:^infra-modules-network-addresses-private-gcp=(.+)$' },
 ]
 changelog  = "infrastructure/modules/network-addresses-private-gcp/CHANGELOG.md"
 post_bump  = ["terraform-docs -c infrastructure/modules/network-addresses-private-gcp/.terraform-docs.yml infrastructure/modules/network-addresses-private-gcp"]
@@ -733,6 +738,7 @@ paths      = ["infrastructure/modules/network-addresses-private-aws/**"]
 bump_files = [
     { file = "infrastructure/modules/network-addresses-private-aws/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
     { file = "zensical.toml", key = "project.extra.versions.infra_modules_network_addresses_private_aws" },
+    { file = "VERSION", key = 'regex:^infra-modules-network-addresses-private-aws=(.+)$' },
 ]
 changelog  = "infrastructure/modules/network-addresses-private-aws/CHANGELOG.md"
 post_bump  = ["terraform-docs -c infrastructure/modules/network-addresses-private-aws/.terraform-docs.yml infrastructure/modules/network-addresses-private-aws"]
@@ -747,6 +753,7 @@ paths      = ["infrastructure/modules/network-addresses-public-gcp/**"]
 bump_files = [
     { file = "infrastructure/modules/network-addresses-public-gcp/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
     { file = "zensical.toml", key = "project.extra.versions.infra_modules_network_addresses_public_gcp" },
+    { file = "VERSION", key = 'regex:^infra-modules-network-addresses-public-gcp=(.+)$' },
 ]
 changelog  = "infrastructure/modules/network-addresses-public-gcp/CHANGELOG.md"
 post_bump  = ["terraform-docs -c infrastructure/modules/network-addresses-public-gcp/.terraform-docs.yml infrastructure/modules/network-addresses-public-gcp"]
@@ -761,6 +768,7 @@ paths      = ["infrastructure/modules/network-addresses-public-aws/**"]
 bump_files = [
     { file = "infrastructure/modules/network-addresses-public-aws/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
     { file = "zensical.toml", key = "project.extra.versions.infra_modules_network_addresses_public_aws" },
+    { file = "VERSION", key = 'regex:^infra-modules-network-addresses-public-aws=(.+)$' },
 ]
 changelog  = "infrastructure/modules/network-addresses-public-aws/CHANGELOG.md"
 post_bump  = ["terraform-docs -c infrastructure/modules/network-addresses-public-aws/.terraform-docs.yml infrastructure/modules/network-addresses-public-aws"]
@@ -775,6 +783,7 @@ paths      = ["infrastructure/modules/network-firewall-gcp/**"]
 bump_files = [
     { file = "infrastructure/modules/network-firewall-gcp/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
     { file = "zensical.toml", key = "project.extra.versions.infra_modules_network_firewall_gcp" },
+    { file = "VERSION", key = 'regex:^infra-modules-network-firewall-gcp=(.+)$' },
 ]
 changelog  = "infrastructure/modules/network-firewall-gcp/CHANGELOG.md"
 post_bump  = ["terraform-docs -c infrastructure/modules/network-firewall-gcp/.terraform-docs.yml infrastructure/modules/network-firewall-gcp"]
@@ -789,6 +798,7 @@ paths      = ["infrastructure/modules/network-firewall-aws/**"]
 bump_files = [
     { file = "infrastructure/modules/network-firewall-aws/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
     { file = "zensical.toml", key = "project.extra.versions.infra_modules_network_firewall_aws" },
+    { file = "VERSION", key = 'regex:^infra-modules-network-firewall-aws=(.+)$' },
 ]
 changelog  = "infrastructure/modules/network-firewall-aws/CHANGELOG.md"
 post_bump  = ["terraform-docs -c infrastructure/modules/network-firewall-aws/.terraform-docs.yml infrastructure/modules/network-firewall-aws"]
@@ -803,6 +813,7 @@ paths      = ["infrastructure/modules/network-routes-gcp/**"]
 bump_files = [
     { file = "infrastructure/modules/network-routes-gcp/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
     { file = "zensical.toml", key = "project.extra.versions.infra_modules_network_routes_gcp" },
+    { file = "VERSION", key = 'regex:^infra-modules-network-routes-gcp=(.+)$' },
 ]
 changelog  = "infrastructure/modules/network-routes-gcp/CHANGELOG.md"
 post_bump  = ["terraform-docs -c infrastructure/modules/network-routes-gcp/.terraform-docs.yml infrastructure/modules/network-routes-gcp"]
@@ -817,6 +828,7 @@ paths      = ["infrastructure/modules/network-routes-aws/**"]
 bump_files = [
     { file = "infrastructure/modules/network-routes-aws/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
     { file = "zensical.toml", key = "project.extra.versions.infra_modules_network_routes_aws" },
+    { file = "VERSION", key = 'regex:^infra-modules-network-routes-aws=(.+)$' },
 ]
 changelog  = "infrastructure/modules/network-routes-aws/CHANGELOG.md"
 post_bump  = ["terraform-docs -c infrastructure/modules/network-routes-aws/.terraform-docs.yml infrastructure/modules/network-routes-aws"]
@@ -831,6 +843,7 @@ paths      = ["infrastructure/modules/network-nat-gcp/**"]
 bump_files = [
     { file = "infrastructure/modules/network-nat-gcp/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
     { file = "zensical.toml", key = "project.extra.versions.infra_modules_network_nat_gcp" },
+    { file = "VERSION", key = 'regex:^infra-modules-network-nat-gcp=(.+)$' },
 ]
 changelog  = "infrastructure/modules/network-nat-gcp/CHANGELOG.md"
 post_bump  = ["terraform-docs -c infrastructure/modules/network-nat-gcp/.terraform-docs.yml infrastructure/modules/network-nat-gcp"]
@@ -845,6 +858,7 @@ paths      = ["infrastructure/modules/network-nat-aws/**"]
 bump_files = [
     { file = "infrastructure/modules/network-nat-aws/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
     { file = "zensical.toml", key = "project.extra.versions.infra_modules_network_nat_aws" },
+    { file = "VERSION", key = 'regex:^infra-modules-network-nat-aws=(.+)$' },
 ]
 changelog  = "infrastructure/modules/network-nat-aws/CHANGELOG.md"
 post_bump  = ["terraform-docs -c infrastructure/modules/network-nat-aws/.terraform-docs.yml infrastructure/modules/network-nat-aws"]
@@ -859,6 +873,7 @@ paths      = ["infrastructure/modules/dns-private-gcp/**"]
 bump_files = [
     { file = "infrastructure/modules/dns-private-gcp/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
     { file = "zensical.toml", key = "project.extra.versions.infra_modules_dns_private_gcp" },
+    { file = "VERSION", key = 'regex:^infra-modules-dns-private-gcp=(.+)$' },
 ]
 changelog  = "infrastructure/modules/dns-private-gcp/CHANGELOG.md"
 post_bump  = ["terraform-docs -c infrastructure/modules/dns-private-gcp/.terraform-docs.yml infrastructure/modules/dns-private-gcp"]
@@ -873,6 +888,7 @@ paths      = ["infrastructure/modules/dns-private-aws/**"]
 bump_files = [
     { file = "infrastructure/modules/dns-private-aws/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
     { file = "zensical.toml", key = "project.extra.versions.infra_modules_dns_private_aws" },
+    { file = "VERSION", key = 'regex:^infra-modules-dns-private-aws=(.+)$' },
 ]
 changelog  = "infrastructure/modules/dns-private-aws/CHANGELOG.md"
 post_bump  = ["terraform-docs -c infrastructure/modules/dns-private-aws/.terraform-docs.yml infrastructure/modules/dns-private-aws"]
@@ -887,6 +903,7 @@ paths      = ["infrastructure/modules/dns-public-gcp/**"]
 bump_files = [
     { file = "infrastructure/modules/dns-public-gcp/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
     { file = "zensical.toml", key = "project.extra.versions.infra_modules_dns_public_gcp" },
+    { file = "VERSION", key = 'regex:^infra-modules-dns-public-gcp=(.+)$' },
 ]
 changelog  = "infrastructure/modules/dns-public-gcp/CHANGELOG.md"
 post_bump  = ["terraform-docs -c infrastructure/modules/dns-public-gcp/.terraform-docs.yml infrastructure/modules/dns-public-gcp"]
@@ -901,6 +918,7 @@ paths      = ["infrastructure/modules/dns-public-aws/**"]
 bump_files = [
     { file = "infrastructure/modules/dns-public-aws/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
     { file = "zensical.toml", key = "project.extra.versions.infra_modules_dns_public_aws" },
+    { file = "VERSION", key = 'regex:^infra-modules-dns-public-aws=(.+)$' },
 ]
 changelog  = "infrastructure/modules/dns-public-aws/CHANGELOG.md"
 post_bump  = ["terraform-docs -c infrastructure/modules/dns-public-aws/.terraform-docs.yml infrastructure/modules/dns-public-aws"]
@@ -915,6 +933,7 @@ paths      = ["infrastructure/modules/k8s-cluster-gcp/**"]
 bump_files = [
     { file = "infrastructure/modules/k8s-cluster-gcp/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
     { file = "zensical.toml", key = "project.extra.versions.infra_modules_k8s_cluster_gcp" },
+    { file = "VERSION", key = 'regex:^infra-modules-k8s-cluster-gcp=(.+)$' },
 ]
 changelog  = "infrastructure/modules/k8s-cluster-gcp/CHANGELOG.md"
 post_bump  = ["terraform-docs -c infrastructure/modules/k8s-cluster-gcp/.terraform-docs.yml infrastructure/modules/k8s-cluster-gcp"]
@@ -929,6 +948,7 @@ paths      = ["infrastructure/modules/k8s-cluster-aws/**"]
 bump_files = [
     { file = "infrastructure/modules/k8s-cluster-aws/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
     { file = "zensical.toml", key = "project.extra.versions.infra_modules_k8s_cluster_aws" },
+    { file = "VERSION", key = 'regex:^infra-modules-k8s-cluster-aws=(.+)$' },
 ]
 changelog  = "infrastructure/modules/k8s-cluster-aws/CHANGELOG.md"
 post_bump  = ["terraform-docs -c infrastructure/modules/k8s-cluster-aws/.terraform-docs.yml infrastructure/modules/k8s-cluster-aws"]
@@ -943,6 +963,7 @@ paths      = ["infrastructure/modules/k8s-nodes-gcp/**"]
 bump_files = [
     { file = "infrastructure/modules/k8s-nodes-gcp/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
     { file = "zensical.toml", key = "project.extra.versions.infra_modules_k8s_nodes_gcp" },
+    { file = "VERSION", key = 'regex:^infra-modules-k8s-nodes-gcp=(.+)$' },
 ]
 changelog  = "infrastructure/modules/k8s-nodes-gcp/CHANGELOG.md"
 post_bump  = ["terraform-docs -c infrastructure/modules/k8s-nodes-gcp/.terraform-docs.yml infrastructure/modules/k8s-nodes-gcp"]
@@ -957,6 +978,7 @@ paths      = ["infrastructure/modules/k8s-nodes-aws/**"]
 bump_files = [
     { file = "infrastructure/modules/k8s-nodes-aws/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
     { file = "zensical.toml", key = "project.extra.versions.infra_modules_k8s_nodes_aws" },
+    { file = "VERSION", key = 'regex:^infra-modules-k8s-nodes-aws=(.+)$' },
 ]
 changelog  = "infrastructure/modules/k8s-nodes-aws/CHANGELOG.md"
 post_bump  = ["terraform-docs -c infrastructure/modules/k8s-nodes-aws/.terraform-docs.yml infrastructure/modules/k8s-nodes-aws"]
@@ -971,6 +993,7 @@ paths      = ["infrastructure/modules/vms-proxy-gcp/**"]
 bump_files = [
     { file = "infrastructure/modules/vms-proxy-gcp/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
     { file = "zensical.toml", key = "project.extra.versions.infra_modules_vms_proxy_gcp" },
+    { file = "VERSION", key = 'regex:^infra-modules-vms-proxy-gcp=(.+)$' },
 ]
 changelog  = "infrastructure/modules/vms-proxy-gcp/CHANGELOG.md"
 post_bump  = ["terraform-docs -c infrastructure/modules/vms-proxy-gcp/.terraform-docs.yml infrastructure/modules/vms-proxy-gcp"]
@@ -985,6 +1008,7 @@ paths      = ["infrastructure/modules/vms-proxy-aws/**"]
 bump_files = [
     { file = "infrastructure/modules/vms-proxy-aws/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
     { file = "zensical.toml", key = "project.extra.versions.infra_modules_vms_proxy_aws" },
+    { file = "VERSION", key = 'regex:^infra-modules-vms-proxy-aws=(.+)$' },
 ]
 changelog  = "infrastructure/modules/vms-proxy-aws/CHANGELOG.md"
 post_bump  = ["terraform-docs -c infrastructure/modules/vms-proxy-aws/.terraform-docs.yml infrastructure/modules/vms-proxy-aws"]
