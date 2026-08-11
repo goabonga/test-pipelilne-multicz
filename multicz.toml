@@ -496,6 +496,7 @@ max_commits         = 30
 include_prereleases = false
 
 [components.infra]
+depends_on = ["infra-modules-example", "infra-modules-network-vpc-gcp", "infra-modules-network-vpc-aws", "infra-modules-network-subnets-gcp", "infra-modules-network-subnets-aws", "infra-modules-network-addresses-private-gcp", "infra-modules-network-addresses-private-aws", "infra-modules-network-addresses-public-gcp", "infra-modules-network-addresses-public-aws", "infra-modules-network-firewall-gcp", "infra-modules-network-firewall-aws", "infra-modules-network-routes-gcp", "infra-modules-network-routes-aws", "infra-modules-network-nat-gcp", "infra-modules-network-nat-aws", "infra-modules-dns-private-gcp", "infra-modules-dns-private-aws", "infra-modules-dns-public-gcp", "infra-modules-dns-public-aws", "infra-modules-k8s-cluster-gcp", "infra-modules-k8s-cluster-aws", "infra-modules-k8s-nodes-gcp", "infra-modules-k8s-nodes-aws", "infra-modules-vms-proxy-gcp", "infra-modules-vms-proxy-aws"]
 # modules/_template/** is in here on purpose: it means a change to the
 # template is a detected change, so CI actually formats and tests it.
 paths      = [
@@ -543,7 +544,7 @@ bump_files = [
     { file = "VERSION", key = 'regex:^configs-production=(.+)$' },
 ]
 changelog  = "infrastructure/configs/production/CHANGELOG.md"
-depends_on = ["infra", "infra-modules-example", "infra-modules-k8s-nodes-gcp", "infra-modules-k8s-nodes-aws", "infra-modules-vms-proxy-gcp", "infra-modules-vms-proxy-aws"]
+depends_on = ["infra", "infra-modules-example", "infra-modules-k8s-nodes-gcp", "infra-modules-k8s-nodes-aws", "infra-modules-vms-proxy-gcp", "infra-modules-vms-proxy-aws", "infra-modules-network-vpc-gcp", "infra-modules-network-vpc-aws", "infra-modules-network-subnets-gcp", "infra-modules-network-subnets-aws", "infra-modules-network-addresses-private-gcp", "infra-modules-network-addresses-private-aws", "infra-modules-network-addresses-public-gcp", "infra-modules-network-addresses-public-aws", "infra-modules-network-firewall-gcp", "infra-modules-network-firewall-aws", "infra-modules-network-routes-gcp", "infra-modules-network-routes-aws", "infra-modules-network-nat-gcp", "infra-modules-network-nat-aws", "infra-modules-dns-private-gcp", "infra-modules-dns-private-aws", "infra-modules-dns-public-gcp", "infra-modules-dns-public-aws", "infra-modules-k8s-cluster-gcp", "infra-modules-k8s-cluster-aws"]
 
 [components.infra-modules-example]
 paths      = ["infrastructure/modules/example/**"]

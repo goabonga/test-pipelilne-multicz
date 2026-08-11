@@ -134,20 +134,43 @@ path, component = pathlib.Path(sys.argv[1]), sys.argv[2]
 text = path.read_text()
 touched = []
 
-# Match `depends_on = [...]` inside each [components.configs-<env>] block.
-for match in re.finditer(r"^\[components\.(configs-[a-z0-9-]+)\]$", text, re.M):
-    env, start = match.group(1), match.end()
+# One environment per pass, re-scanning each time.
+#
+# This used to iterate `finditer` over a string it mutated inside the
+# loop: after the first insertion every later offset was stale, so the
+# first configs-* block got the dependency and the others silently did
+# not. configs-staging ended up with 25 modules and configs-production
+# with 5 — and nothing looked wrong, because the file stayed valid TOML.
+#
+# `infra` is in the target list too: the terragrunt wiring consumes these
+# modules, and `hcl validate --inputs --strict` is what proves a unit's
+# inputs still match its module's variables. Without the dependency a
+# module can rename a variable, the contract breaks, and the one check
+# that would catch it never runs — its job is gated on `infra` having
+# changed.
+targets = ["infra"] + [m.group(1) for m in
+           re.finditer(r"^\[components\.(configs-[a-z0-9-]+)\]$", text, re.M)]
+
+for name in targets:
+    m = re.search(rf"^\[components\.{re.escape(name)}\]$", text, re.M)
+    if not m:
+        continue
+    start = m.end()
     end = text.find("\n[", start)
     block = text[start : end if end != -1 else len(text)]
     dep = re.search(r"depends_on\s*=\s*\[(.*?)\]", block, re.S)
-    if not dep or f'"{component}"' in dep.group(1):
+    if dep and f'"{component}"' in dep.group(1):
         continue
-    updated = dep.group(0).replace("]", f', "{component}"]', 1) if dep.group(1).strip() \
-        else f'depends_on = ["{component}"]'
-    text = text[:start] + block.replace(dep.group(0), updated, 1) + text[start + len(block):]
-    touched.append(env)
+    if dep:
+        updated = dep.group(0).replace("]", f', "{component}"]', 1) if dep.group(1).strip() \
+            else f'depends_on = ["{component}"]'
+        new_block = block.replace(dep.group(0), updated, 1)
+    else:
+        # No depends_on yet — add one on the line after the header.
+        new_block = f'\ndepends_on = ["{component}"]' + block
+    text = text[:start] + new_block + text[start + len(block):]
+    touched.append(name)
 
-path.write_text(text)
 print("  " + (", ".join(touched) if touched else "(no configs-* component found)"))
 PY
 
