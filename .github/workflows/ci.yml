@@ -274,6 +274,9 @@ jobs:
       - uses: goabonga/multicz-action@95e90628797bc7dec0d2ad7d9abc6278f3465ed2  # v1
       - name: multicz validate
         run: multicz validate --strict
+      - name: Every documented version cascades onto docs
+        run: python3 scripts/check-docs-deps.py
+
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
