@@ -2,6 +2,12 @@
 
 All notable changes to this component are documented here.
 
+## [1.1.0] - 2026-08-11
+
+### Features
+
+- **chart-api**: make the NetworkPolicy narrowable from values (`3c4d19f`)
+
 ## [1.0.1] - 2026-08-11
 
 ### Dependencies

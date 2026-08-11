@@ -7,6 +7,17 @@ Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
 ### Releases
 
+- **chart-api** minor — 1.0.1 → 1.1.0
+- **docs** patch — 1.0.4 → 1.0.5  _(cascade from chart-api 1.1.0)_
+
+### Features
+
+- **chart-api**: make the NetworkPolicy narrowable from values (`3c4d19f`)
+
+## 2026-08-11
+
+### Releases
+
 - **gitops-staging** patch — 0.1.2 → 0.1.3
 
 ## 2026-08-11
