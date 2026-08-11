@@ -19,17 +19,28 @@ an admin UI and a REST API — across as many tenants as you need.
 The repository is a [uv workspace](https://docs.astral.sh/uv/concepts/projects/workspaces/)
 of independently-versioned packages:
 
-| package         | role                                  | distribution                     |
-|-----------------|---------------------------------------|----------------------------------|
-| `shomer-api`    | FastAPI authorization server          | Docker image, Helm chart, `.deb` |
-| `shomer-job`    | background polling jobs               | Docker image, Helm chart, `.deb` |
-| `shomer-ssr`    | Jinja-rendered login / account UI     | Docker image, Helm chart, `.deb` |
-| `shomer-cli`    | operator CLI                          | wheel / sdist (PyPI)             |
+| package             | role                                              | distribution                     |
+|---------------------|---------------------------------------------------|----------------------------------|
+| `shomer-api`        | FastAPI authorization server                       | Docker image, Helm chart, `.deb` |
+| `shomer-job`        | background jobs (token cleanup, audit replication) | Docker image, Helm chart, `.deb` |
+| `shomer-ssr`        | Jinja-rendered login / account UI                  | Docker image, Helm chart, `.deb` |
+| `shomer-migrations` | Alembic revisions and runner                       | Docker image, Helm chart, `.deb` |
+| `shomer-database`   | SQLAlchemy models and connector                    | wheel, used by the services      |
+| `shomer-cli`        | operator CLI                                       | wheel / sdist (PyPI), `.deb`     |
+| `shomer-web`        | React islands / CSS / templates for `ssr`          | built into `shomer-ssr`          |
+| `@shomer/lib`       | shared TypeScript types and validation             | used by `web` and `app`          |
+| `@shomer/app`       | React Native app (iOS + Android)                   | store artifacts                  |
 
 Each package is released independently — its own git tag, its own
 `CHANGELOG.md`, its own `debian/changelog` stanza. Cascade rules in
 `multicz.toml` keep the Helm charts' `appVersion` in sync with their
 matching application bumps.
+
+The infrastructure is versioned the same way: the Terragrunt wiring, each
+Terraform module, the state-backend bootstraps and the Flux configuration
+all carry their own version. [Versions](versions.md) lists every one of
+them, and says which numbers describe code and which describe what is
+actually deployed.
 
 ## Quickstart
 
@@ -37,7 +48,7 @@ matching application bumps.
 git clone https://github.com/goabonga/shomer.git
 cd shomer
 
-uv sync
+make install                     # sync the workspace, all packages and dev groups
 uv run shomer-api &              # FastAPI on :8000
 uv run shomer health http://127.0.0.1:8000
 ```
