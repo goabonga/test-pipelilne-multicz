@@ -106,3 +106,23 @@ def test_get_session_yields_and_closes() -> None:
     assert session.execute(text("select 1")).scalar() == 1
     gen.close()  # triggers the finally: session.close()
     db.dispose()
+
+
+def test_get_session_rolls_back_on_error() -> None:
+    """A failed transaction must not go back to the pool unresolved.
+
+    `session()` already rolled back; `get_session()` did not, so a request
+    that raised mid-transaction returned a session in a failed state and
+    the next borrower met PendingRollbackError on its first statement.
+    """
+    db = Database(DatabaseSettings(dialect="postgresql", url="sqlite://"))
+    gen = db.get_session()
+    session = next(gen)
+    session.execute(text("select 1"))
+
+    with pytest.raises(RuntimeError, match="boom"):
+        gen.throw(RuntimeError("boom"))
+
+    # rollback() left nothing pending, so the session is reusable.
+    assert not session.in_transaction()
+    db.dispose()

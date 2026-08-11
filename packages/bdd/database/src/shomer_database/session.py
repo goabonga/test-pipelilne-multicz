@@ -52,10 +52,19 @@ class Database:
         """Dependency-injection provider (FastAPI ``Depends`` compatible).
 
         Yields a session and closes it afterwards; the caller commits.
+
+        An exception raised by the caller rolls the session back before it
+        is closed. Without that, a session whose transaction had already
+        failed went back to the pool in that state, and the next request to
+        borrow it met ``PendingRollbackError`` on its first statement —
+        reported against a request that had done nothing wrong.
         """
         session = self.session_factory()
         try:
             yield session
+        except Exception:
+            session.rollback()
+            raise
         finally:
             session.close()
 
