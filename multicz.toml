@@ -511,6 +511,12 @@ paths      = [
     # scripts sitting next to them don't get swept into infra's history.
     "scripts/terragrunt.sh",
     "scripts/new-terraform-module.sh",
+    # The shared bootstrap README, which documents both bootstraps and
+    # belonged to neither — editing it released nothing. It cannot go on
+    # the bootstrap components: multicz rejects two components claiming
+    # the same file, and rightly so. It sits here because it describes
+    # the infrastructure as a whole, like the terragrunt wiring does.
+    "infrastructure/bootstrap/README.md",
 ]
 bump_files = [
     { file = "infrastructure/VERSION" },
@@ -572,13 +578,7 @@ post_bump  = ["terraform-docs -c infrastructure/modules/example/.terraform-docs.
 # configs-<env>, where the version means "this is live".
 
 [components.infra-bootstrap-aws]
-paths      = [
-    "infrastructure/bootstrap/aws/**",
-    # The shared README documents both bootstraps and belonged to
-    # neither, so editing it released nothing and the docs never
-    # said so. Listed on both: it describes both.
-    "infrastructure/bootstrap/README.md",
-]
+paths      = ["infrastructure/bootstrap/aws/**"]
 bump_files = [
     { file = "infrastructure/bootstrap/aws/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
     { file = "zensical.toml", key = "project.extra.versions.infra_bootstrap_aws" },
@@ -588,13 +588,7 @@ changelog  = "infrastructure/bootstrap/aws/CHANGELOG.md"
 post_bump  = ["terraform-docs -c infrastructure/bootstrap/aws/.terraform-docs.yml infrastructure/bootstrap/aws"]
 
 [components.infra-bootstrap-gcp]
-paths      = [
-    "infrastructure/bootstrap/gcp/**",
-    # The shared README documents both bootstraps and belonged to
-    # neither, so editing it released nothing and the docs never
-    # said so. Listed on both: it describes both.
-    "infrastructure/bootstrap/README.md",
-]
+paths      = ["infrastructure/bootstrap/gcp/**"]
 bump_files = [
     { file = "infrastructure/bootstrap/gcp/README.md", key = 'regex:^\*\*Version:\*\* (.+)$' },
     { file = "zensical.toml", key = "project.extra.versions.infra_bootstrap_gcp" },
