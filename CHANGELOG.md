@@ -7,6 +7,12 @@ Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
 ### Releases
 
+- **gitops-staging** patch — 0.1.3 → 0.1.4
+
+## 2026-08-11
+
+### Releases
+
 - **chart-api** minor — 1.0.1 → 1.1.0
 - **docs** patch — 1.0.4 → 1.0.5  _(cascade from chart-api 1.1.0)_
 

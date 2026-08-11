@@ -9,6 +9,12 @@ multicz's `upstream-notes` plugin from this component's `depends_on`.
 The version records that the pins were **promoted**, not that the cluster
 converged — Flux applies asynchronously and nothing here waits on it.
 
+## [0.1.4] - 2026-08-11
+
+### Upstream: chart-api (v1.0.1 → v1.1.0)
+
+- - feat(chart-api): make the NetworkPolicy narrowable from values (3c4d19f)
+
 ## [0.1.3] - 2026-08-11
 
 _No notable changes._
