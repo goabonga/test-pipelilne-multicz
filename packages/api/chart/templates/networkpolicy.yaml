@@ -1,3 +1,4 @@
+{{- if .Values.networkPolicy.enabled }}
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -11,11 +12,17 @@ spec:
   policyTypes:
     - Ingress
     - Egress
-  # Permissive baseline — picked up by checkov's "pod has a
-  # NetworkPolicy" rule (CKV2_K8S_6). Production deployments
-  # should override this chart's NetworkPolicy to allow only the
-  # specific peers (api ↔ db, ssr → api, etc.).
+  # Rules come from values, so a deployment can narrow them without
+  # overriding this template. The shipped default is allow-all: a chart
+  # that guessed a cluster's topology would lock out the peers it guessed
+  # wrong. See values.yaml for a realistic production shape.
+  #
+  # An allow-all policy still satisfies checkov's "pod has a
+  # NetworkPolicy" rule while permitting everything — which is why the
+  # default being permissive is worth saying out loud rather than leaving
+  # for someone to discover.
   ingress:
-    - {}
+    {{- toYaml .Values.networkPolicy.ingress | nindent 4 }}
   egress:
-    - {}
+    {{- toYaml .Values.networkPolicy.egress | nindent 4 }}
+{{- end }}

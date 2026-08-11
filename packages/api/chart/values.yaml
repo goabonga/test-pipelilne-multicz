@@ -55,4 +55,33 @@ imageVerification:
   # blocks every pod whose image predates signing.
   validationFailureAction: Audit
 
-# Part of the 2026-07 synchronized release baseline.
+# Pod-level network rules.
+#
+# The default is permissive — allow all ingress and all egress — and that
+# is deliberate, because the alternative is worse: a chart that guesses a
+# cluster's topology locks out the peers it did not guess. But permissive
+# by default has meant permissive in practice, since tightening it used to
+# require overriding the template, i.e. forking the chart.
+#
+# `ingress` and `egress` are now plain NetworkPolicy rule lists, so a
+# deployment narrows them in values.yaml. A realistic production shape:
+#
+#   networkPolicy:
+#     egress:
+#       - to: [{namespaceSelector: {}, podSelector: {matchLabels: {app: postgres}}}]
+#         ports: [{protocol: TCP, port: 5432}]
+#       - to: [{namespaceSelector: {}}]        # DNS
+#         ports: [{protocol: UDP, port: 53}]
+#     ingress:
+#       - from: [{podSelector: {matchLabels: {app.kubernetes.io/name: ssr}}}]
+#         ports: [{protocol: TCP, port: 8000}]
+#
+# Setting `enabled: false` removes the object entirely. Do that only when
+# something else in the cluster owns the policy — checkov's CKV2_K8S_6
+# will flag the pod, and it will be right.
+networkPolicy:
+  enabled: true
+  ingress:
+    - {}
+  egress:
+    - {}
