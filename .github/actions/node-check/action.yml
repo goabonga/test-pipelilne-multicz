@@ -1,0 +1,78 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+name: node component check
+description: |
+  Run one gate against one Node component.
+
+  Three components times four gates, and unlike the Python side they do
+  NOT share a shape — so the inputs name the three real differences
+  rather than hiding them:
+
+    lib   installs at the root and runs through `-w packages/lib`
+    web   installs at the root and runs inside packages/web
+    app   has its own lockfile and installs inside packages/app
+
+  Flattening those into one form would mean either moving app into the
+  root workspace or giving lib a lockfile it does not need. Both are
+  real changes to how the project builds, not workflow cleanups.
+
+  REQUIRES the calling job to have run `actions/checkout` first.
+
+inputs:
+  install-dir:
+    required: false
+    default: "."
+    description: |
+      Where `npm ci` runs. The lockfile beside it is what the cache keys
+      on, which is why app — with its own lockfile — passes packages/app.
+  workspace:
+    required: false
+    default: ""
+    description: 'Run the script through `-w <workspace>` instead of changing directory.'
+  run-dir:
+    required: false
+    default: ""
+    description: 'Directory to run the script in. Defaults to install-dir. Ignored when workspace is set.'
+  check:
+    required: true
+    description: lint | format | typecheck | test
+
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/bump-preview
+
+    - uses: actions/setup-node@v7
+      with:
+        node-version: "22"
+        cache: npm
+        cache-dependency-path: ${{ inputs.install-dir }}/package-lock.json
+
+    - name: Install
+      shell: bash
+      working-directory: ${{ inputs.install-dir }}
+      run: npm ci
+
+    - name: Run ${{ inputs.check }}
+      shell: bash
+      working-directory: ${{ inputs.workspace != '' && inputs.install-dir || (inputs.run-dir != '' && inputs.run-dir || inputs.install-dir) }}
+      env:
+        # format is `format:check` in every package.json — the script is
+        # named for what it does, the gate for what it checks.
+        SCRIPT: ${{ inputs.check == 'format' && 'format:check' || inputs.check }}
+        WS: ${{ inputs.workspace }}
+      run: |
+        set -euo pipefail
+        if [ -n "$WS" ]; then
+          npm run "$SCRIPT" -w "$WS"
+        else
+          npm run "$SCRIPT"
+        fi
+
+    - name: Summary
+      if: always()
+      uses: ./.github/actions/summary
+      with:
+        title: node ${{ inputs.workspace || inputs.run-dir || inputs.install-dir }} — ${{ inputs.check }}
+        body: '`npm run ${{ inputs.check }}`.'

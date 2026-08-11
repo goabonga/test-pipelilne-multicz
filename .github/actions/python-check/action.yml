@@ -1,0 +1,79 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+name: python component check
+description: |
+  Run one gate against one Python component of the workspace.
+
+  Six components times four gates was twenty-four jobs of the same five
+  steps, differing in a path and a module name. The setup — uv, a frozen
+  sync of the whole workspace, the bump preview — is identical in all of
+  them, so a change to it had to be made twenty-four times correctly.
+
+  The job shell stays per-component: it carries the `contains(changed,
+  ...)` gate, so an unchanged component runs nothing, and it keeps a
+  failure named in the checks list.
+
+  REQUIRES the calling job to have run `actions/checkout` first — local
+  actions are resolved before any step runs.
+
+inputs:
+  path:
+    required: true
+    description: 'Package directory, e.g. packages/api or packages/bdd/database.'
+  module:
+    required: true
+    description: 'Importable module name, e.g. shomer_api. Used as the coverage target.'
+  check:
+    required: true
+    description: lint | format | typecheck | test
+
+runs:
+  using: composite
+  steps:
+    # The version under test must be the one the release will publish, or
+    # a component that asserts its own __version__ fails on the release run
+    # and nowhere else.
+    - uses: ./.github/actions/bump-preview
+
+    - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
+      with:
+        python-version: "3.12"
+
+    # --all-packages: the components import each other (api and job both
+    # use shomer-database), so a per-package sync would typecheck against
+    # something that is not what runs.
+    - name: Install the workspace
+      shell: bash
+      run: uv sync --frozen --all-packages
+
+    - name: Ruff lint
+      if: inputs.check == 'lint'
+      shell: bash
+      run: uv run ruff check ${{ inputs.path }}
+
+    - name: Ruff format check
+      if: inputs.check == 'format'
+      shell: bash
+      run: uv run ruff format --check ${{ inputs.path }}
+
+    - name: Mypy --strict
+      if: inputs.check == 'typecheck'
+      shell: bash
+      run: uv run --with mypy mypy --strict ${{ inputs.path }}/src
+
+    # --cov-fail-under=100 is deliberate and repo-wide: coverage that can
+    # slip is coverage nobody defends.
+    - name: Pytest with coverage
+      if: inputs.check == 'test'
+      shell: bash
+      run: >-
+        uv run --with pytest-cov pytest ${{ inputs.path }}/tests
+        --cov=${{ inputs.module }} --cov-report=term-missing --cov-fail-under=100 -q
+
+    - name: Summary
+      if: always()
+      uses: ./.github/actions/summary
+      with:
+        title: ${{ inputs.module }} — ${{ inputs.check }}
+        body: '`${{ inputs.check }}` on `${{ inputs.path }}`.'

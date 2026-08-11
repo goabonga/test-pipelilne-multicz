@@ -329,18 +329,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/bump-preview
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
-        with: { python-version: "3.12" }
-      - run: uv sync --frozen --all-packages
-      - name: Ruff lint — api
-        run: uv run ruff check packages/api
-      - name: Summary
-        if: always()
-        uses: ./.github/actions/summary
-        with:
-          title: api-lint
-          body: '`ruff check` on `packages/api/`.'
+      - uses: ./.github/actions/python-check
+        with: { path: packages/api, module: shomer_api, check: lint }
 
   api-format:
     needs: [detect, headers]
@@ -350,18 +340,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/bump-preview
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
-        with: { python-version: "3.12" }
-      - run: uv sync --frozen --all-packages
-      - name: Ruff format check — api
-        run: uv run ruff format --check packages/api
-      - name: Summary
-        if: always()
-        uses: ./.github/actions/summary
-        with:
-          title: api-format
-          body: '`ruff format --check` on `packages/api/`.'
+      - uses: ./.github/actions/python-check
+        with: { path: packages/api, module: shomer_api, check: format }
 
   api-typecheck:
     needs: [detect, headers]
@@ -371,18 +351,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/bump-preview
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
-        with: { python-version: "3.12" }
-      - run: uv sync --frozen --all-packages
-      - name: Mypy --strict — api
-        run: uv run --with mypy mypy --strict packages/api/src
-      - name: Summary
-        if: always()
-        uses: ./.github/actions/summary
-        with:
-          title: api-typecheck
-          body: '`mypy --strict` on `packages/api/src/`.'
+      - uses: ./.github/actions/python-check
+        with: { path: packages/api, module: shomer_api, check: typecheck }
 
   api-test:
     needs: [api-lint, api-format, api-typecheck]
@@ -391,18 +361,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/bump-preview
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
-        with: { python-version: "3.12" }
-      - run: uv sync --frozen --all-packages
-      - name: Pytest + coverage — api
-        run: uv run --with pytest-cov pytest packages/api/tests --cov=shomer_api --cov-report=term-missing --cov-fail-under=100 -q
-      - name: Summary
-        if: always()
-        uses: ./.github/actions/summary
-        with:
-          title: api-test
-          body: '`pytest` on `packages/api/tests/`.'
+      - uses: ./.github/actions/python-check
+        with: { path: packages/api, module: shomer_api, check: test }
 
   api-bandit:
     needs: [api-test]
@@ -702,18 +662,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/bump-preview
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
-        with: { python-version: "3.12" }
-      - run: uv sync --frozen --all-packages
-      - name: Ruff lint — job
-        run: uv run ruff check packages/job
-      - name: Summary
-        if: always()
-        uses: ./.github/actions/summary
-        with:
-          title: job-lint
-          body: '`ruff check` on `packages/job/`.'
+      - uses: ./.github/actions/python-check
+        with: { path: packages/job, module: shomer_job, check: lint }
 
   job-format:
     needs: [detect, headers]
@@ -723,18 +673,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/bump-preview
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
-        with: { python-version: "3.12" }
-      - run: uv sync --frozen --all-packages
-      - name: Ruff format check — job
-        run: uv run ruff format --check packages/job
-      - name: Summary
-        if: always()
-        uses: ./.github/actions/summary
-        with:
-          title: job-format
-          body: '`ruff format --check` on `packages/job/`.'
+      - uses: ./.github/actions/python-check
+        with: { path: packages/job, module: shomer_job, check: format }
 
   job-typecheck:
     needs: [detect, headers]
@@ -744,18 +684,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/bump-preview
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
-        with: { python-version: "3.12" }
-      - run: uv sync --frozen --all-packages
-      - name: Mypy --strict — job
-        run: uv run --with mypy mypy --strict packages/job/src
-      - name: Summary
-        if: always()
-        uses: ./.github/actions/summary
-        with:
-          title: job-typecheck
-          body: '`mypy --strict` on `packages/job/src/`.'
+      - uses: ./.github/actions/python-check
+        with: { path: packages/job, module: shomer_job, check: typecheck }
 
   job-test:
     needs: [job-lint, job-format, job-typecheck]
@@ -777,20 +707,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/bump-preview
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
-        with: { python-version: "3.12" }
-      - run: uv sync --frozen --all-packages
-      - name: Pytest + coverage — job
-        env:
-          REDIS_URL: redis://localhost:6379/0
-        run: uv run --with pytest-cov pytest packages/job/tests --cov=shomer_job --cov-report=term-missing --cov-fail-under=100 -q
-      - name: Summary
-        if: always()
-        uses: ./.github/actions/summary
-        with:
-          title: job-test
-          body: '`pytest` on `packages/job/tests/`.'
+      - uses: ./.github/actions/python-check
+        with: { path: packages/job, module: shomer_job, check: test }
 
   job-bandit:
     needs: [job-test]
@@ -993,18 +911,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/bump-preview
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
-        with: { python-version: "3.12" }
-      - run: uv sync --frozen --all-packages
-      - name: Ruff lint — ssr
-        run: uv run ruff check packages/ssr
-      - name: Summary
-        if: always()
-        uses: ./.github/actions/summary
-        with:
-          title: ssr-lint
-          body: '`ruff check` on `packages/ssr/`.'
+      - uses: ./.github/actions/python-check
+        with: { path: packages/ssr, module: shomer_ssr, check: lint }
 
   ssr-format:
     needs: [detect, headers]
@@ -1014,18 +922,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/bump-preview
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
-        with: { python-version: "3.12" }
-      - run: uv sync --frozen --all-packages
-      - name: Ruff format check — ssr
-        run: uv run ruff format --check packages/ssr
-      - name: Summary
-        if: always()
-        uses: ./.github/actions/summary
-        with:
-          title: ssr-format
-          body: '`ruff format --check` on `packages/ssr/`.'
+      - uses: ./.github/actions/python-check
+        with: { path: packages/ssr, module: shomer_ssr, check: format }
 
   ssr-typecheck:
     needs: [detect, headers]
@@ -1035,18 +933,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/bump-preview
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
-        with: { python-version: "3.12" }
-      - run: uv sync --frozen --all-packages
-      - name: Mypy --strict — ssr
-        run: uv run --with mypy mypy --strict packages/ssr/src
-      - name: Summary
-        if: always()
-        uses: ./.github/actions/summary
-        with:
-          title: ssr-typecheck
-          body: '`mypy --strict` on `packages/ssr/src/`.'
+      - uses: ./.github/actions/python-check
+        with: { path: packages/ssr, module: shomer_ssr, check: typecheck }
 
   ssr-test:
     needs: [ssr-lint, ssr-format, ssr-typecheck, web-build]
@@ -1064,24 +952,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/bump-preview
-      # Only overwrite the committed `static/` + `templates/` if the
-      # frontend was actually rebuilt this run; otherwise pytest uses
-      # whatever is on disk (= the committed dist on `main`).
-      - if: needs.web-build.result == 'success'
-        uses: actions/download-artifact@v8
-        with: { name: web-dist, path: . }
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
-        with: { python-version: "3.12" }
-      - run: uv sync --frozen --all-packages
-      - name: Pytest + coverage — ssr
-        run: uv run --with pytest-cov pytest packages/ssr/tests --cov=shomer_ssr --cov-report=term-missing --cov-fail-under=100 -q
-      - name: Summary
-        if: always()
-        uses: ./.github/actions/summary
-        with:
-          title: ssr-test
-          body: '`pytest` on `packages/ssr/tests/`.'
+      - uses: ./.github/actions/python-check
+        with: { path: packages/ssr, module: shomer_ssr, check: test }
 
   ssr-bandit:
     needs: [ssr-test]
@@ -1306,18 +1178,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/bump-preview
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
-        with: { python-version: "3.12" }
-      - run: uv sync --frozen --all-packages
-      - name: Ruff lint — cli
-        run: uv run ruff check packages/cli
-      - name: Summary
-        if: always()
-        uses: ./.github/actions/summary
-        with:
-          title: cli-lint
-          body: '`ruff check` on `packages/cli/`.'
+      - uses: ./.github/actions/python-check
+        with: { path: packages/cli, module: shomer_cli, check: lint }
 
   cli-format:
     needs: [detect, headers]
@@ -1327,18 +1189,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/bump-preview
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
-        with: { python-version: "3.12" }
-      - run: uv sync --frozen --all-packages
-      - name: Ruff format check — cli
-        run: uv run ruff format --check packages/cli
-      - name: Summary
-        if: always()
-        uses: ./.github/actions/summary
-        with:
-          title: cli-format
-          body: '`ruff format --check` on `packages/cli/`.'
+      - uses: ./.github/actions/python-check
+        with: { path: packages/cli, module: shomer_cli, check: format }
 
   cli-typecheck:
     needs: [detect, headers]
@@ -1348,18 +1200,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/bump-preview
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
-        with: { python-version: "3.12" }
-      - run: uv sync --frozen --all-packages
-      - name: Mypy --strict — cli
-        run: uv run --with mypy mypy --strict packages/cli/src
-      - name: Summary
-        if: always()
-        uses: ./.github/actions/summary
-        with:
-          title: cli-typecheck
-          body: '`mypy --strict` on `packages/cli/src/`.'
+      - uses: ./.github/actions/python-check
+        with: { path: packages/cli, module: shomer_cli, check: typecheck }
 
   cli-test:
     needs: [cli-lint, cli-format, cli-typecheck]
@@ -1368,18 +1210,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/bump-preview
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
-        with: { python-version: "3.12" }
-      - run: uv sync --frozen --all-packages
-      - name: Pytest + coverage — cli
-        run: uv run --with pytest-cov pytest packages/cli/tests --cov=shomer_cli --cov-report=term-missing --cov-fail-under=100 -q
-      - name: Summary
-        if: always()
-        uses: ./.github/actions/summary
-        with:
-          title: cli-test
-          body: '`pytest` on `packages/cli/tests/`.'
+      - uses: ./.github/actions/python-check
+        with: { path: packages/cli, module: shomer_cli, check: test }
 
   cli-bandit:
     needs: [cli-test]
@@ -1467,18 +1299,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/bump-preview
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
-        with: { python-version: "3.12" }
-      - run: uv sync --frozen --all-packages
-      - name: Ruff lint — database
-        run: uv run ruff check packages/bdd/database
-      - name: Summary
-        if: always()
-        uses: ./.github/actions/summary
-        with:
-          title: database-lint
-          body: '`ruff check` on `packages/bdd/database/`.'
+      - uses: ./.github/actions/python-check
+        with: { path: packages/bdd/database, module: shomer_database, check: lint }
 
   database-format:
     needs: [detect, headers]
@@ -1488,18 +1310,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/bump-preview
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
-        with: { python-version: "3.12" }
-      - run: uv sync --frozen --all-packages
-      - name: Ruff format check — database
-        run: uv run ruff format --check packages/bdd/database
-      - name: Summary
-        if: always()
-        uses: ./.github/actions/summary
-        with:
-          title: database-format
-          body: '`ruff format --check` on `packages/bdd/database/`.'
+      - uses: ./.github/actions/python-check
+        with: { path: packages/bdd/database, module: shomer_database, check: format }
 
   database-typecheck:
     needs: [detect, headers]
@@ -1509,18 +1321,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/bump-preview
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
-        with: { python-version: "3.12" }
-      - run: uv sync --frozen --all-packages
-      - name: Mypy --strict — database
-        run: uv run --with mypy mypy --strict packages/bdd/database/src
-      - name: Summary
-        if: always()
-        uses: ./.github/actions/summary
-        with:
-          title: database-typecheck
-          body: '`mypy --strict` on `packages/bdd/database/src/`.'
+      - uses: ./.github/actions/python-check
+        with: { path: packages/bdd/database, module: shomer_database, check: typecheck }
 
   database-test:
     needs: [database-lint, database-format, database-typecheck]
@@ -1529,18 +1331,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/bump-preview
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
-        with: { python-version: "3.12" }
-      - run: uv sync --frozen --all-packages
-      - name: Pytest + coverage — database
-        run: uv run --with pytest-cov pytest packages/bdd/database/tests --cov=shomer_database --cov-report=term-missing --cov-fail-under=100 -q
-      - name: Summary
-        if: always()
-        uses: ./.github/actions/summary
-        with:
-          title: database-test
-          body: '`pytest` on `packages/bdd/database/tests/`.'
+      - uses: ./.github/actions/python-check
+        with: { path: packages/bdd/database, module: shomer_database, check: test }
 
   database-bandit:
     needs: [database-test]
@@ -1572,18 +1364,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/bump-preview
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
-        with: { python-version: "3.12" }
-      - run: uv sync --frozen --all-packages
-      - name: Ruff lint — migrations
-        run: uv run ruff check packages/bdd/migrations
-      - name: Summary
-        if: always()
-        uses: ./.github/actions/summary
-        with:
-          title: migrations-lint
-          body: '`ruff check` on `packages/bdd/migrations/`.'
+      - uses: ./.github/actions/python-check
+        with: { path: packages/bdd/migrations, module: shomer_migrations, check: lint }
 
   migrations-format:
     needs: [detect, headers]
@@ -1593,18 +1375,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/bump-preview
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
-        with: { python-version: "3.12" }
-      - run: uv sync --frozen --all-packages
-      - name: Ruff format check — migrations
-        run: uv run ruff format --check packages/bdd/migrations
-      - name: Summary
-        if: always()
-        uses: ./.github/actions/summary
-        with:
-          title: migrations-format
-          body: '`ruff format --check` on `packages/bdd/migrations/`.'
+      - uses: ./.github/actions/python-check
+        with: { path: packages/bdd/migrations, module: shomer_migrations, check: format }
 
   migrations-typecheck:
     needs: [detect, headers]
@@ -1614,18 +1386,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/bump-preview
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
-        with: { python-version: "3.12" }
-      - run: uv sync --frozen --all-packages
-      - name: Mypy --strict — migrations
-        run: uv run --with mypy mypy --strict packages/bdd/migrations/src
-      - name: Summary
-        if: always()
-        uses: ./.github/actions/summary
-        with:
-          title: migrations-typecheck
-          body: '`mypy --strict` on `packages/bdd/migrations/src/`.'
+      - uses: ./.github/actions/python-check
+        with: { path: packages/bdd/migrations, module: shomer_migrations, check: typecheck }
 
   migrations-test:
     needs: [migrations-lint, migrations-format, migrations-typecheck]
@@ -1634,18 +1396,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/bump-preview
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
-        with: { python-version: "3.12" }
-      - run: uv sync --frozen --all-packages
-      - name: Pytest + coverage — migrations
-        run: uv run --with pytest-cov pytest packages/bdd/migrations/tests --cov=shomer_migrations --cov-report=term-missing --cov-fail-under=100 -q
-      - name: Summary
-        if: always()
-        uses: ./.github/actions/summary
-        with:
-          title: migrations-test
-          body: '`pytest` on `packages/bdd/migrations/tests/`.'
+      - uses: ./.github/actions/python-check
+        with: { path: packages/bdd/migrations, module: shomer_migrations, check: test }
 
   migrations-bandit:
     needs: [migrations-test]
@@ -2517,22 +2269,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/bump-preview
-      - uses: actions/setup-node@v7
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: package-lock.json
-      - run: npm ci   # root install — hoists the npm workspace (lib + web)
-      - name: Biome lint — web
-        run: npm run lint
-        working-directory: packages/web
-      - name: Summary
-        if: always()
-        uses: ./.github/actions/summary
-        with:
-          title: web-lint
-          body: '`biome lint` (via `npm run lint`) on `packages/web/`.'
+      - uses: ./.github/actions/node-check
+        with: { install-dir: ., run-dir: packages/web, check: lint }
 
   web-format:
     needs: [detect, headers]
@@ -2542,22 +2280,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/bump-preview
-      - uses: actions/setup-node@v7
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: package-lock.json
-      - run: npm ci   # root install — hoists the npm workspace (lib + web)
-      - name: Biome format check — web
-        run: npm run format:check
-        working-directory: packages/web
-      - name: Summary
-        if: always()
-        uses: ./.github/actions/summary
-        with:
-          title: web-format
-          body: '`biome format --check` (via `npm run format:check`) on `packages/web/`.'
+      - uses: ./.github/actions/node-check
+        with: { install-dir: ., run-dir: packages/web, check: format }
 
   web-typecheck:
     needs: [detect, headers]
@@ -2567,22 +2291,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/bump-preview
-      - uses: actions/setup-node@v7
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: package-lock.json
-      - run: npm ci   # root install — hoists the npm workspace (lib + web)
-      - name: tsc --noEmit — web
-        run: npm run typecheck
-        working-directory: packages/web
-      - name: Summary
-        if: always()
-        uses: ./.github/actions/summary
-        with:
-          title: web-typecheck
-          body: '`tsc --noEmit` (via `npm run typecheck`) on `packages/web/`.'
+      - uses: ./.github/actions/node-check
+        with: { install-dir: ., run-dir: packages/web, check: typecheck }
 
   web-test:
     needs: [web-lint, web-format, web-typecheck]
@@ -2591,22 +2301,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/bump-preview
-      - uses: actions/setup-node@v7
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: package-lock.json
-      - run: npm ci   # root install — hoists the npm workspace (lib + web)
-      - name: Vitest — web
-        run: npm test
-        working-directory: packages/web
-      - name: Summary
-        if: always()
-        uses: ./.github/actions/summary
-        with:
-          title: web-test
-          body: '`vitest` (via `npm test`) on `packages/web/`.'
+      - uses: ./.github/actions/node-check
+        with: { install-dir: ., run-dir: packages/web, check: test }
 
   web-build:
     # Build the JS/CSS bundle + Jinja templates and publish them as
@@ -2656,20 +2352,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/bump-preview
-      - uses: actions/setup-node@v7
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: package-lock.json
-      - run: npm ci
-      - run: npm run lint -w packages/lib
-      - name: Summary
-        if: always()
-        uses: ./.github/actions/summary
-        with:
-          title: lib-lint
-          body: '`biome lint` on `packages/lib/`.'
+      - uses: ./.github/actions/node-check
+        with: { install-dir: ., workspace: packages/lib, check: lint }
 
   lib-format:
     needs: [detect, headers]
@@ -2679,20 +2363,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/bump-preview
-      - uses: actions/setup-node@v7
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: package-lock.json
-      - run: npm ci
-      - run: npm run format:check -w packages/lib
-      - name: Summary
-        if: always()
-        uses: ./.github/actions/summary
-        with:
-          title: lib-format
-          body: '`biome format --check` on `packages/lib/`.'
+      - uses: ./.github/actions/node-check
+        with: { install-dir: ., workspace: packages/lib, check: format }
 
   lib-typecheck:
     needs: [detect, headers]
@@ -2702,20 +2374,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/bump-preview
-      - uses: actions/setup-node@v7
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: package-lock.json
-      - run: npm ci
-      - run: npm run typecheck -w packages/lib
-      - name: Summary
-        if: always()
-        uses: ./.github/actions/summary
-        with:
-          title: lib-typecheck
-          body: '`tsc --noEmit` on `packages/lib/`.'
+      - uses: ./.github/actions/node-check
+        with: { install-dir: ., workspace: packages/lib, check: typecheck }
 
   lib-test:
     needs: [lib-lint, lib-format, lib-typecheck]
@@ -2724,30 +2384,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/bump-preview
-      - uses: actions/setup-node@v7
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: package-lock.json
-      - run: npm ci
-      - run: npm run test -w packages/lib
-      - name: Summary
-        if: always()
-        uses: ./.github/actions/summary
-        with:
-          title: lib-test
-          body: '`vitest` on `packages/lib/`.'
-
-  # ─────────────────────── app (React Native) ───────────────────────
-  # @shomer/app is NOT a workspace member (RN/Metro hoisting), so its
-  # jobs install in packages/app and cache against its own lockfile. It
-  # consumes @shomer/lib from ../lib (file: dep / Metro alias), so every
-  # job checks out the full repo. DevSecOps surface mirrors the Python
-  # chain: lint/format/typecheck/test, supply-chain (npm audit + SBOM +
-  # grype), secrets (gitleaks), mobile SAST (mobsfscan), then per-OS
-  # build + Maestro E2E (Android on ubuntu, iOS on macOS — both free on
-  # this public repo; the iOS simulator needs no Apple account).
+      - uses: ./.github/actions/node-check
+        with: { install-dir: ., workspace: packages/lib, check: test }
 
   app-lint:
     needs: [detect, headers]
@@ -2757,22 +2395,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/bump-preview
-      - uses: actions/setup-node@v7
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: packages/app/package-lock.json
-      - run: npm ci
-        working-directory: packages/app
-      - run: npm run lint
-        working-directory: packages/app
-      - name: Summary
-        if: always()
-        uses: ./.github/actions/summary
-        with:
-          title: app-lint
-          body: '`biome lint` on `packages/app/src`.'
+      - uses: ./.github/actions/node-check
+        with: { install-dir: packages/app, check: lint }
 
   app-format:
     needs: [detect, headers]
@@ -2782,22 +2406,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/bump-preview
-      - uses: actions/setup-node@v7
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: packages/app/package-lock.json
-      - run: npm ci
-        working-directory: packages/app
-      - run: npm run format:check
-        working-directory: packages/app
-      - name: Summary
-        if: always()
-        uses: ./.github/actions/summary
-        with:
-          title: app-format
-          body: '`biome format --check` on `packages/app/src`.'
+      - uses: ./.github/actions/node-check
+        with: { install-dir: packages/app, check: format }
 
   app-typecheck:
     needs: [detect, headers]
@@ -2807,22 +2417,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/bump-preview
-      - uses: actions/setup-node@v7
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: packages/app/package-lock.json
-      - run: npm ci
-        working-directory: packages/app
-      - run: npm run typecheck
-        working-directory: packages/app
-      - name: Summary
-        if: always()
-        uses: ./.github/actions/summary
-        with:
-          title: app-typecheck
-          body: '`tsc --noEmit` on `packages/app/` (resolves @shomer/lib via tsconfig path).'
+      - uses: ./.github/actions/node-check
+        with: { install-dir: packages/app, check: typecheck }
 
   app-test:
     needs: [app-lint, app-format, app-typecheck]
@@ -2831,22 +2427,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/bump-preview
-      - uses: actions/setup-node@v7
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: packages/app/package-lock.json
-      - run: npm ci
-        working-directory: packages/app
-      - run: npm test
-        working-directory: packages/app
-      - name: Summary
-        if: always()
-        uses: ./.github/actions/summary
-        with:
-          title: app-test
-          body: '`jest` on `packages/app/` — exercises the shared @shomer/lib validation.'
+      - uses: ./.github/actions/node-check
+        with: { install-dir: packages/app, check: test }
 
   app-audit:
     needs: [detect, headers]
