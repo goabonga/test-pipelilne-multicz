@@ -7,6 +7,12 @@ Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
 ### Releases
 
+- **docs** patch — 1.0.0 → 1.0.1  _(cascade from configs-staging)_
+
+## 2026-08-11
+
+### Releases
+
 - **gitops-staging** minor — 0.0.0 → 0.1.0
 
 ### Features
