@@ -2,6 +2,12 @@
 
 All notable changes to this component are documented here.
 
+## [1.0.2] - 2026-08-11
+
+### Fixes
+
+- **job**: wait for the broker instead of dying when it is not up yet (`03af7a1`)
+
 ## [1.0.1] - 2026-08-11
 
 ### Dependencies

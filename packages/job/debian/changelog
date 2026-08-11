@@ -1,3 +1,9 @@
+shomer-job (1.0.2-1) unstable; urgency=medium
+
+  * fix(job): Wait for the broker instead of dying when it is not up yet
+
+ -- Chris <goabonga@pm.me>  Tue, 11 Aug 2026 19:37:36 +0000
+
 shomer-job (1.0.1-1) unstable; urgency=medium
 
   * No notable changes.
