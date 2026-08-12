@@ -32,11 +32,11 @@ terraform {
   # written as <environment>/services/<unit>, unless an environment is
   # named "bootstrap".
   #
-  # backend "s3" {
-  #   bucket       = "shomer-tfstate"
-  #   key          = "bootstrap/aws/terraform.tfstate"
-  #   region       = "us-east-1"
-  #   encrypt      = true
-  #   use_lockfile = true
-  # }
+  backend "s3" {
+    bucket       = "shomer-tfstate"
+    key          = "bootstrap/aws/terraform.tfstate"
+    region       = "us-east-1"
+    encrypt      = true
+    use_lockfile = true
+  }
 }
