@@ -254,10 +254,34 @@ jobs:
             > "plan-${ENV_NAME}.txt" 2>&1
           echo "exit_code=$?" >> "$GITHUB_OUTPUT"
 
-      - name: Show plan summary
+      # Terragrunt prefixes every line of terraform's output with a
+      # timestamp, a log level and the unit name:
+      #
+      #   08:51:02.413 STDOUT [example] terraform: Plan: 1 to add, ...
+      #
+      # An anchored `grep '^Plan: '` therefore never matched, and every
+      # deploy PR opened since this workflow existed carried
+      # "(no per-unit summary line found)" where the summary should be.
+      # The drift detection was right — exit code 2, PR opened — only the
+      # one line a reviewer actually reads was empty.
+      #
+      # ANSI codes are stripped first: -no-color suppresses terraform's,
+      # not terragrunt's own.
+      - name: Extract the per-unit plan summary
+        id: summary
         run: |
-          grep -E '^Plan: ' "plan-${ENV_NAME}.txt" \
-            || echo "(no summary line — see exit code / job status)"
+          set -euo pipefail
+          sed -r 's/\x1B\[[0-9;]*[mK]//g' "plan-${ENV_NAME}.txt" \
+            | grep -oE '\[[^]]+\][[:space:]]*terraform:[[:space:]]*(Plan: |No changes).*' \
+            | sed -E 's/^\[([^]]+)\][[:space:]]*terraform:[[:space:]]*/\1: /' \
+            | sort -u > /tmp/summary.txt || true
+          if [ ! -s /tmp/summary.txt ]; then
+            # No summary at all means terraform did not get far enough to
+            # produce one. Say that, rather than implying an empty plan.
+            echo "(terraform produced no plan summary — see the job log)" > /tmp/summary.txt
+          fi
+          sed 's/^/  /' /tmp/summary.txt
+
 
       - name: Show plan error
         # Without this a real error is invisible: it went to the file and
@@ -310,7 +334,7 @@ jobs:
           # next one.
           git push --force origin "HEAD:refs/heads/${TOPIC}"
 
-          SUMMARY=$(grep -E '^Plan: ' "plan-${ENV_NAME}.txt" || echo "(no per-unit summary line found)")
+          SUMMARY=$(cat /tmp/summary.txt)
           BODY_FILE=$(mktemp)
           {
             echo "Terragrunt found pending changes for **${ENV_NAME}**."
