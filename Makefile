@@ -283,8 +283,19 @@ infra-bootstrap:
 	terraform apply -input=false $$ARGS
 
 # ENV picks the configs/<env>/config.yaml the units read: make infra-plan ENV=production
+#
+# The download directory is per-environment, and that is not tidiness.
+# Both environments share the same unit directories, so they would share
+# one .terragrunt-cache — and with staging on gcp and production on aws
+# they need different providers. Whichever ran first won, and the second
+# died on "Inconsistent dependency lock file: provider hashicorp/aws
+# required by this configuration but no version is selected".
+#
+# CI never hit this: one job per environment, each with a fresh checkout.
+# It is a local-only footgun, which is the kind that costs an hour.
 infra-plan:
-	ENV=$(ENV) terragrunt --non-interactive --working-dir $(INFRA_DIR)/services \
+	ENV=$(ENV) TERRAGRUNT_DOWNLOAD=$(CURDIR)/.terragrunt-cache-$(ENV) \
+		terragrunt --non-interactive --working-dir $(INFRA_DIR)/services \
 		run --all -- plan -input=false
 
 # Each module carries its own .terraform-docs.yml and records its version
@@ -316,6 +327,7 @@ infra-new-module:
 
 infra-clean:
 	find $(INFRA_DIR) -type d -name ".terragrunt-cache" -prune -exec rm -rf {} + 2>/dev/null || true
+	rm -rf $(CURDIR)/.terragrunt-cache-*
 	find $(INFRA_DIR) -type f -name ".terraform.lock.hcl" -delete
 	find $(INFRA_DIR) -type f -name "generated_*.tf" -delete
 

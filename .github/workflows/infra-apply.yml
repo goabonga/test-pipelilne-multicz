@@ -108,6 +108,7 @@ jobs:
       cancel-in-progress: false
     permissions:
       contents: write   # push the release tag
+      id-token: write   # mint the OIDC token the cloud login exchanges
     steps:
       - uses: actions/checkout@v7
         with:
@@ -128,9 +129,67 @@ jobs:
           terraform_wrapper: false
       - uses: ./.github/actions/setup-terragrunt
 
-      # TODO(provider): add the cloud login here (OIDC). This identity is
-      # the write one — keep it distinct from the read-only identity
-      # infra-plan.yml uses.
+      # WRITE identity, and it must be a different one from the read-only
+      # identity infra-plan uses: plan runs on every cycle with no
+      # approval, so giving it write would let an ungated job change
+      # infrastructure.
+      # The cloud identity, chosen by the environment's own config.
+      #
+      # staging on gcp and production on aws is a supported combination:
+      # the unit picks its module from `provider:`, root.hcl generates the
+      # matching provider block from the same key, and these two steps log
+      # into the same cloud. One key drives all three, so they cannot
+      # disagree.
+      #
+      # Everything comes from GitHub Environment variables, not repository
+      # secrets: `staging` holds the GCP pair, `production` the AWS role.
+      # A repository-wide secret would hand every environment's credentials
+      # to every job.
+      #
+      # OIDC, never a stored key. `id-token: write` above is what mints the
+      # token; the cloud side trusts it through Workload Identity
+      # Federation (GCP) or a role with a GitHub OIDC provider (AWS).
+      - name: Read the environment's provider
+        id: cloud
+        env:
+          ENV: ${{ needs.resolve-env.outputs.env }}
+        run: |
+          set -euo pipefail
+          P=$(grep -oP '^provider:\s*\K\S+' "infrastructure/configs/${ENV}/config.yaml")
+          case "$P" in
+            gcp|aws) ;;
+            *) echo "::error::unknown provider '${P}' in configs/${ENV}/config.yaml"; exit 1 ;;
+          esac
+          echo "provider=$P" >> "$GITHUB_OUTPUT"
+          echo "${ENV} runs on ${P}"
+
+      - name: Authenticate to Google Cloud
+        if: steps.cloud.outputs.provider == 'gcp' && vars.GCP_WORKLOAD_IDENTITY_PROVIDER != ''
+        uses: google-github-actions/auth@140bb5113ffb6b65a7e9b937a81fa96cf5064462  # v3.0.0
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+
+      - name: Authenticate to AWS
+        if: steps.cloud.outputs.provider == 'aws' && vars.AWS_ROLE_ARN != ''
+        uses: aws-actions/configure-aws-credentials@f503a1870408dcf2c35d5c2b8a68e69211042c7d  # v5.1.0
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      # Say it out loud rather than failing deep inside terraform with
+      # "could not load application default credentials". A run with no
+      # identity can still plan the units that need no provider, which is
+      # the state this repository has been in while the modules are
+      # written.
+      - name: Warn when no identity is configured
+        env:
+          ENV: ${{ needs.resolve-env.outputs.env }}
+        if: >-
+          (steps.cloud.outputs.provider == 'gcp' && vars.GCP_WORKLOAD_IDENTITY_PROVIDER == '') ||
+          (steps.cloud.outputs.provider == 'aws' && vars.AWS_ROLE_ARN == '')
+        run: |
+          echo "::warning::no cloud identity configured for ${ENV} (${{ steps.cloud.outputs.provider }}) — units that declare real resources will fail to plan"
 
       - name: Guard against an unknown environment
         env:

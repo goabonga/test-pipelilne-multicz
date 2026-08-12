@@ -70,3 +70,6 @@ infrastructure/bootstrap/*/terraform.tfstate
 infrastructure/bootstrap/*/terraform.tfstate.backup
 infrastructure/bootstrap/*/.terraform/
 infrastructure/bootstrap/*/.terraform.lock.hcl
+
+# Per-environment terragrunt download dirs (see `make infra-plan`).
+.terragrunt-cache-*

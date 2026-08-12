@@ -27,23 +27,60 @@ locals {
   config = merge(
     yamldecode(file(find_in_parent_folders(format("configs/%s/config.yaml", local.environment)))),
   )
+
+  # The provider block, per cloud. Written as two locals and selected,
+  # rather than a heredoc inside a conditional — HCL will not parse the
+  # latter ("Missing false expression in conditional").
+  provider_gcp = <<-EOF
+    provider "google" {
+      project = "${try(local.config.project, "")}"
+      region  = "${local.config.region}"
+    }
+  EOF
+
+  provider_aws = <<-EOF
+    provider "aws" {
+      region = "${local.config.region}"
+
+      default_tags {
+        tags = ${jsonencode(try(local.config.tags, {}))}
+      }
+    }
+  EOF
+
+  provider_block = local.config.provider == "gcp" ? local.provider_gcp : local.provider_aws
 }
 
-# ─────────────────────────── provider (TODO) ───────────────────────────
+# ───────────────────────────── provider ─────────────────────────────────
 #
-# Uncomment and adapt once a provider is chosen. `if_exists = "overwrite_
-# terragrunt"` means the generated file is owned by terragrunt and
-# regenerated on every run; `terragrunt.sh clean` removes it.
+# One generated block per unit, chosen by `provider:` in the environment's
+# config. staging can run on gcp while production runs on aws — the units
+# already pick their module the same way
+# (modules/network-vpc-${local.config.provider}), so this closes the other
+# half: the module and the provider that configures it always agree,
+# because both read the same key.
 #
-# generate "provider" {
-#   path      = "generated_provider.tf"
-#   if_exists = "overwrite_terragrunt"
-#   contents  = <<EOF
-# provider "<name>" {
-#   # ... driven by local.config.provider.* in configs/<env>/config.yaml
-# }
-# EOF
-# }
+# `if_exists = "overwrite_terragrunt"` marks the file as terragrunt-owned
+# and regenerates it every run; `terragrunt.sh clean` removes it.
+#
+# WHY THE BLOCK IS EMPTY OF CREDENTIALS
+#
+# Both providers read their credentials from the environment — GCP from
+# GOOGLE_* / application default credentials, AWS from the standard chain
+# — which is what the OIDC login in infra-plan / infra-apply populates.
+# Putting a key here would mean a long-lived secret in the repository, and
+# would also break `terragrunt hcl validate`, which runs with none.
+#
+# NOTHING IS INSTANTIATED UNTIL A RESOURCE NEEDS IT. Terraform configures a
+# provider lazily, so a unit that declares no google/aws resource — as
+# services/example does not, it uses terraform_data — still plans without
+# credentials. That is what keeps the pipeline green while the modules are
+# written.
+generate "provider" {
+  path      = "generated_provider.tf"
+  if_exists = "overwrite_terragrunt"
+  contents  = local.provider_block
+}
 
 # ──────────────────────────── backend (TODO) ────────────────────────────
 #

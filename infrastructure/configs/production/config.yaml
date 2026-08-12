@@ -37,15 +37,16 @@ tags:
 # Selects which implementation of each unit runs. Every unit under
 # services/ carries an `exclude` keyed on this, so switching it swaps the
 # whole stack rather than half of it.
-provider: gcp
+provider: aws
 
-region: europe-west1
+region: eu-west-3
 # One zone in staging, three in production. Read by the units that place
 # zonal resources; the HA flags below decide whether they spread.
-zones: ["europe-west1-b", "europe-west1-c", "europe-west1-d"]
+zones: ["eu-west-3a", "eu-west-3b", "eu-west-3c"]
 
-# GCP only — ignored when provider is aws.
-project: shomer-production
+# GCP only — ignored when provider is aws, where the account is
+# implicit in the credentials.
+project: ""
 
 # ── network ─────────────────────────────────────────────────────────────
 network:
