@@ -4,7 +4,7 @@
         kind-forward infra-fmt infra-fmt-check infra-test infra-plan \
         infra-new-module infra-docs infra-docs-check infra-checkov \
         infra-fmt-check-root infra-lint \
-        infra-bootstrap infra-clean clean
+        infra-bootstrap infra-oidc infra-clean clean
 
 VENV     := .venv
 UV       := uv
@@ -59,6 +59,7 @@ help:
 	@echo "  make infra-checkov     checkov on the modules (M=<name> for one)"
 	@echo "  make infra-plan        terragrunt plan for one env (ENV=staging by default)"
 	@echo "  make infra-bootstrap CLOUD=aws|gcp  create the state backend bucket (once, by hand)"
+	@echo "  make infra-oidc CLOUD=aws|gcp       create the CI identity + set the GitHub variables"
 	@echo "  make infra-docs        regenerate every module README with terraform-docs"
 	@echo "  make infra-docs-check  verify those READMEs are up to date (what CI runs)"
 	@echo "  make infra-new-module NAME=<name>  scaffold + register a Terraform module"
@@ -269,6 +270,17 @@ infra-checkov:
 #
 # Not part of the terragrunt run graph and not run by CI: it needs
 # permissions the deploy identity does not have, and it runs once.
+# The identity CI assumes, and the GitHub variables that point at it.
+#
+# Runs AFTER infra-bootstrap: it grants access to the state bucket, so the
+# bucket has to exist. Needs the same elevated credentials, because it
+# creates IAM — the identities it makes are far weaker.
+#
+# DRY_RUN=1 plans without applying and without touching GitHub.
+infra-oidc:
+	@test -n "$(CLOUD)" || { echo "usage: make infra-oidc CLOUD=aws|gcp [DRY_RUN=1]"; exit 1; }
+	scripts/setup-oidc.sh $(CLOUD) $(if $(DRY_RUN),--dry-run,)
+
 infra-bootstrap:
 	@set -eu; \
 	test -n "$(CLOUD)"  || { echo "usage: make infra-bootstrap CLOUD=aws|gcp BUCKET=<name> ..."; exit 1; }; \
