@@ -45,11 +45,19 @@ set `dynamodb_table` instead of `use_lockfile` in the backend config.
 
 ## Moving the bootstrap's own state into the bucket
 
-Optional, and worth doing: it removes the one `terraform.tfstate` file
-that lives on somebody's laptop.
+This is the ONLY state that needs migrating, and it is optional.
+
+The units under `services/` need nothing: their state has only ever lived
+in `.terragrunt-cache`, which is thrown away, so pasting `remote_state:`
+into the environment config starts them on the bucket with nothing lost.
+There is no migration because there was never anything to migrate.
+
+The bootstrap is the exception — it holds the buckets themselves, in a
+`terraform.tfstate` on somebody's laptop. Losing that file does not lose
+the buckets, it makes them unmanaged, and re-importing is manual.
 
 After the first apply, uncomment the `backend` block in the subdirectory's
-`versions.tf` and run:
+`versions.tf` — it is at the bottom, with the values to match — and run:
 
 ```bash
 terraform init -migrate-state
