@@ -42,7 +42,11 @@ tags:
 #
 # remote_state:
 #   bucket: shomer-tfstate
-
+remote_state:
+  backend: gcs
+  bucket: shomer-tfstate
+  project: goabonga-6d856
+  
 # ── provider ────────────────────────────────────────────────────────────
 # Selects which implementation of each unit runs. Every unit under
 # services/ carries an `exclude` keyed on this, so switching it swaps the

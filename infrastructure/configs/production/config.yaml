@@ -40,6 +40,13 @@ tags:
 #
 # remote_state:
 #   bucket: shomer-tfstate
+remote_state:
+  backend: s3
+  bucket: shomer-tfstate
+  region: us-east-1
+  encrypt: true
+  use_lockfile: true
+
 # ── provider ────────────────────────────────────────────────────────────
 # Selects which implementation of each unit runs. Every unit under
 # services/ carries an `exclude` keyed on this, so switching it swaps the
