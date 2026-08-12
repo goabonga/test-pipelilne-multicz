@@ -25,16 +25,23 @@ tags:
 # provider: {}     # TODO — fill in when a provider is wired.
 #
 # remote_state — pasted from the bootstrap's `remote_state_yaml` output
-# (`make infra-bootstrap CLOUD=aws|gcp ...`), then uncomment the matching
-# block in ../../root.hcl. The bucket must exist first: Terraform cannot
-# keep its state in a bucket Terraform has not created yet.
+# (`make infra-bootstrap CLOUD=aws|gcp ...`). Nothing else to change:
+# root.hcl reads this key, and with it absent the backend is local state in
+# the terragrunt cache — thrown away with the cache, so every plan on a CI
+# runner reads as a first apply. Wire this before the first unit declares a
+# resource that costs money.
+#
+# The bucket must exist first. Terraform cannot keep its state in a bucket
+# Terraform has not created yet, which is the only reason bootstrap/ is
+# applied by hand.
+#
+# `backend:` defaults to the provider above — gcp -> gcs, aws -> s3 — so it
+# is only worth setting to keep state in one cloud while running in another.
+# The key/prefix is derived: <environment>/services/<unit>, so one bucket
+# holds every environment without collision.
 #
 # remote_state:
-#   backend: s3
 #   bucket: shomer-tfstate
-#   region: eu-west-3
-#   encrypt: true
-#   use_lockfile: true
 
 # ── provider ────────────────────────────────────────────────────────────
 # Selects which implementation of each unit runs. Every unit under

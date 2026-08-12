@@ -22,8 +22,13 @@ make infra-bootstrap CLOUD=gcp BUCKET=shomer-tfstate PROJECT=shomer LOCATION=EU
 ```
 
 The apply prints a `remote_state_yaml` output. Paste it under
-`remote_state:` in `../configs/<env>/config.yaml`, then uncomment the
-matching `remote_state` block in `../root.hcl`.
+`remote_state:` in `../configs/<env>/config.yaml` and you are done —
+`../root.hcl` reads that key and picks the backend from it. Until it is
+there, the environment runs on local state.
+
+The backend follows the environment's `provider:` unless the pasted yaml
+overrides it, and the state path is derived as
+`<environment>/services/<unit>`, so one bucket serves every environment.
 
 One bucket serves every environment: the state key already carries the
 environment name, so staging and production never collide. Separate

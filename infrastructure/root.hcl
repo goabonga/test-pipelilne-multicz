@@ -12,12 +12,15 @@
 # Terraform files". Units reference it with
 # find_in_parent_folders("root.hcl").
 #
-# NO CLOUD PROVIDER IS WIRED YET. That is deliberate — the layout, the
-# per-environment config split and the plan/apply pipelines are in place so
-# the provider is a fill-in-the-blanks step, not a restructuring. Until it
-# is filled in, `terragrunt plan` runs against LOCAL state and no provider,
-# which works because no unit declares real resources yet. See the two
-# commented blocks at the bottom for what to add.
+# EVERYTHING CLOUD-SPECIFIC IS READ FROM configs/<env>/config.yaml — the
+# module each unit runs, the provider block generated below, the backend,
+# and the login the pipelines perform. One file per environment decides the
+# cloud, so staging on gcp and production on aws is a config difference
+# rather than a fork of this file.
+#
+# Nothing here needs credentials yet: the provider is instantiated lazily
+# and the backend falls back to local state until a bucket is declared.
+# Both are described where they are defined.
 
 locals {
   # Which configs/<env>/config.yaml to read. `terragrunt.sh` exports ENV;
@@ -49,6 +52,55 @@ locals {
   EOF
 
   provider_block = local.config.provider == "gcp" ? local.provider_gcp : local.provider_aws
+
+  # ── backend ───────────────────────────────────────────────────────────
+  #
+  # Same key drives it: `remote_state:` in the environment config, pasted
+  # from the bootstrap's `remote_state_yaml` output. Absent — the state
+  # this repository is in until a bucket exists — the backend is `local`
+  # and everything below is unused.
+  remote_state_config = try(local.config.remote_state, null)
+  has_remote_state    = local.remote_state_config != null
+
+  # The bucket's cloud follows the environment's provider unless the config
+  # says otherwise, so `backend:` is one less line to paste wrong. A gcs
+  # bucket for an aws environment is legal and occasionally deliberate;
+  # this only picks the default.
+  backend_default = local.config.provider == "gcp" ? "gcs" : "s3"
+  backend_name = (
+    local.has_remote_state
+    ? try(local.remote_state_config.backend, local.backend_default)
+    : "local"
+  )
+
+  # The environment prefixes the path, so one bucket holds every
+  # environment without collision — staging/services/network-vpc/... and
+  # production/services/network-vpc/... never meet. path_relative_to_
+  # include() is evaluated against the INCLUDING unit, which is what makes
+  # this one line rather than one per unit.
+  state_path = format("%s/%s", local.environment, path_relative_to_include())
+
+  backend_s3 = {
+    bucket = try(local.remote_state_config.bucket, "")
+    region = try(local.remote_state_config.region, local.config.region)
+    key    = "${local.state_path}/terraform.tfstate"
+    # Native S3 locking (Terraform >= 1.10). Below that, swap for
+    # `dynamodb_table` and add the table back to bootstrap/aws.
+    use_lockfile = true
+    encrypt      = true
+  }
+
+  # The gcs backend locks natively; there is nothing to add.
+  backend_gcs = {
+    bucket = try(local.remote_state_config.bucket, "")
+    prefix = local.state_path
+  }
+
+  backend_config = (
+    local.backend_name == "s3" ? local.backend_s3 :
+    local.backend_name == "gcs" ? local.backend_gcs :
+    {}
+  )
 }
 
 # ───────────────────────────── provider ─────────────────────────────────
@@ -82,55 +134,44 @@ generate "provider" {
   contents  = local.provider_block
 }
 
-# ──────────────────────────── backend (TODO) ────────────────────────────
+# ───────────────────────────── backend ──────────────────────────────────
 #
-# Until this is uncommented, state is LOCAL: it lives in the unit's
-# .terragrunt-cache and is thrown away with it. That is fine for validating
-# the wiring, and NOT fine for anything real — a CI runner starts from an
-# empty cache every job, so every plan looks like a first apply. Wire this
-# before the first unit declares a resource that costs money.
+# Selected from the same config as the provider: `remote_state:` present
+# means s3 or gcs, absent means local.
 #
-# The bucket is created once, by hand, by bootstrap/<cloud> — Terraform
-# cannot keep its state in a bucket Terraform has not created yet. Run
-# `make infra-bootstrap CLOUD=aws|gcp ...`, paste its `remote_state_yaml`
-# output under `remote_state:` in configs/<env>/config.yaml, then uncomment
-# the block for your cloud below.
+# THE BACKEND IS NOT LAZY, AND THAT IS THE WHOLE DESIGN CONSTRAINT.
 #
-# Do NOT uncomment before the bucket exists and CI has credentials: this
-# takes effect at `init`, so every plan — including the ones infra-plan
-# runs on a PR — would fail to reach the backend.
+# A provider is instantiated only when a resource needs it, so the
+# generated provider block above is harmless without credentials. `init`
+# configures the backend unconditionally — so hard-coding s3 or gcs here
+# before the bucket exists would fail EVERY plan, including the ones
+# infra-plan runs to open a PR, with an error about the bucket rather than
+# about this file.
 #
-# AWS. `use_lockfile` is native S3 locking (Terraform >= 1.10); below that,
-# swap it for `dynamodb_table` and add the table to bootstrap/aws.
+# Hence the fallback. With no `remote_state:` in the environment config the
+# backend is `local` — the same state terragrunt uses today with no block
+# at all, in the unit's .terragrunt-cache, thrown away with it. Fine for
+# validating wiring; NOT fine for anything real, because a CI runner starts
+# from an empty cache every job and so every plan reads as a first apply.
 #
-# remote_state {
-#   backend = "s3"
-#   config = {
-#     bucket       = local.config.remote_state.bucket
-#     region       = local.config.remote_state.region
-#     encrypt      = true
-#     use_lockfile = true
-#     key          = "${format("%s/%s", local.environment, path_relative_to_include())}/terraform.tfstate"
-#   }
-#   generate = {
-#     path      = "generated_backend.tf"
-#     if_exists = "overwrite_terragrunt"
-#   }
-# }
+# TO TURN IT ON, per environment, once the bucket exists:
 #
-# GCP. The gcs backend locks natively; there is nothing to add.
+#   make infra-bootstrap CLOUD=gcp BUCKET=shomer-tfstate PROJECT=... LOCATION=EU
+#   # paste the `remote_state_yaml` output under `remote_state:` in
+#   # configs/<env>/config.yaml
 #
-# remote_state {
-#   backend = "gcs"
-#   config = {
-#     bucket = local.config.remote_state.bucket
-#     prefix = format("%s/%s", local.environment, path_relative_to_include())
-#   }
-#   generate = {
-#     path      = "generated_backend.tf"
-#     if_exists = "overwrite_terragrunt"
-#   }
-# }
+# It takes effect on the next plan, with no change to this file. The two
+# environments are independent: staging can be on a real backend while
+# production is still local, or the reverse.
+remote_state {
+  backend = local.backend_name
+  config  = local.backend_config
+
+  generate = {
+    path      = "generated_backend.tf"
+    if_exists = "overwrite_terragrunt"
+  }
+}
 
 # NOTE: deliberately no `generate "versions"` block. Every module under
 # modules/ declares its own `terraform { required_version / required_
