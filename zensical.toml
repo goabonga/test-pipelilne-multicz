@@ -43,7 +43,7 @@ chart_api = "1.1.0"
 chart_job = "1.0.2"
 chart_ssr = "1.0.1"
 chart_migrations = "0.1.1"
-docs      = "1.0.6"
+docs      = "1.0.7"
 # Infrastructure. `configs_*` are DEPLOYED versions — what is actually live
 # in that environment — not library versions like everything above.
 infra     = "0.1.1"
