@@ -23,3 +23,22 @@ output "remote_state_yaml" {
       project: ${var.project}
   EOT
 }
+
+# The two values to set on the GitHub environments. Neither is secret: the
+# provider name is a resource path and the service account is an email
+# address. Both are useless without a token GitHub will only mint for the
+# repository named in the provider's attribute condition — which is why
+# these are variables rather than secrets.
+output "github_variables" {
+  description = "GitHub environment variables, keyed by environment name."
+  value = var.github_repository == "" ? {} : {
+    (var.plan_environment) = {
+      GCP_WORKLOAD_IDENTITY_PROVIDER = google_iam_workload_identity_pool_provider.github[0].name
+      GCP_SERVICE_ACCOUNT            = local.plan_email
+    }
+    (replace(var.plan_environment, "-plan", "")) = {
+      GCP_WORKLOAD_IDENTITY_PROVIDER = google_iam_workload_identity_pool_provider.github[0].name
+      GCP_SERVICE_ACCOUNT            = local.apply_email
+    }
+  }
+}
