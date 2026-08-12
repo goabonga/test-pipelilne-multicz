@@ -7,6 +7,17 @@ Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
 ### Releases
 
+- **docs** patch — 1.0.10 → 1.0.11  _(cascade from infra 0.2.0)_
+- **infra** minor — 0.1.2 → 0.2.0
+
+### Features
+
+- **infra**: pick the provider and the cloud login from the environment config (`2cc9311`)
+
+## 2026-08-12
+
+### Releases
+
 - **app** patch — 0.1.0 → 0.1.1
 - **docs** patch — 1.0.9 → 1.0.10  _(cascade from app 0.1.1)_
 
