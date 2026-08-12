@@ -7,6 +7,17 @@ Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
 ### Releases
 
+- **docs** patch — 1.0.11 → 1.0.12  _(cascade from infra 0.3.0)_
+- **infra** minor — 0.2.0 → 0.3.0
+
+### Features
+
+- **infra**: select the state backend from the environment config (`6c32553`)
+
+## 2026-08-12
+
+### Releases
+
 - **docs** patch — 1.0.10 → 1.0.11  _(cascade from infra 0.2.0)_
 - **infra** minor — 0.1.2 → 0.2.0
 
