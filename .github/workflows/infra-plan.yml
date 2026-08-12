@@ -163,6 +163,14 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       ENV_NAME: ${{ matrix.env }}
+      # ENV is what root.hcl reads to choose configs/<env>/config.yaml.
+      # ENV_NAME is what the steps interpolate into branch names, PR titles
+      # and file names. They carry the same value and only one of them was
+      # set, so every environment planned as staging — production included.
+      # infra-apply always set ENV, so nothing was applied from the wrong
+      # config; but the plan a reviewer approved for production described
+      # staging's.
+      ENV: ${{ matrix.env }}
     steps:
       - uses: actions/checkout@v7
         with:

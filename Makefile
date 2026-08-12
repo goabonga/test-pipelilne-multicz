@@ -216,7 +216,10 @@ infra-fmt-check-root:
 # Neither needs credentials, a backend or a provider — only the module
 # source, which is a local path.
 infra-lint:
-	terragrunt --working-dir $(INFRA_DIR) hcl validate
+	# ENV is explicit because root.hcl no longer defaults it. This pass
+	# checks syntax across the tree, where the environment is irrelevant —
+	# the per-environment pass is the loop below.
+	ENV=staging terragrunt --working-dir $(INFRA_DIR) hcl validate
 	@set -eu; \
 	for dir in $(INFRA_DIR)/configs/*/; do \
 		env_name=$$(basename "$$dir"); \

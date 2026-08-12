@@ -23,9 +23,23 @@
 # Both are described where they are defined.
 
 locals {
-  # Which configs/<env>/config.yaml to read. `terragrunt.sh` exports ENV;
-  # the plan / apply workflows set it per matrix entry.
-  environment = get_env("ENV", "staging")
+  # Which configs/<env>/config.yaml to read. `terragrunt.sh` exports ENV,
+  # the Makefile passes it, and the plan / apply workflows set it per job.
+  #
+  # NO DEFAULT, DELIBERATELY. This was get_env("ENV", "staging"), so a
+  # caller that forgot to set ENV planned staging while believing it was
+  # planning something else — silently, because the fallback is a real
+  # environment rather than an invalid one. infra-plan did exactly that: it
+  # set ENV_NAME for its branch names and never ENV, and production planned
+  # against staging's config for as long as the two produced identical
+  # plans. They did until they stopped sharing a backend, at which point
+  # production went looking for a GCS bucket and gave the game away.
+  #
+  # The default is a sentinel rather than nothing: dropping it entirely
+  # makes terragrunt fail with "unsuitable value: a bool is required" from
+  # some unit's exclude block, three levels away from the cause. This way
+  # the error names the missing variable and the directory it selects.
+  environment = get_env("ENV", "__ENV_environment_variable_is_not_set__")
 
   config = merge(
     yamldecode(file(find_in_parent_folders(format("configs/%s/config.yaml", local.environment)))),
