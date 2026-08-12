@@ -35,6 +35,77 @@ environment name, so staging and production never collide. Separate
 buckets per environment are a reasonable choice if you want a hard IAM
 boundary between them — run the bootstrap twice with different names.
 
+## The CI identity
+
+```bash
+make infra-oidc CLOUD=gcp    # or aws; DRY_RUN=1 to plan only
+```
+
+Run it after the bucket exists, with the same elevated credentials. It
+creates the identity CI assumes and then sets the GitHub variables that
+point at it, so there is nothing to copy by hand.
+
+**Nothing it produces is a secret.** A role ARN, a workload identity
+provider path and a service account email are identifiers. They are
+useless without a token GitHub will only mint for this repository, which
+is why they are set as *variables* and printed in the open. There is no
+key to store, rotate or leak — that is the entire point of federation, and
+it is why the alternative (a service account key or an access key pasted
+into a secret) is worse in a way that never announces itself.
+
+Which environment each cloud serves is not configured here. It is read
+from `provider:` in `../configs/<env>/config.yaml` — the same key that
+picks the module, the generated provider block and the backend — so this
+cannot disagree with the pipeline.
+
+### What gets created
+
+| | GCP | AWS |
+|---|---|---|
+| trust | workload identity pool + provider | OIDC provider for GitHub |
+| plan | `shomer-ci-plan` service account | `shomer-ci-plan` role |
+| apply | `shomer-ci-apply` service account | `shomer-ci-apply` role |
+| variables set | `GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_SERVICE_ACCOUNT` | `AWS_ROLE_ARN`, `AWS_REGION` |
+
+### Two identities, not one
+
+The plan identity runs on every push to main with no human involved. The
+apply identity runs only after a deploy PR has been approved and merged.
+Merging them would let an ungated job change infrastructure, which is the
+reason the pipeline is split in two in the first place.
+
+They are pinned differently because the two jobs are identifiable
+differently. `infra-plan` declares `environment: <env>-plan`, so its OIDC
+subject is stable and the identity is bound to that exact subject.
+`infra-apply` declares no environment — approval lives on the deploy PR —
+so its subject is `repo:<owner>/<repo>:pull_request`, shared by every
+pull_request job in the repository. Binding write access to that alone
+would let any of them assume it, so the apply identity is pinned on
+`job_workflow_ref` instead: the workflow file, on `main`, and nothing else.
+
+### Plan is read-only, except on state
+
+A plan against a remote backend **writes**: it takes a lock before reading
+and releases it after. A genuinely read-only identity cannot plan. So both
+identities get object-level write on the state bucket, and only the apply
+one can change infrastructure. If you tighten these, keep that split — the
+failure otherwise arrives as a permission error on an object nobody asked
+to create.
+
+### The permissions are a starting point
+
+`roles/editor` on GCP and `PowerUserAccess` on AWS are wide enough to
+create everything the modules under `../modules/` will declare, and too
+wide to leave in place once they exist. Narrow them to the services
+actually used when the modules are written.
+
+Both deliberately exclude IAM, so neither identity can widen its own
+access. That also means neither can create the node and service roles a
+Kubernetes cluster needs: when you get there, add narrowly scoped IAM
+permissions rather than widening these, and know that doing so hands the
+apply path a route to privilege escalation that no reviewer of a Terraform
+plan would see.
+
 ## Why there is no DynamoDB table
 
 Terraform 1.10 locks S3 state with a lock file in the bucket itself
