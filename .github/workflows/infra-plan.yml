@@ -335,10 +335,20 @@ jobs:
               --title "deploy(${ENV_NAME}): apply and release configs-${ENV_NAME} v${VERSION}" \
               --body-file "$BODY_FILE"
           else
-            # The force-push above already updated the diff; this records
-            # the new plan against it.
+            # Rewrite the body, do not append. The force-push above already
+            # updated the diff, so the PR describes one plan — the current
+            # one — and a reviewer opening it reads that rather than
+            # scrolling a thread to find which copy is live.
+            #
+            # This used to also post the body as a comment on every run.
+            # Six identical comments had accumulated on one PR, each a full
+            # copy of what was already at the top, and none of them saying
+            # what had changed.
+            #
+            # Nothing is lost: the body carries the run link, so it always
+            # says which run produced the plan it shows, and the artifact
+            # from an earlier run is still reachable from that run.
             gh pr edit "$PR_NUMBER" --body-file "$BODY_FILE"
-            gh pr comment "$PR_NUMBER" --body-file "$BODY_FILE"
           fi
 
           # A superseded proposal for the same environment at a different
