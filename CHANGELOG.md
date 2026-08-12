@@ -7,6 +7,17 @@ Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
 ### Releases
 
+- **docs** patch — 1.0.15 → 1.0.16  _(cascade from infra 0.3.1)_
+- **infra** patch — 0.3.0 → 0.3.1
+
+### Fixes
+
+- **infra**: plan each environment against its own config (`9f9eadb`)
+
+## 2026-08-12
+
+### Releases
+
 - **docs** patch — 1.0.14 → 1.0.15  _(cascade from configs-staging)_
 
 ## 2026-08-12

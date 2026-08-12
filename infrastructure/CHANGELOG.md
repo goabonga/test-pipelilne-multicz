@@ -6,6 +6,12 @@ template, `terragrunt.sh`) are documented here. Versions follow
 [Conventional Commits](https://www.conventionalcommits.org) scoped to this
 directory, tagged `infra-v<version>`.
 
+## [0.3.1] - 2026-08-12
+
+### Fixes
+
+- **infra**: plan each environment against its own config (`9f9eadb`)
+
 ## [0.3.0] - 2026-08-12
 
 ### Features
