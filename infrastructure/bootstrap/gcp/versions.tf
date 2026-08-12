@@ -29,8 +29,8 @@ terraform {
   # written as <environment>/services/<unit>, unless an environment is
   # named "bootstrap".
   #
-  # backend "gcs" {
-  #   bucket = "shomer-tfstate"
-  #   prefix = "bootstrap/gcp"
-  # }
+  backend "gcs" {
+    bucket = "shomer-tfstate"
+    prefix = "bootstrap/gcp"
+  }
 }
