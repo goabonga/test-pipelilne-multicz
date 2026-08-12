@@ -7,6 +7,17 @@ Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
 ### Releases
 
+- **app** patch — 0.1.0 → 0.1.1
+- **docs** patch — 1.0.9 → 1.0.10  _(cascade from app 0.1.1)_
+
+### Fixes
+
+- **app**: announce validation errors, and stop autocorrect on the username (`8b5ca0a`)
+
+## 2026-08-12
+
+### Releases
+
 - **docs** patch — 1.0.8 → 1.0.9  _(cascade from infra-modules-example 0.2.0)_
 - **infra** patch — 0.1.1 → 0.1.2  _(cascade from infra-modules-example 0.2.0)_
 - **infra-modules-example** minor — 0.1.0 → 0.2.0

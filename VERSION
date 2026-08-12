@@ -25,12 +25,12 @@ migrations=0.1.1
 ssr=1.0.1
 web=1.0.1
 lib=0.1.0
-app=0.1.0
+app=0.1.1
 chart-api=1.1.0
 chart-job=1.0.2
 chart-ssr=1.0.1
 chart-migrations=0.1.1
-docs=1.0.9
+docs=1.0.10
 
 # ── infrastructure and gitops code ──────────────────────────────────────
 # Libraries too: released on every push to main that touches them.

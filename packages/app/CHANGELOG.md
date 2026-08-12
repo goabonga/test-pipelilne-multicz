@@ -2,6 +2,12 @@
 
 All notable changes to this component are documented here.
 
+## [0.1.1] - 2026-08-12
+
+### Fixes
+
+- **app**: announce validation errors, and stop autocorrect on the username (`8b5ca0a`)
+
 ## [0.1.0] - 2026-08-11
 
 ### Features
