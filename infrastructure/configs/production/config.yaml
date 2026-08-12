@@ -149,4 +149,4 @@ services:
     public:  { enabled: false }
   example:
     enabled: true
-    name: shomer-production-example
+    name: shomer-production-example-probe

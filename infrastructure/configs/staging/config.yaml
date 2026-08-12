@@ -148,4 +148,4 @@ services:
     public:  { enabled: false }
   example:
     enabled: true
-    name: shomer-staging-example
+    name: shomer-staging-example-probe
