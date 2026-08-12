@@ -93,34 +93,48 @@ access:
 # `enabled: false` removes a unit from the run graph entirely (terragrunt
 # `exclude`), so a stack can be brought up in layers.
 #
+# EVERYTHING BELOW EXCEPT `example` IS OFF, AND THAT IS NOT A PLACEHOLDER.
+#
+# A unit turns on when two things are true: its module declares real
+# resources, AND the provider is wired in root.hcl with credentials CI can
+# use. Implementing a module alone is not enough — `network/vpc` was
+# enabled with a real google_compute_network and no provider block, and
+# every `terragrunt plan` failed with "Invalid provider configuration"
+# until it was turned back off. infra-plan is the only thing that noticed,
+# and it noticed by going red on an unrelated release.
+#
+# `example` stays on because it uses `terraform_data`, which needs no
+# provider at all — it is what proves the wiring works while the rest
+# waits.
+#
 # `ha` is the only difference between the environments that is not an
-# address: false is a single zonal instance, true is a managed group
-# spread across `zones` with an internal load balancer in front.
+# address: false is one zonal instance, true is a managed group spread
+# across `zones`.
 services:
   network:
-    vpc:      { enabled: true }
-    subnets:  { enabled: true }
-    firewall: { enabled: true }
-    routes:   { enabled: true }
-    nat:      { enabled: true }
+    vpc:      { enabled: false }
+    subnets:  { enabled: false }
+    firewall: { enabled: false }
+    routes:   { enabled: false }
+    nat:      { enabled: false }
     addresses:
-      private: { enabled: true }
-      public:  { enabled: true }
+      private: { enabled: false }
+      public:  { enabled: false }
   vms:
     proxy:
-      enabled: true
+      enabled: false
       ha: false
       # Squid listener. Workload subnets reach it through the route in
       # network/routes; nothing else may talk to it.
       port: 3128
   k8s:
-    cluster: { enabled: true, ha: false }
-    nodes:   { enabled: true, ha: false }
+    cluster: { enabled: false, ha: false }
+    nodes:   { enabled: false, ha: false }
   dns:
-    private: { enabled: true }
+    private: { enabled: false }
     # Only the k8s load balancer belongs here. Everything else in this
     # infrastructure is private and must not appear in a public zone.
-    public:  { enabled: true }
+    public:  { enabled: false }
   example:
     enabled: true
     name: shomer-staging-example
