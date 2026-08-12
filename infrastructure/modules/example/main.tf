@@ -15,5 +15,18 @@ resource "terraform_data" "example" {
   input = {
     name = var.name
     tags = var.tags
+    # The environment's config version, carried into the resource itself.
+    #
+    # services/example already stamps it into `tags` as `config-version`,
+    # but a tag is metadata a provider may or may not preserve. Putting it
+    # in `input` makes it part of the resource's identity: a config bump
+    # forces a replacement, so the plan shows the deploy rather than
+    # reporting no changes.
+    #
+    # That matters for what this module is for. It exists to give the
+    # plan/apply pipeline something real to move while no provider is
+    # wired, and a plan that reports nothing cannot demonstrate that the
+    # pipeline works.
+    config_version = lookup(var.tags, "config-version", "unset")
   }
 }
