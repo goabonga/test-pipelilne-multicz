@@ -5,6 +5,12 @@ All notable changes to this module are documented here. Versions follow
 [Conventional Commits](https://www.conventionalcommits.org) scoped to this
 directory, tagged `infra-modules-example-v<version>`.
 
+## [0.2.0] - 2026-08-12
+
+### Features
+
+- **example**: carry the config version into the resource identity (`155e17a`)
+
 ## [0.1.0] - 2026-08-11
 
 ### Features

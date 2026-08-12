@@ -7,6 +7,18 @@ Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
 ### Releases
 
+- **docs** patch — 1.0.8 → 1.0.9  _(cascade from infra-modules-example 0.2.0)_
+- **infra** patch — 0.1.1 → 0.1.2  _(cascade from infra-modules-example 0.2.0)_
+- **infra-modules-example** minor — 0.1.0 → 0.2.0
+
+### Features
+
+- **infra-modules-example**: carry the config version into the resource identity (`155e17a`)
+
+## 2026-08-12
+
+### Releases
+
 - **docs** patch — 1.0.7 → 1.0.8  _(cascade from configs-staging)_
 
 ## 2026-08-12

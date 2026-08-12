@@ -30,11 +30,11 @@ chart-api=1.1.0
 chart-job=1.0.2
 chart-ssr=1.0.1
 chart-migrations=0.1.1
-docs=1.0.8
+docs=1.0.9
 
 # ── infrastructure and gitops code ──────────────────────────────────────
 # Libraries too: released on every push to main that touches them.
-infra=0.1.1
+infra=0.1.2
 infra-bootstrap-aws=0.1.0
 infra-bootstrap-gcp=0.1.0
 gitops=0.1.0
@@ -46,7 +46,7 @@ infra-modules-dns-private-aws=0.1.0
 infra-modules-dns-private-gcp=0.1.0
 infra-modules-dns-public-aws=0.1.0
 infra-modules-dns-public-gcp=0.1.0
-infra-modules-example=0.1.0
+infra-modules-example=0.2.0
 infra-modules-k8s-cluster-aws=0.1.0
 infra-modules-k8s-cluster-gcp=0.1.0
 infra-modules-k8s-nodes-aws=0.1.0
