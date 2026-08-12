@@ -35,6 +35,13 @@ export default function App() {
           accessibilityLabel="Username"
           placeholder="Username"
           autoCapitalize="none"
+          // Autocorrect rewrites usernames as they are typed — "jdoe"
+          // becomes "Joe" — and the failure surfaces later as "unknown
+          // user", far from its cause.
+          autoCorrect={false}
+          // Offers the saved account instead of generic keyboard
+          // suggestions.
+          textContentType="username"
           value={username}
           onChangeText={setUsername}
           style={styles.input}
@@ -50,7 +57,22 @@ export default function App() {
           onChangeText={setPassword}
           style={styles.input}
         />
-        <Text testID="error" style={styles.error}>
+        {/*
+         * The error was rendered but never announced: a screen-reader user
+         * pressed Sign in, nothing spoke, and the form appeared to do
+         * nothing at all. `alert` plus a polite live region make VoiceOver
+         * and TalkBack read it when it appears.
+         *
+         * The node stays mounted with a reserved height even when empty —
+         * remounting it per error would re-announce identical text and
+         * shift the layout under the user's finger.
+         */}
+        <Text
+          testID="error"
+          accessibilityRole="alert"
+          accessibilityLiveRegion="polite"
+          style={styles.error}
+        >
           {error}
         </Text>
         <Button testID="submit" title="Sign in" onPress={onSubmit} />
