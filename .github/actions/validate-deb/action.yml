@@ -65,7 +65,11 @@ runs:
 
     - name: Delete artifact on any validation failure
       if: failure()
-      uses: geekyeggo/delete-artifact@f275313e70c08f6120db482d7a6b98377786765b  # v5
+      # No failOnError. v6 dropped it from its declared inputs, so passing it
+      # now earns an "unexpected input" warning — and its default was already
+      # this behaviour: a delete that finds nothing logs and carries on. The
+      # step exists to stop a broken .deb reaching a later job, never to stack
+      # a second failure on top of the real one.
+      uses: geekyeggo/delete-artifact@176a747ab7e287e3ff4787bf8a148716375ca118  # v6
       with:
         name: ${{ inputs.component }}-deb
-        failOnError: false
