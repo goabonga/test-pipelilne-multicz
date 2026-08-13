@@ -181,6 +181,12 @@ resource "google_project_iam_member" "plan" {
   project = var.project
   role    = each.value
   member  = "serviceAccount:${local.plan_email}"
+  # depends_on because the member is a derived string, not a reference: the
+  # graph cannot see that this needs the account to exist first, and
+  # Terraform will otherwise attempt it in parallel and fail with "Service
+  # account ... does not exist". That is the cost of deriving the email,
+  # paid once here rather than in every test.
+  depends_on = [google_service_account.plan]
 }
 
 resource "google_project_iam_member" "apply" {
@@ -189,6 +195,12 @@ resource "google_project_iam_member" "apply" {
   project = var.project
   role    = each.value
   member  = "serviceAccount:${local.apply_email}"
+  # depends_on because the member is a derived string, not a reference: the
+  # graph cannot see that this needs the account to exist first, and
+  # Terraform will otherwise attempt it in parallel and fail with "Service
+  # account ... does not exist". That is the cost of deriving the email,
+  # paid once here rather than in every test.
+  depends_on = [google_service_account.apply]
 }
 
 # STATE IS THE EXCEPTION TO "PLAN IS READ-ONLY".
@@ -204,6 +216,12 @@ resource "google_storage_bucket_iam_member" "plan_state" {
   bucket = google_storage_bucket.state.name
   role   = "roles/storage.objectAdmin"
   member = "serviceAccount:${local.plan_email}"
+  # depends_on because the member is a derived string, not a reference: the
+  # graph cannot see that this needs the account to exist first, and
+  # Terraform will otherwise attempt it in parallel and fail with "Service
+  # account ... does not exist". That is the cost of deriving the email,
+  # paid once here rather than in every test.
+  depends_on = [google_service_account.plan]
 }
 
 resource "google_storage_bucket_iam_member" "apply_state" {
@@ -212,4 +230,10 @@ resource "google_storage_bucket_iam_member" "apply_state" {
   bucket = google_storage_bucket.state.name
   role   = "roles/storage.objectAdmin"
   member = "serviceAccount:${local.apply_email}"
+  # depends_on because the member is a derived string, not a reference: the
+  # graph cannot see that this needs the account to exist first, and
+  # Terraform will otherwise attempt it in parallel and fail with "Service
+  # account ... does not exist". That is the cost of deriving the email,
+  # paid once here rather than in every test.
+  depends_on = [google_service_account.apply]
 }
