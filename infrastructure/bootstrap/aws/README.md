@@ -1,6 +1,6 @@
 # bootstrap/aws
 
-**Version:** 0.1.0
+**Version:** 0.2.0
 
 <!--
   The line above is this component's version and the only place it is

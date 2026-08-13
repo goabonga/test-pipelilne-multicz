@@ -3,6 +3,24 @@
 All notable changes across components, aggregated per release.
 Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
+## 2026-08-13
+
+### Releases
+
+- **docs** patch — 1.0.16 → 1.0.17  _(cascade from configs-staging)_
+- **infra-bootstrap-aws** minor — 0.1.0 → 0.2.0
+- **infra-bootstrap-gcp** minor — 0.1.0 → 0.2.0
+
+### Features
+
+- **infra-bootstrap-aws**: let CI reach both clouds without a stored key (`579ff26`)
+- **infra-bootstrap-gcp**: let CI reach both clouds without a stored key (`579ff26`)
+
+### Fixes
+
+- **infra-bootstrap-aws**: publish the region the environment runs in, and stop the endless diff (`96b689f`)
+- **infra-bootstrap-gcp**: order the gcp bindings after the accounts they name (`6e270ae`)
+
 ## 2026-08-12
 
 ### Releases
