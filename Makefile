@@ -309,7 +309,7 @@ infra-bootstrap:
 # CI never hit this: one job per environment, each with a fresh checkout.
 # It is a local-only footgun, which is the kind that costs an hour.
 infra-plan:
-	ENV=$(ENV) TERRAGRUNT_DOWNLOAD=$(CURDIR)/.terragrunt-cache-$(ENV) \
+	ENV=$(ENV) TG_DOWNLOAD_DIR=$(CURDIR)/.terragrunt-cache-$(ENV) \
 		terragrunt --non-interactive --working-dir $(INFRA_DIR)/services \
 		run --all -- plan -input=false
 
