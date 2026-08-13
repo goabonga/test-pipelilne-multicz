@@ -5,6 +5,12 @@ All notable changes to this module are documented here. Versions follow
 [Conventional Commits](https://www.conventionalcommits.org) scoped to this
 directory, tagged `infra-modules-network-vpc-aws-v<version>`.
 
+## [0.2.0] - 2026-08-13
+
+### Features
+
+- **infra**: implement the aws vpc, closed at creation (`86bda35`)
+
 ## [0.1.0] - 2026-08-11
 
 ### Features

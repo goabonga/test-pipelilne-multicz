@@ -7,6 +7,23 @@ Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
 ### Releases
 
+- **docs** patch — 1.0.18 → 1.0.19  _(cascade from infra 0.4.0)_
+- **infra** minor — 0.3.1 → 0.4.0  _(cascade from infra-modules-network-vpc-aws 0.2.0)_
+- **infra-modules-network-vpc-aws** minor — 0.1.0 → 0.2.0
+
+### Features
+
+- **infra**: implement the aws vpc, closed at creation (`86bda35`)
+- **infra-modules-network-vpc-aws**: implement the aws vpc, closed at creation (`86bda35`)
+
+### Fixes
+
+- **infra**: omit the aws-only input instead of passing it as null (`be6eec1`)
+
+## 2026-08-13
+
+### Releases
+
 - **docs** patch — 1.0.17 → 1.0.18  _(cascade from configs-staging)_
 
 ## 2026-08-13
