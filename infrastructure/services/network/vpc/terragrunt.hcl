@@ -40,16 +40,22 @@ exclude {
   actions = ["all"]
 }
 
-inputs = {
-  name        = "shomer-${local.env}-network-vpc"
-  environment = local.env
-  region      = local.config.region
-  project     = try(local.config.project, null)
-  tags        = merge(local.config.tags, { config-version = local.config.version })
+inputs = merge(
+  {
+    name        = "shomer-${local.env}-network-vpc"
+    environment = local.env
+    region      = local.config.region
+    project     = try(local.config.project, null)
+    tags        = merge(local.config.tags, { config-version = local.config.version })
+  },
 
-  # AWS only. On GCP a network holds no addresses of its own — the subnets
-  # carry them — so the module takes no cidr, and passing one anyway fails
-  # `hcl validate --inputs --strict`, which is the check that keeps this
-  # file honest about what each implementation actually accepts.
-  cidr = local.config.provider == "aws" ? local.config.network.cidr : null
-}
+  # cidr is AWS-only: on GCP a network holds no addresses of its own, the
+  # subnets carry them, so that module declares no such variable.
+  #
+  # merge() rather than a ternary on the value, because `cidr = null` still
+  # PASSES the key — and `hcl validate --inputs --strict` rejects an input
+  # the module does not declare whatever its value. The key has to be
+  # absent, not empty. That check is the only thing standing between this
+  # file and a quiet claim that both implementations take the same inputs.
+  local.config.provider == "aws" ? { cidr = local.config.network.cidr } : {}
+)
