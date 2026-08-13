@@ -99,10 +99,15 @@ ARGS=(-var "bucket=${BUCKET}" -var "github_repository=${REPO}" -var "plan_enviro
 if [ "$CLOUD" = "aws" ]; then
   REGION=$(terraform output -raw region)
   ARGS+=(-var "region=${REGION}")
+  # The bucket's region and the environment's are different questions, and
+  # here different answers: state in us-east-1, infrastructure in eu-west-3.
+  # AWS_REGION names the second.
+  ENV_REGION=$(grep -oP '^region:\s*\K\S+' "../../configs/${ENV_NAME}/config.yaml" | head -1)
+  [ -n "$ENV_REGION" ] && ARGS+=(-var "environment_region=${ENV_REGION}")
   # An invalid AWS_REGION in ~/.aws/config makes every call hang on an
   # endpoint that does not resolve, so the bucket's own region wins here.
   export AWS_REGION="$REGION"
-  echo "    bucket ${BUCKET} in ${REGION}"
+  echo "    bucket ${BUCKET} in ${REGION}, environment in ${ENV_REGION:-$REGION}"
 else
   PROJECT=$(grep -oP '^\s*project:\s*\K\S+' "../../configs/${ENV_NAME}/config.yaml" | head -1)
   LOCATION=$(terraform output -raw location)

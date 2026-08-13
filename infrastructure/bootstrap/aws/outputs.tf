@@ -35,11 +35,11 @@ output "github_variables" {
   value = var.github_repository == "" ? {} : {
     (var.plan_environment) = {
       AWS_ROLE_ARN = aws_iam_role.plan[0].arn
-      AWS_REGION   = var.region
+      AWS_REGION   = var.environment_region != "" ? var.environment_region : var.region
     }
     (replace(var.plan_environment, "-plan", "")) = {
       AWS_ROLE_ARN = aws_iam_role.apply[0].arn
-      AWS_REGION   = var.region
+      AWS_REGION   = var.environment_region != "" ? var.environment_region : var.region
     }
   }
 }

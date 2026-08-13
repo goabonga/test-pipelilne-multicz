@@ -71,9 +71,18 @@ resource "aws_iam_openid_connect_provider" "github" {
   # its own trust store since 2023 and ignores the value; the fixed
   # thumbprints still copied between tutorials were a maintenance burden
   # that broke on every certificate rotation.
-  thumbprint_list = []
-
+  #
+  # Declaring it empty is NOT the same as omitting it: AWS fills the field
+  # in anyway, so `thumbprint_list = []` reports a change on every single
+  # apply. A diff that always appears is a diff nobody reads, and the next
+  # real one arrives in the same colour.
   tags = var.tags
+
+  lifecycle {
+    # Belt and braces: even omitted, the value AWS returns is computed and
+    # would otherwise show up the day the provider starts tracking it.
+    ignore_changes = [thumbprint_list]
+  }
 }
 
 # ── the two roles ───────────────────────────────────────────────────────

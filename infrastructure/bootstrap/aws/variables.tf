@@ -171,3 +171,18 @@ variable "apply_policy_arns" {
     doing so hands the apply path a route to privilege escalation.
   EOT
 }
+
+variable "environment_region" {
+  type        = string
+  default     = ""
+  description = <<-EOT
+    Region the ENVIRONMENT runs in, which is not necessarily the region the
+    state bucket sits in. It becomes the AWS_REGION variable on the GitHub
+    environments.
+
+    Empty falls back to the bucket's region, which is what one bucket
+    serving one region means — but a bucket in us-east-1 serving an
+    environment in eu-west-3 would otherwise publish "us-east-1" under a
+    name every reader takes to mean where the infrastructure lives.
+  EOT
+}
