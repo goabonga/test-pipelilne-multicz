@@ -3,9 +3,12 @@
 
 # network/vpc
 #
-# EMPTY FOR NOW. The module it points at is a scaffold — no resources yet.
-# The wiring is here so the run graph, the provider selection and the
-# dependency order are in place and testable before any resource exists.
+# The network every other unit hangs off. Both implementations are real.
+#
+# WHAT IS CLOSED AT CREATION differs by cloud, because what each ships open
+# differs: GCP deletes the default 0.0.0.0/0 route, AWS empties the default
+# security group. Both end at the same place — a network with no path out
+# until services/network/routes puts one back, through the proxy.
 #
 # PROVIDER SELECTION
 #
@@ -43,4 +46,10 @@ inputs = {
   region      = local.config.region
   project     = try(local.config.project, null)
   tags        = merge(local.config.tags, { config-version = local.config.version })
+
+  # AWS only. On GCP a network holds no addresses of its own — the subnets
+  # carry them — so the module takes no cidr, and passing one anyway fails
+  # `hcl validate --inputs --strict`, which is the check that keeps this
+  # file honest about what each implementation actually accepts.
+  cidr = local.config.provider == "aws" ? local.config.network.cidr : null
 }
