@@ -310,7 +310,15 @@ jobs:
           # public on a public repo and a real plan carries resource names
           # and attributes. Only the "Plan: N to add, ..." lines are echoed
           # below.
-          terragrunt --non-interactive --working-dir infrastructure/services \
+          #
+          # BOTH no-color flags, because they belong to different programs.
+          # terraform's `-no-color` (after the --) leaves terragrunt's own
+          # line prefixes coloured, and terragrunt writes one on every line
+          # of terraform output — so the artifact a reviewer downloads was
+          # escape codes end to end, which is unreadable in anything but a
+          # terminal. `--no-color` before the -- is terragrunt's.
+          terragrunt --non-interactive --no-color \
+            --working-dir infrastructure/services \
             run --all -- plan -detailed-exitcode -no-color -input=false \
             > "plan-${ENV_NAME}.txt" 2>&1
           echo "exit_code=$?" >> "$GITHUB_OUTPUT"
@@ -326,8 +334,10 @@ jobs:
       # The drift detection was right — exit code 2, PR opened — only the
       # one line a reviewer actually reads was empty.
       #
-      # ANSI codes are stripped first: -no-color suppresses terraform's,
-      # not terragrunt's own.
+      # The sed stays even though the plan step now passes terragrunt's
+      # --no-color too. It costs nothing, and it is what kept this summary
+      # working while the file was full of escapes — the day something
+      # nested emits colour again, the reviewer's line survives.
       - name: Extract the per-unit plan summary
         id: summary
         run: |
