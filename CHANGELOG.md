@@ -7,6 +7,12 @@ Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
 ### Releases
 
+- **docs** patch — 1.0.17 → 1.0.18  _(cascade from configs-staging)_
+
+## 2026-08-13
+
+### Releases
+
 - **docs** patch — 1.0.16 → 1.0.17  _(cascade from configs-staging)_
 - **infra-bootstrap-aws** minor — 0.1.0 → 0.2.0
 - **infra-bootstrap-gcp** minor — 0.1.0 → 0.2.0
