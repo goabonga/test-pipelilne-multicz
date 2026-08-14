@@ -57,5 +57,11 @@ inputs = merge(
   # the module does not declare whatever its value. The key has to be
   # absent, not empty. That check is the only thing standing between this
   # file and a quiet claim that both implementations take the same inputs.
-  local.config.provider == "aws" ? { cidr = local.config.network.cidr } : {}
+  # Expanded from a list rather than chosen by a ternary. With one key a
+  # conditional against `{}` happens to unify and lints clean; add a second
+  # and HCL rejects it as "Inconsistent conditional result types". Same
+  # idiom as network/subnets so the trap is not rediscovered here.
+  merge([for _ in(local.config.provider == "aws" ? [1] : []) : {
+    cidr = local.config.network.cidr
+  }]...)
 )
