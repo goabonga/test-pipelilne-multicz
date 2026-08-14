@@ -6,6 +6,17 @@ template, `terragrunt.sh`) are documented here. Versions follow
 [Conventional Commits](https://www.conventionalcommits.org) scoped to this
 directory, tagged `infra-v<version>`.
 
+## [0.5.0] - 2026-08-14
+
+### Features
+
+- **infra**: implement the subnets, where the separation is decided (`f637229`)
+
+### Dependencies
+
+- Track `infra-modules-network-subnets-gcp` `0.2.0`
+- Track `infra-modules-network-subnets-aws` `0.2.0`
+
 ## [0.4.0] - 2026-08-13
 
 ### Features

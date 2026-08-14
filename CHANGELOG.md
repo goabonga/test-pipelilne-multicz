@@ -3,6 +3,21 @@
 All notable changes across components, aggregated per release.
 Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
+## 2026-08-14
+
+### Releases
+
+- **docs** patch — 1.0.19 → 1.0.20  _(cascade from infra 0.5.0)_
+- **infra** minor — 0.4.0 → 0.5.0  _(cascade from infra-modules-network-subnets-gcp 0.2.0)_
+- **infra-modules-network-subnets-aws** minor — 0.1.0 → 0.2.0
+- **infra-modules-network-subnets-gcp** minor — 0.1.0 → 0.2.0
+
+### Features
+
+- **infra**: implement the subnets, where the separation is decided (`f637229`)
+- **infra-modules-network-subnets-aws**: implement the subnets, where the separation is decided (`f637229`)
+- **infra-modules-network-subnets-gcp**: implement the subnets, where the separation is decided (`f637229`)
+
 ## 2026-08-13
 
 ### Releases
