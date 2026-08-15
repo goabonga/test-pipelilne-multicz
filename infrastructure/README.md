@@ -22,22 +22,66 @@ infrastructure/
 Shell helpers and the module scaffolder live in the repo-wide
 [`scripts/`](../scripts): `terragrunt.sh`, `new-terraform-module.sh`.
 
-## No provider yet
+## How traffic leaves
 
-Nothing is wired to a cloud provider — see the two commented blocks at the
-bottom of [`root.hcl`](root.hcl). Everything else (layout, environment
-split, versioning, plan/apply pipelines) is in place, so adding one is a
-fill-in-the-blanks step rather than a restructuring.
+The one question this layout exists to make answerable, and the answer is
+spread over four units on purpose — each closes a different half, and any
+one of them alone can be undone by a single line elsewhere.
 
-Two things follow from that, and both stop being true the moment a provider
-is added:
+```
+workload subnet          no default route, no NAT, no public addresses
+      │
+      │  only permitted destination: the proxy, on 3128
+      ▼
+egress proxy (Squid)     deny-by-default allow-list of destinations
+      │
+      ▼
+NAT                      translates for the proxy subnet ONLY
+      │
+      ▼
+reserved egress IPs      what external services allow-list
+```
 
-- **State is local.** It lives in the unit's `.terragrunt-cache` and dies
-  with it, so a CI plan always starts from nothing. Wire the `remote_state`
-  block before the first unit declares a resource that costs money.
-- **A plan is always empty**, so `infra-plan.yml` never opens a deploy PR.
-  That is the intended resting state: the wiring is exercised end to end,
-  and nothing can be applied by accident.
+- **`network/routes`** removes the path. The workload has no `0.0.0.0/0` at
+  all until the proxy exists, and never one that reaches a gateway.
+- **`network/firewall`** removes the permission. A route is a path and a
+  rule is an authorisation; closing only one leaves the other as the single
+  point of failure.
+- **`vms/proxy`** decides what may be reached. Without an allow-list the
+  fleet is a router with extra steps — it satisfies "traffic leaves through
+  one place" while giving up the reason that was worth arranging.
+- **`network/nat`** translates for the egress subnets only. Its default is
+  *every* subnet, which would hand the workload a way out that passes
+  neither of the two above and works perfectly.
+
+Each cloud is open by default in its own way, which is why the firewall
+unit exists rather than being folded into routing: GCP's implied rules
+**allow all egress**, and an AWS security group declared without an egress
+block is given allow-all outbound by the provider. On both, "not configured
+yet" is an open state that looks exactly like a closed one.
+
+Pod-to-pod is a different layer and lives in [`../gitops`](../gitops):
+these modules control node-to-world, the NetworkPolicies control
+pod-to-pod, and neither substitutes for the other.
+
+## What is not wired yet
+
+Four values the environment configs carry as `TODO`, all for the same
+reason: the apply identity deliberately holds no IAM or KMS rights, so that
+the apply path has no route to privilege escalation a plan reviewer would
+not see.
+
+| Config key | What it needs |
+|---|---|
+| `vms.proxy.image_id` | a Debian AMI in the environment's region |
+| `k8s.cluster.cluster_role_arn` | the EKS control plane role |
+| `k8s.nodes.node_role_arn` | the node role |
+| `k8s.cluster` KMS key | envelope encryption for Kubernetes secrets |
+
+Every unit is `enabled: false` except `example`. A unit turns on when its
+module declares resources **and** the values above exist — implementing a
+module is not enough, and enabling one early fails the whole environment's
+plan rather than just itself.
 
 ## Local usage
 
@@ -62,14 +106,16 @@ make infra-docs                       # regenerate every module README with terr
 make infra-docs-check                 # verify those READMEs are up to date
 make infra-plan ENV=production        # plan one environment
 make infra-new-module NAME=<name>     # scaffold + register a module
+make infra-bootstrap CLOUD=aws|gcp    # create the state bucket (once, by hand)
+make infra-oidc CLOUD=aws|gcp         # create the CI identity + set the GitHub variables
 make infra-clean                      # drop .terragrunt-cache / lockfiles / generated *.tf
 ```
 
 ## Validating without an environment
 
 `make infra-lint` answers "would a plan get off the ground" without
-credentials, a backend or a provider — the module source is a local path,
-so nothing has to be reachable.
+credentials, a backend or a cloud — the module source is a local path, so
+nothing has to be reachable.
 
 Two passes. `terragrunt hcl validate` parses the whole tree and resolves
 every reference, catching a typo in `root.hcl` or a broken include. Then,
@@ -86,6 +132,12 @@ both ways rather than trusting the happy path:
 
 Both are bugs that would otherwise surface at plan time, against a real
 provider — which is exactly where you least want to find them.
+
+It has since caught the mistake it was built for, twice: an input added to
+the AWS implementation of a unit and not the GCP one, where a ternary
+yielding `null` still passes the key. Strict mode judges the key, not its
+value, and it is right to — a module that does not declare an input cannot
+be relying on it.
 
 ## Turning a unit off
 
