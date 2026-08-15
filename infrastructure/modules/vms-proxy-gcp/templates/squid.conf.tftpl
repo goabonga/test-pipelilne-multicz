@@ -1,0 +1,49 @@
+# Managed by terraform. Local edits are replaced on the next instance boot.
+#
+# DENY IS THE DEFAULT AND THE ALLOW-LIST IS THE POLICY. A proxy that
+# forwards anything is a router with extra steps: it satisfies "traffic
+# leaves through one place" while giving up the reason that was worth
+# arranging.
+
+http_port ${port}
+
+# Who may ask. The workload ranges and nothing else — the firewall says the
+# same thing, and saying it twice means a mistake in either one is not
+# enough on its own.
+%{ for cidr in client_cidrs ~}
+acl workload src ${cidr}
+%{ endfor ~}
+
+# Where they may go. Domains rather than addresses: an address allow-list
+# rots silently as services move, and the failure is a timeout with no
+# indication that a policy caused it.
+%{ for domain in allowed_domains ~}
+acl allowed dstdomain ${domain}
+%{ endfor ~}
+
+acl SSL_ports port 443
+acl Safe_ports port 80 443
+acl CONNECT method CONNECT
+
+# Order matters: every deny that must win is stated before the allow.
+http_access deny !Safe_ports
+http_access deny CONNECT !SSL_ports
+http_access allow workload allowed
+http_access deny all
+
+# What the logs say. The default format omits the requested host on CONNECT,
+# which is every HTTPS request — so a denied connection would appear as an
+# address and a port, and answering "what was it trying to reach?" would be
+# guesswork.
+logformat shomer %ts.%03tu %6tr %>a %Ss/%03>Hs %<st %rm %ru %[un %Sh/%<a %mt
+access_log stdio:/dev/stdout shomer
+
+# No caching. This proxy exists to control egress, not to accelerate it,
+# and a cache would serve content that has since been withdrawn while
+# looking like it came from the origin.
+cache deny all
+
+# Do not announce the version to everything it connects to.
+httpd_suppress_version_string on
+via off
+forwarded_for delete

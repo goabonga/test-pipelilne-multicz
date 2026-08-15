@@ -139,6 +139,30 @@ services:
       # Squid listener. Workload subnets reach it through the route in
       # network/routes; nothing else may talk to it.
       port: 3128
+
+      # WHAT THE ESTATE MAY REACH. There is no permissive default in the
+      # module — an empty list denies everything and a wildcard would make
+      # the fleet a router with extra steps, so the policy has to be
+      # written out here.
+      #
+      # Domains rather than addresses: an address list rots silently as
+      # services move, and the failure is a timeout with nothing to say a
+      # policy caused it.
+      #
+      # A leading dot matches subdomains. Adding an entry is the normal way
+      # to unblock something; it is meant to be a small, reviewed diff on a
+      # deploy PR rather than a request to someone with console access.
+      # AWS only: the AMI the fleet boots. No default in the module — a
+      # wrong image is a fleet that boots and never listens, reported as
+      # unhealthy with nothing to say why.
+      image_id: ""   # TODO: a Debian 12 AMI in this region
+
+      allowed_domains:
+        - .debian.org           # apt, for the proxy's own updates
+        - .googleapis.com       # artifact registry, logging, monitoring
+        - .pkg.dev              # artifact registry image pulls
+        - .github.com           # actions runners fetching the repo
+        - .ghcr.io              # published container images
   k8s:
     # THE one place this environment is deliberately reachable from
     # outside. It drives who may reach the load balancer in

@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Managed by terraform. Runs on every boot.
+set -euo pipefail
+
+# Written before the package is installed so squid never starts once with a
+# default configuration, which permits far more than this one does and
+# would be a brief but real window with the whole estate behind it.
+install -d -m 0755 /etc/squid
+cat > /etc/squid/squid.conf <<'SQUID_CONF'
+${squid_conf}
+SQUID_CONF
+
+export DEBIAN_FRONTEND=noninteractive
+apt-get update -qq
+apt-get install -y -qq squid
+
+# Fail visibly if the config is rejected, rather than leaving a stopped
+# service and a health check that never passes for no stated reason.
+squid -k parse -f /etc/squid/squid.conf
+
+systemctl enable --now squid
+systemctl reload squid || systemctl restart squid
+
+for _ in $(seq 1 30); do
+  if ss -lnt "sport = :${port}" | grep -q LISTEN; then
+    exit 0
+  fi
+  sleep 2
+done
+
+echo "squid did not listen on ${port}" >&2
+exit 1
