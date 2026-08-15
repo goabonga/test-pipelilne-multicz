@@ -33,3 +33,90 @@ variable "project" {
   default     = null
   description = "GCP project. Null on AWS, where the account is implicit in the credentials."
 }
+
+variable "network_id" {
+  type        = string
+  description = "The VPC the router belongs to, from services/network/vpc."
+}
+
+variable "subnetworks" {
+  type        = list(string)
+  description = <<-EOT
+    Self links of the subnets this NAT translates for — the EGRESS subnets,
+    and nothing else.
+
+    Cloud NAT's default is ALL_SUBNETWORKS_ALL_IP_RANGES. Taking it would
+    give the workload subnet a path to the internet that bypasses the
+    proxy, needs no route, appears in no firewall rule, and works.
+  EOT
+
+  validation {
+    condition     = length(var.subnetworks) > 0
+    error_message = "A NAT that translates for no subnet does nothing and still costs money."
+  }
+}
+
+variable "nat_ips" {
+  type        = list(string)
+  description = <<-EOT
+    Reserved addresses from services/network/addresses/public.
+
+    Passed explicitly because the alternative — letting Cloud NAT allocate
+    its own — works perfectly and changes the egress address whenever the
+    NAT is recreated, breaking every external allow-list while the reserved
+    addresses sit unused and billed.
+  EOT
+}
+
+variable "min_ports_per_vm" {
+  type        = number
+  default     = 128
+  description = <<-EOT
+    Ports held per VM, used or not.
+
+    The capacity limit that bites first: each address gives roughly 64k
+    ports, so a generous number with a small pool exhausts the pool on idle
+    reservations. The symptom is new connections failing while existing
+    ones are fine.
+  EOT
+
+  validation {
+    condition     = var.min_ports_per_vm >= 64 && var.min_ports_per_vm <= 65536
+    error_message = "min_ports_per_vm must be between 64 and 65536."
+  }
+}
+
+variable "dynamic_port_allocation" {
+  type        = bool
+  default     = true
+  description = "Let Cloud NAT grow a VM's port allocation on demand up to max_ports_per_vm, rather than reserving the maximum up front."
+}
+
+variable "max_ports_per_vm" {
+  type        = number
+  default     = 8192
+  description = "Ceiling when dynamic allocation is on. Ignored otherwise."
+}
+
+variable "logging_enabled" {
+  type        = bool
+  default     = true
+  description = "Log NAT events. A dropped translation is what explains an outage nobody can otherwise account for."
+}
+
+variable "log_filter" {
+  type        = string
+  default     = "ERRORS_ONLY"
+  description = <<-EOT
+    ERRORS_ONLY, TRANSLATIONS_ONLY or ALL.
+
+    Errors by default: logging every translation on a busy proxy fleet
+    produces volume nobody reads and a bill somebody notices, while the
+    dropped ones are the events that explain a failure.
+  EOT
+
+  validation {
+    condition     = contains(["ERRORS_ONLY", "TRANSLATIONS_ONLY", "ALL"], var.log_filter)
+    error_message = "log_filter must be ERRORS_ONLY, TRANSLATIONS_ONLY or ALL."
+  }
+}
