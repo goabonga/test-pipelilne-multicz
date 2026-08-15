@@ -6,6 +6,17 @@ template, `terragrunt.sh`) are documented here. Versions follow
 [Conventional Commits](https://www.conventionalcommits.org) scoped to this
 directory, tagged `infra-v<version>`.
 
+## [0.9.0] - 2026-08-15
+
+### Features
+
+- **infra**: implement the NAT, and refuse the default that would undo the design (`f7dbd7a`)
+
+### Dependencies
+
+- Track `infra-modules-network-nat-gcp` `0.2.0`
+- Track `infra-modules-network-nat-aws` `0.2.0`
+
 ## [0.8.0] - 2026-08-15
 
 ### Features

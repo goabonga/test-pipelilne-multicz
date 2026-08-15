@@ -7,6 +7,21 @@ Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
 ### Releases
 
+- **docs** patch — 1.0.23 → 1.0.24  _(cascade from infra 0.9.0)_
+- **infra** minor — 0.8.0 → 0.9.0  _(cascade from infra-modules-network-nat-gcp 0.2.0)_
+- **infra-modules-network-nat-aws** minor — 0.1.0 → 0.2.0
+- **infra-modules-network-nat-gcp** minor — 0.1.0 → 0.2.0
+
+### Features
+
+- **infra**: implement the NAT, and refuse the default that would undo the design (`f7dbd7a`)
+- **infra-modules-network-nat-aws**: implement the NAT, and refuse the default that would undo the design (`f7dbd7a`)
+- **infra-modules-network-nat-gcp**: implement the NAT, and refuse the default that would undo the design (`f7dbd7a`)
+
+## 2026-08-15
+
+### Releases
+
 - **docs** patch — 1.0.22 → 1.0.23  _(cascade from infra 0.8.0)_
 - **infra** minor — 0.7.0 → 0.8.0  _(cascade from infra-modules-network-addresses-public-gcp 0.2.0)_
 - **infra-modules-network-addresses-public-aws** minor — 0.1.0 → 0.2.0
