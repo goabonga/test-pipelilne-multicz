@@ -7,6 +7,25 @@ Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
 ### Releases
 
+- **docs** patch — 1.0.27 → 1.0.28  _(cascade from infra 0.13.0)_
+- **infra** minor — 0.12.0 → 0.13.0  _(cascade from infra-modules-dns-private-gcp 0.2.0)_
+- **infra-modules-dns-private-aws** minor — 0.1.0 → 0.2.0
+- **infra-modules-dns-private-gcp** minor — 0.1.0 → 0.2.0
+- **infra-modules-dns-public-aws** minor — 0.1.0 → 0.2.0
+- **infra-modules-dns-public-gcp** minor — 0.1.0 → 0.2.0
+
+### Features
+
+- **infra**: implement the DNS zones, private everywhere and public only where intended (`bd81a0c`)
+- **infra-modules-dns-private-aws**: implement the DNS zones, private everywhere and public only where intended (`bd81a0c`)
+- **infra-modules-dns-private-gcp**: implement the DNS zones, private everywhere and public only where intended (`bd81a0c`)
+- **infra-modules-dns-public-aws**: implement the DNS zones, private everywhere and public only where intended (`bd81a0c`)
+- **infra-modules-dns-public-gcp**: implement the DNS zones, private everywhere and public only where intended (`bd81a0c`)
+
+## 2026-08-15
+
+### Releases
+
 - **docs** patch — 1.0.26 → 1.0.27  _(cascade from infra 0.12.0)_
 - **infra** minor — 0.11.0 → 0.12.0  _(cascade from infra-modules-k8s-nodes-gcp 0.2.0)_
 - **infra-modules-k8s-nodes-aws** minor — 0.1.0 → 0.2.0

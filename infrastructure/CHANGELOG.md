@@ -6,6 +6,19 @@ template, `terragrunt.sh`) are documented here. Versions follow
 [Conventional Commits](https://www.conventionalcommits.org) scoped to this
 directory, tagged `infra-v<version>`.
 
+## [0.13.0] - 2026-08-15
+
+### Features
+
+- **infra**: implement the DNS zones, private everywhere and public only where intended (`bd81a0c`)
+
+### Dependencies
+
+- Track `infra-modules-dns-private-gcp` `0.2.0`
+- Track `infra-modules-dns-private-aws` `0.2.0`
+- Track `infra-modules-dns-public-gcp` `0.2.0`
+- Track `infra-modules-dns-public-aws` `0.2.0`
+
 ## [0.12.0] - 2026-08-15
 
 ### Features
