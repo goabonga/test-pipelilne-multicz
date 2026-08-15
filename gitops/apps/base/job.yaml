@@ -34,3 +34,19 @@ spec:
     remediation:
       retries: 3
       remediateLastFailure: true
+
+  values:
+    networkPolicy:
+      enabled: true
+      # NO INGRESS AT ALL. A worker is reached by nothing: it takes its work
+      # from the queue rather than from a request, so an empty list here is
+      # the accurate rule and not an oversight.
+      ingress: []
+      egress:
+        - to:
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/name: postgres
+          ports:
+            - protocol: TCP
+              port: 5432

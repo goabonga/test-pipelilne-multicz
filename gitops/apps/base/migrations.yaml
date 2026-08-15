@@ -31,3 +31,17 @@ spec:
     remediation:
       retries: 3
       remediateLastFailure: true
+
+  values:
+    networkPolicy:
+      enabled: true
+      # Runs once, reaches the database, and is reached by nothing.
+      ingress: []
+      egress:
+        - to:
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/name: postgres
+          ports:
+            - protocol: TCP
+              port: 5432

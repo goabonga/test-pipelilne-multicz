@@ -34,3 +34,34 @@ spec:
     remediation:
       retries: 3
       remediateLastFailure: true
+
+  values:
+    # NARROWING THE CHART'S DEFAULT, which is `ingress: [{}]` — allow from
+    # anywhere. NetworkPolicy is additive, so leaving it would union with
+    # the deny floor in gitops/infrastructure/network-policies and
+    # reinstate open ingress for this pod alone, while the floor still read
+    # as a deny-all.
+    networkPolicy:
+      enabled: true
+      ingress:
+        # From the ssr, and from the ingress controller that fronts the
+        # load balancer. Nothing else in the namespace has business here.
+        - from:
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/name: shomer-ssr
+            - namespaceSelector:
+                matchLabels:
+                  kubernetes.io/metadata.name: ingress-nginx
+          ports:
+            - protocol: TCP
+              port: 8000
+      egress:
+        # The database, wherever it runs.
+        - to:
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/name: postgres
+          ports:
+            - protocol: TCP
+              port: 5432

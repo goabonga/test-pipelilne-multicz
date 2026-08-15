@@ -1,0 +1,30 @@
+# The floor. Everything else in this directory is an exception to it.
+#
+# A NetworkPolicy selecting every pod with both policy types and no rules
+# denies all ingress and all egress in the namespace. Nothing reaches a pod
+# and no pod reaches anything until something else allows it.
+#
+# NETWORK POLICIES ARE ADDITIVE, WHICH IS THE TRAP HERE. This does not
+# override a permissive policy — it unions with it. The charts emit a
+# per-release NetworkPolicy that defaults to `ingress: [{}]`, meaning allow
+# from anywhere, and a single one of those left at its default reinstates
+# open ingress for that pod while this file still reads as a deny-all.
+#
+# So this floor is only real because gitops/apps/base narrows every
+# release's rules. Adding a new app without narrowing it does not fail — it
+# quietly opts that pod out.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: shomer
+  annotations:
+    shomer.dev/why: >-
+      The deny floor. Exceptions live beside it and in each release's
+      networkPolicy values; see the comment in this file for why both are
+      required.
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress

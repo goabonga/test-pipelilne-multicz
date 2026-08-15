@@ -3,3 +3,7 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - helmrepository.yaml
+  # The deny floor and the exceptions that are not per-release. It comes
+  # after the namespace because a policy cannot be created in a namespace
+  # that does not exist yet, and kustomize preserves this order.
+  - network-policies

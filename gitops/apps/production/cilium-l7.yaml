@@ -1,0 +1,87 @@
+# What a NetworkPolicy cannot express.
+#
+# PRODUCTION ONLY, AND NOT AS A MATTER OF CAUTION. Staging runs GKE, where
+# Dataplane V2 IS Cilium but is managed by Google and does not install the
+# upstream CRDs — a CiliumNetworkPolicy applied there is accepted by
+# nothing and silently absent. Production runs EKS with Cilium installed by
+# this repository, where the CRDs exist.
+#
+# So this file is the one place the two environments genuinely diverge in
+# what they can enforce, and that divergence follows from the cluster
+# modules rather than from a preference. Staging's protection stops at the
+# layer-3 rules in ../base and allow-egress-to-proxy.yaml; production adds
+# the two below.
+---
+# Layer 7. The ssr may call the api, and only in the shapes the ssr
+# actually uses.
+#
+# The NetworkPolicy in ../base already limits this to the right pod and
+# port. What it cannot say is WHICH REQUESTS: with a port-level rule, an
+# ssr that is compromised or merely buggy can call any endpoint the api
+# serves, including the ones meant for the job runner.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: ssr-to-api-l7
+  namespace: shomer
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: shomer-api
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: shomer-ssr
+      toPorts:
+        - ports:
+            - port: "8000"
+              protocol: TCP
+          rules:
+            http:
+              - method: "GET"
+                path: "/healthz"
+              - method: "POST"
+                path: "/auth/.*"
+              - method: "GET"
+                path: "/auth/.*"
+---
+# FQDN egress, as a second opinion on the proxy's allow-list.
+#
+# Squid already refuses anything not on its list, and this does not replace
+# that — it covers the gap the proxy cannot see: a pod that reaches a host
+# WITHOUT using the proxy. Layer-3 policy can only say "the proxy subnet";
+# it cannot say which names, because at that layer a name is an address by
+# the time the rule is evaluated.
+#
+# Deliberately narrower than the proxy's list. The proxy serves the whole
+# estate including the nodes; a pod needs less than a node does.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: pod-egress-fqdn
+  namespace: shomer
+spec:
+  endpointSelector: {}
+  egress:
+    # DNS has to be allowed AND inspected, in that order. Cilium learns
+    # which address a name resolved to by watching the reply, so without
+    # this rule the toFQDNs rules below match nothing and every request
+    # fails — with a policy denial that names an address, not a host.
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+          rules:
+            dns:
+              - matchPattern: "*"
+    - toFQDNs:
+        - matchPattern: "*.googleapis.com"
+        - matchPattern: "*.pkg.dev"
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP

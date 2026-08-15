@@ -34,3 +34,26 @@ spec:
     remediation:
       retries: 3
       remediateLastFailure: true
+
+  values:
+    networkPolicy:
+      enabled: true
+      ingress:
+        # Only the ingress controller. The ssr is the one thing users reach
+        # in production, and it reaches them through the load balancer
+        # rather than directly.
+        - from:
+            - namespaceSelector:
+                matchLabels:
+                  kubernetes.io/metadata.name: ingress-nginx
+          ports:
+            - protocol: TCP
+              port: 8080
+      egress:
+        - to:
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/name: shomer-api
+          ports:
+            - protocol: TCP
+              port: 8000

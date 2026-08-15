@@ -1,0 +1,33 @@
+# DNS, for every pod.
+#
+# The first exception anyone needs and the one most often forgotten: with
+# the deny floor in place and nothing else, every name lookup fails. The
+# symptom is not "policy blocked this" — it is connection timeouts to
+# names that resolve fine from a shell on the node, which sends the reader
+# looking at the application.
+#
+# Scoped to the kube-system resolver rather than to port 53 anywhere: the
+# latter would let a pod talk to any DNS server it can reach, which is a
+# well-worn exfiltration channel precisely because it is so often left open.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: shomer
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53

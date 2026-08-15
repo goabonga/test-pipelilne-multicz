@@ -5,6 +5,8 @@ kind: Kustomization
 namespace: shomer
 resources:
   - ../base
+  # Environment-specific because the proxy's subnet differs between them.
+  - allow-egress-to-proxy.yaml
 patches:
   - path: api.yaml
   - path: job.yaml

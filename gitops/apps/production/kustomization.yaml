@@ -5,6 +5,12 @@ kind: Kustomization
 namespace: shomer
 resources:
   - ../base
+  # Environment-specific because the proxy's subnet differs between them.
+  - allow-egress-to-proxy.yaml
+  # Production only: staging runs GKE Dataplane V2, which is Cilium but
+  # does not install the upstream CRDs, so these would be accepted by
+  # nothing and silently absent there.
+  - cilium-l7.yaml
 patches:
   - path: api.yaml
   - path: job.yaml
