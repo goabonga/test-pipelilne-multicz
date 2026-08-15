@@ -7,6 +7,21 @@ Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
 ### Releases
 
+- **docs** patch — 1.0.24 → 1.0.25  _(cascade from infra 0.10.0)_
+- **infra** minor — 0.9.0 → 0.10.0  _(cascade from infra-modules-vms-proxy-gcp 0.2.0)_
+- **infra-modules-vms-proxy-aws** minor — 0.1.0 → 0.2.0
+- **infra-modules-vms-proxy-gcp** minor — 0.1.0 → 0.2.0
+
+### Features
+
+- **infra**: implement the egress proxy, where the policy stops being about routes (`00ddf6e`)
+- **infra-modules-vms-proxy-aws**: implement the egress proxy, where the policy stops being about routes (`00ddf6e`)
+- **infra-modules-vms-proxy-gcp**: implement the egress proxy, where the policy stops being about routes (`00ddf6e`)
+
+## 2026-08-15
+
+### Releases
+
 - **docs** patch — 1.0.23 → 1.0.24  _(cascade from infra 0.9.0)_
 - **infra** minor — 0.8.0 → 0.9.0  _(cascade from infra-modules-network-nat-gcp 0.2.0)_
 - **infra-modules-network-nat-aws** minor — 0.1.0 → 0.2.0

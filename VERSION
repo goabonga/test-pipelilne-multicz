@@ -30,11 +30,11 @@ chart-api=1.1.0
 chart-job=1.0.2
 chart-ssr=1.0.1
 chart-migrations=0.1.1
-docs=1.0.24
+docs=1.0.25
 
 # ── infrastructure and gitops code ──────────────────────────────────────
 # Libraries too: released on every push to main that touches them.
-infra=0.9.0
+infra=0.10.0
 infra-bootstrap-aws=0.2.0
 infra-bootstrap-gcp=0.2.0
 gitops=0.1.0
@@ -65,8 +65,8 @@ infra-modules-network-subnets-aws=0.3.0
 infra-modules-network-subnets-gcp=0.2.0
 infra-modules-network-vpc-aws=0.3.0
 infra-modules-network-vpc-gcp=0.2.0
-infra-modules-vms-proxy-aws=0.1.0
-infra-modules-vms-proxy-gcp=0.1.0
+infra-modules-vms-proxy-aws=0.2.0
+infra-modules-vms-proxy-gcp=0.2.0
 
 # ── deployed state ──────────────────────────────────────────────────────
 # Bumped only by infra-apply / gitops-apply, after an apply that succeeded.

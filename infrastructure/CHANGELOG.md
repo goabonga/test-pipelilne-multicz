@@ -6,6 +6,17 @@ template, `terragrunt.sh`) are documented here. Versions follow
 [Conventional Commits](https://www.conventionalcommits.org) scoped to this
 directory, tagged `infra-v<version>`.
 
+## [0.10.0] - 2026-08-15
+
+### Features
+
+- **infra**: implement the egress proxy, where the policy stops being about routes (`00ddf6e`)
+
+### Dependencies
+
+- Track `infra-modules-vms-proxy-gcp` `0.2.0`
+- Track `infra-modules-vms-proxy-aws` `0.2.0`
+
 ## [0.9.0] - 2026-08-15
 
 ### Features
