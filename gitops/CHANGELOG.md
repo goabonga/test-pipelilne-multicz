@@ -10,6 +10,12 @@ A library, released on every push to `main` that touches it — unlike
 `gitops-staging` / `gitops-production`, which are deployed state and move
 only when a promotion lands.
 
+## [0.2.0] - 2026-08-15
+
+### Features
+
+- **gitops**: add the pod-level policy, and the floor that makes it mean something (`64a70dc`)
+
 ## [0.1.0] - 2026-08-11
 
 ### Features

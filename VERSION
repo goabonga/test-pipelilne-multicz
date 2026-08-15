@@ -30,14 +30,14 @@ chart-api=1.1.0
 chart-job=1.0.2
 chart-ssr=1.0.1
 chart-migrations=0.1.1
-docs=1.0.29
+docs=1.0.30
 
 # ── infrastructure and gitops code ──────────────────────────────────────
 # Libraries too: released on every push to main that touches them.
 infra=0.14.0
 infra-bootstrap-aws=0.2.0
 infra-bootstrap-gcp=0.2.0
-gitops=0.1.0
+gitops=0.2.0
 
 # ── terraform modules ───────────────────────────────────────────────────
 # One per unit per provider. Scaffolded by scripts/new-terraform-module.sh,
