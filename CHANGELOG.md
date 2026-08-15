@@ -7,6 +7,21 @@ Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
 ### Releases
 
+- **docs** patch — 1.0.26 → 1.0.27  _(cascade from infra 0.12.0)_
+- **infra** minor — 0.11.0 → 0.12.0  _(cascade from infra-modules-k8s-nodes-gcp 0.2.0)_
+- **infra-modules-k8s-nodes-aws** minor — 0.1.0 → 0.2.0
+- **infra-modules-k8s-nodes-gcp** minor — 0.1.0 → 0.2.0
+
+### Features
+
+- **infra**: implement the node pools, and the setting each cloud hangs egress on (`b9e6a57`)
+- **infra-modules-k8s-nodes-aws**: implement the node pools, and the setting each cloud hangs egress on (`b9e6a57`)
+- **infra-modules-k8s-nodes-gcp**: implement the node pools, and the setting each cloud hangs egress on (`b9e6a57`)
+
+## 2026-08-15
+
+### Releases
+
 - **docs** patch — 1.0.25 → 1.0.26  _(cascade from infra 0.11.0)_
 - **infra** minor — 0.10.0 → 0.11.0  _(cascade from infra-modules-k8s-cluster-gcp 0.2.0)_
 - **infra-modules-k8s-cluster-aws** minor — 0.1.0 → 0.2.0

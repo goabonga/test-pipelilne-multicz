@@ -1,6 +1,6 @@
 # k8s-nodes-gcp
 
-**Version:** 0.1.0
+**Version:** 0.2.0
 
 <!--
   The line above is this module's version and the only place it is

@@ -6,6 +6,17 @@ template, `terragrunt.sh`) are documented here. Versions follow
 [Conventional Commits](https://www.conventionalcommits.org) scoped to this
 directory, tagged `infra-v<version>`.
 
+## [0.12.0] - 2026-08-15
+
+### Features
+
+- **infra**: implement the node pools, and the setting each cloud hangs egress on (`b9e6a57`)
+
+### Dependencies
+
+- Track `infra-modules-k8s-nodes-gcp` `0.2.0`
+- Track `infra-modules-k8s-nodes-aws` `0.2.0`
+
 ## [0.11.0] - 2026-08-15
 
 ### Features
