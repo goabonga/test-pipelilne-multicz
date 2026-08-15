@@ -7,6 +7,21 @@ Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
 ### Releases
 
+- **docs** patch — 1.0.25 → 1.0.26  _(cascade from infra 0.11.0)_
+- **infra** minor — 0.10.0 → 0.11.0  _(cascade from infra-modules-k8s-cluster-gcp 0.2.0)_
+- **infra-modules-k8s-cluster-aws** minor — 0.1.0 → 0.2.0
+- **infra-modules-k8s-cluster-gcp** minor — 0.1.0 → 0.2.0
+
+### Features
+
+- **infra**: implement the clusters, and settle Cilium in opposite directions (`3381a38`)
+- **infra-modules-k8s-cluster-aws**: implement the clusters, and settle Cilium in opposite directions (`3381a38`)
+- **infra-modules-k8s-cluster-gcp**: implement the clusters, and settle Cilium in opposite directions (`3381a38`)
+
+## 2026-08-15
+
+### Releases
+
 - **docs** patch — 1.0.24 → 1.0.25  _(cascade from infra 0.10.0)_
 - **infra** minor — 0.9.0 → 0.10.0  _(cascade from infra-modules-vms-proxy-gcp 0.2.0)_
 - **infra-modules-vms-proxy-aws** minor — 0.1.0 → 0.2.0

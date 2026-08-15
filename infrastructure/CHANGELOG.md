@@ -6,6 +6,17 @@ template, `terragrunt.sh`) are documented here. Versions follow
 [Conventional Commits](https://www.conventionalcommits.org) scoped to this
 directory, tagged `infra-v<version>`.
 
+## [0.11.0] - 2026-08-15
+
+### Features
+
+- **infra**: implement the clusters, and settle Cilium in opposite directions (`3381a38`)
+
+### Dependencies
+
+- Track `infra-modules-k8s-cluster-gcp` `0.2.0`
+- Track `infra-modules-k8s-cluster-aws` `0.2.0`
+
 ## [0.10.0] - 2026-08-15
 
 ### Features

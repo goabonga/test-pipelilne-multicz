@@ -5,6 +5,12 @@ All notable changes to this module are documented here. Versions follow
 [Conventional Commits](https://www.conventionalcommits.org) scoped to this
 directory, tagged `infra-modules-k8s-cluster-aws-v<version>`.
 
+## [0.2.0] - 2026-08-15
+
+### Features
+
+- **infra**: implement the clusters, and settle Cilium in opposite directions (`3381a38`)
+
 ## [0.1.0] - 2026-08-11
 
 ### Features
