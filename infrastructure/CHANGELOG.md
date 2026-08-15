@@ -6,6 +6,19 @@ template, `terragrunt.sh`) are documented here. Versions follow
 [Conventional Commits](https://www.conventionalcommits.org) scoped to this
 directory, tagged `infra-v<version>`.
 
+## [0.6.0] - 2026-08-15
+
+### Features
+
+- **infra**: implement the routes, where the workload's isolation becomes checkable (`0a6e4f5`)
+
+### Dependencies
+
+- Track `infra-modules-network-vpc-aws` `0.3.0`
+- Track `infra-modules-network-subnets-aws` `0.3.0`
+- Track `infra-modules-network-routes-gcp` `0.2.0`
+- Track `infra-modules-network-routes-aws` `0.2.0`
+
 ## [0.5.0] - 2026-08-14
 
 ### Features

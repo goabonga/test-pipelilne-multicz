@@ -3,6 +3,25 @@
 All notable changes across components, aggregated per release.
 Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
+## 2026-08-15
+
+### Releases
+
+- **docs** patch — 1.0.20 → 1.0.21  _(cascade from infra 0.6.0)_
+- **infra** minor — 0.5.0 → 0.6.0  _(cascade from infra-modules-network-vpc-aws 0.3.0)_
+- **infra-modules-network-routes-aws** minor — 0.1.0 → 0.2.0
+- **infra-modules-network-routes-gcp** minor — 0.1.0 → 0.2.0
+- **infra-modules-network-subnets-aws** minor — 0.2.0 → 0.3.0
+- **infra-modules-network-vpc-aws** minor — 0.2.0 → 0.3.0
+
+### Features
+
+- **infra**: implement the routes, where the workload's isolation becomes checkable (`0a6e4f5`)
+- **infra-modules-network-routes-aws**: implement the routes, where the workload's isolation becomes checkable (`0a6e4f5`)
+- **infra-modules-network-routes-gcp**: implement the routes, where the workload's isolation becomes checkable (`0a6e4f5`)
+- **infra-modules-network-subnets-aws**: implement the routes, where the workload's isolation becomes checkable (`0a6e4f5`)
+- **infra-modules-network-vpc-aws**: implement the routes, where the workload's isolation becomes checkable (`0a6e4f5`)
+
 ## 2026-08-14
 
 ### Releases

@@ -1,6 +1,6 @@
 # network-subnets-aws
 
-**Version:** 0.2.0
+**Version:** 0.3.0
 
 <!--
   The line above is this module's version and the only place it is
