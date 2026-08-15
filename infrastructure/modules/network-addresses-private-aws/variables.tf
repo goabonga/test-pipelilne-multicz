@@ -33,3 +33,42 @@ variable "project" {
   default     = null
   description = "GCP project. Null on AWS, where the account is implicit in the credentials."
 }
+
+variable "subnet_cidrs" {
+  type        = map(string)
+  description = <<-EOT
+    The proxy subnets' ranges, keyed by zone.
+
+    A network load balancer takes one address per subnet it sits in, so
+    there is one address per zone and each must come from that zone's own
+    range.
+  EOT
+
+  validation {
+    condition     = alltrue([for z, c in var.subnet_cidrs : can(cidrhost(c, 0))])
+    error_message = "Every entry must be valid CIDR notation."
+  }
+}
+
+variable "address_index" {
+  type        = number
+  default     = 10
+  description = <<-EOT
+    Which address in each proxy subnet to claim, counting from the network
+    address.
+
+    An index rather than an address, for the same reason as the GCP module:
+    the value has to be written down so two units can agree on it without
+    depending on each other, and a written-down address can land outside
+    its subnet — which fails at apply, after everything before it has
+    already applied. An index cannot.
+
+    Four is the lowest usable value; below it are the network address, the
+    VPC router, the DNS server, and one AWS reserves.
+  EOT
+
+  validation {
+    condition     = var.address_index >= 4
+    error_message = "Indices below 4 are reserved by AWS."
+  }
+}

@@ -23,6 +23,8 @@ locals {
   config = include.root.locals.config
   env    = include.root.locals.environment
   cfg    = local.config.services.network.addresses.private
+
+  egress_key = one([for k, v in local.config.network.subnets : k if v.purpose == "egress"])
 }
 
 terraform {
@@ -44,14 +46,48 @@ dependency "network_subnets" {
   # Lets `plan` work before the dependency has ever been applied. Every
   # value is a placeholder — the real ones come from the outputs once the
   # modules declare them.
-  mock_outputs                            = {}
+  mock_outputs = {
+    self_links     = { for k, v in local.config.network.subnets : k => "mock" }
+    ids            = { for k, v in local.config.network.subnets : k => "mock" }
+    cidrs          = { for k, v in local.config.network.subnets : k => v.cidr }
+    for_routes     = {}
+    ids_by_purpose = { "egress" = ["mock"] }
+  }
   mock_outputs_allowed_terraform_commands = ["validate", "plan", "init"]
 }
 
-inputs = {
-  name        = "shomer-${local.env}-network-addresses-private"
-  environment = local.env
-  region      = local.config.region
-  project     = try(local.config.project, null)
-  tags        = merge(local.config.tags, { config-version = local.config.version })
-}
+
+inputs = merge(
+  {
+    name        = "shomer-${local.env}-proxy-ilb"
+    environment = local.env
+    region      = local.config.region
+    project     = try(local.config.project, null)
+    tags        = merge(local.config.tags, { config-version = local.config.version })
+
+    # The one number that has to agree between this unit, the route and the
+    # proxy — and none of the three reads it from the others.
+    address_index = try(local.cfg.address_index, 10)
+  },
+
+  # GCP reserves the address, which is what lets the workload's route point
+  # at it before the proxy is built.
+  merge([for _ in(local.config.provider == "gcp" ? [1] : []) : {
+    subnetwork  = dependency.network_subnets.outputs.self_links[local.egress_key]
+    subnet_cidr = local.config.network.subnets[local.egress_key].cidr
+  }]...),
+
+  # AWS reserves nothing — there is no such reservation — so the module
+  # only decides the addresses, one per zone, for the proxy to claim at
+  # attach time.
+  merge([for _ in(local.config.provider == "aws" ? [1] : []) : {
+    subnet_cidrs = {
+      for i, z in local.config.zones :
+      z => cidrsubnet(
+        local.config.network.subnets[local.egress_key].cidr,
+        length(local.config.zones) <= 1 ? 0 : ceil(log(length(local.config.zones), 2)),
+        i
+      )
+    }
+  }]...),
+)

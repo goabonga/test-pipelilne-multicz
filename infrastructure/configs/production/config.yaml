@@ -130,7 +130,14 @@ services:
     routes:   { enabled: false }
     nat:      { enabled: false }
     addresses:
-      private: { enabled: false }
+      private:
+        enabled: false
+        # Which address in the proxy subnet the load balancer takes.
+        # THE one number that has to agree between this unit, the
+        # workload's route and the proxy — and none of the three reads
+        # it from the others, which is what lets the route exist before
+        # the proxy does. Below 4 is reserved by both clouds.
+        address_index: 10
       public:  { enabled: false }
   vms:
     proxy:
