@@ -277,6 +277,13 @@ jobs:
       - name: Every documented version cascades onto docs
         run: python3 scripts/check-docs-deps.py
 
+      # The egress boundary is described in two places that cannot read each
+      # other — terraform reads the environment config, Flux applies static
+      # YAML — and a disagreement between them applies cleanly and fails
+      # silently in whichever direction it went.
+      - name: Network policy agrees with the environment configs
+        run: python3 scripts/check-network-invariants.py
+
       - name: Summary
         if: always()
         uses: ./.github/actions/summary

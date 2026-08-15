@@ -632,6 +632,11 @@ paths      = [
     "gitops/clusters/**",
     "gitops/infrastructure/**",
     "gitops/README.md",
+    # The check that the policies agree with the environment configs.
+    # Claimed here rather than left unowned: it encodes what the gitops side
+    # of that boundary must say, so changing it changes this component's
+    # contract and belongs in its changelog.
+    "scripts/check-network-invariants.py",
 ]
 bump_files = [
     { file = "gitops/VERSION" },
