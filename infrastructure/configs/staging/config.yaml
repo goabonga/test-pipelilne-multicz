@@ -205,10 +205,19 @@ services:
       # apply identity excludes IAM on purpose.
       node_role_arn: ""   # TODO: arn:aws:iam::<account>:role/<name>
   dns:
-    private: { enabled: false }
+    private:
+      enabled: false
+      # Internal names. Resolves only inside the VPC — the association is
+      # the mechanism, not a convenience.
+      domain: staging.shomer.internal
     # Only the k8s load balancer belongs here. Everything else in this
     # infrastructure is private and must not appear in a public zone.
-    public:  { enabled: false }
+    public:
+      # Off here. Only the k8s load balancer belongs in a zone the
+      # internet reads; everything else in this infrastructure is
+      # private and must not appear here.
+      enabled: false
+      domain: shomer.example
   example:
     enabled: true
     name: shomer-staging-example-probe

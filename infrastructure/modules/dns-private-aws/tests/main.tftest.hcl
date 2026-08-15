@@ -1,30 +1,34 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Chris <goabonga@pm.me>
 
-# Native Terraform tests (`terraform test`, >= 1.7). They run offline: a
-# `mock_provider` block intercepts every provider call, so no credentials
-# and no network are needed — which is why the infra-test CI job needs no
-# cloud login.
-#
-# This placeholder only proves the module evaluates. Replace it with real
-# assertions once main.tf declares resources:
-#
-#   run "creates_the_thing" {
-#     command = plan
-#     variables { name = "unit-test" }
-#     assert {
-#       condition     = <resource>.this.name == "unit-test"
-#       error_message = "name variable is not propagated"
-#     }
-#   }
+mock_provider "aws" {}
 
-run "module_evaluates" {
+variables {
+  name        = "shomer-test-internal"
+  environment = "test"
+  region      = "eu-west-3"
+  domain      = "internal.shomer.test"
+  vpc_ids     = ["vpc-0123456789abcdef0"]
+}
+
+run "the_zone_is_bound_to_a_vpc" {
+  command = plan
+
+  # A Route 53 private zone with no VPC resolves for nobody and creates
+  # cleanly while doing so. The failure surfaces as every internal name
+  # being NXDOMAIN, which reads as a records problem rather than a zone one.
+  assert {
+    condition     = length(aws_route53_zone.this.vpc) == 1
+    error_message = "A private zone with no VPC attached resolves for nobody."
+  }
+}
+
+run "a_zone_bound_to_nothing_is_refused" {
   command = plan
 
   variables {
-    name        = "unit-test"
-    environment = "test"
-    region      = "europe-west1"
-    tags        = { environment = "test" }
+    vpc_ids = []
   }
+
+  expect_failures = [var.vpc_ids]
 }

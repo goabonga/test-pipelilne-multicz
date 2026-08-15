@@ -33,3 +33,38 @@ variable "project" {
   default     = null
   description = "GCP project. Null on AWS, where the account is implicit in the credentials."
 }
+
+variable "domain" {
+  type        = string
+  description = "The zone's domain, without a trailing dot. Internal names live here and resolve nowhere else."
+
+  validation {
+    condition     = !endswith(var.domain, ".")
+    error_message = "Give the domain without a trailing dot; the module adds it where the API needs one."
+  }
+}
+
+variable "networks" {
+  type        = list(string)
+  description = <<-EOT
+    Self links of the VPCs this zone resolves in.
+
+    THE mechanism, not a convenience: a private zone with no network
+    attached resolves for nobody and creates cleanly while doing so.
+  EOT
+
+  validation {
+    condition     = length(var.networks) > 0
+    error_message = "At least one network is required, or the zone resolves for nobody."
+  }
+}
+
+variable "records" {
+  type = map(object({
+    type   = string
+    ttl    = optional(number, 300)
+    values = list(string)
+  }))
+  default     = {}
+  description = "Records in the zone, keyed by name relative to the domain."
+}

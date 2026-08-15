@@ -44,14 +44,30 @@ dependency "network_addresses_public" {
   # Lets `plan` work before the dependency has ever been applied. Every
   # value is a placeholder — the real ones come from the outputs once the
   # modules declare them.
-  mock_outputs                            = {}
+  mock_outputs = {
+    addresses      = []
+    self_links     = []
+    allocation_ids = {}
+    ip_count       = 0
+  }
   mock_outputs_allowed_terraform_commands = ["validate", "plan", "init"]
 }
 
 inputs = {
-  name        = "shomer-${local.env}-dns-public"
+  name        = "shomer-${local.env}-public"
   environment = local.env
   region      = local.config.region
   project     = try(local.config.project, null)
   tags        = merge(local.config.tags, { config-version = local.config.version })
+  domain      = local.cfg.domain
+
+  # Deliberately empty. The load balancer's address is created by the
+  # cluster from a Service of type LoadBalancer, which terraform never
+  # sees — so the record is added by external-dns from inside the cluster
+  # rather than guessed here.
+  #
+  # Both modules refuse an RFC1918 address in a public zone, so a record
+  # added by hand from an internal address fails rather than publishing the
+  # shape of a private network.
+  records = {}
 }

@@ -33,3 +33,59 @@ variable "project" {
   default     = null
   description = "GCP project. Null on AWS, where the account is implicit in the credentials."
 }
+
+variable "domain" {
+  type        = string
+  description = "The zone's domain, without a trailing dot."
+
+  validation {
+    condition     = !endswith(var.domain, ".")
+    error_message = "Give the domain without a trailing dot; the module adds it where the API needs one."
+  }
+}
+
+variable "dnssec" {
+  type        = bool
+  default     = true
+  description = <<-EOT
+    Sign the zone.
+
+    On by default: this zone serves the one public entry point to an
+    otherwise private estate, which makes it worth being unable to forge.
+    Turning it off is a decision about a specific registrar limitation, not
+    a default to inherit.
+  EOT
+}
+
+variable "records" {
+  type = map(object({
+    type   = string
+    ttl    = optional(number, 300)
+    values = list(string)
+  }))
+  default     = {}
+  description = <<-EOT
+    Records in the zone, keyed by name relative to the domain.
+
+    Only the load balancer belongs here. Everything else in this
+    infrastructure is private and must not appear in a zone the internet
+    reads.
+  EOT
+
+  validation {
+    condition = alltrue([
+      for k, r in var.records : alltrue([
+        for v in r.values :
+        r.type != "A" || !can(regex("^(10\\.|192\\.168\\.|172\\.(1[6-9]|2[0-9]|3[01])\\.)", v))
+      ])
+    ])
+    error_message = "A public zone must not publish RFC1918 addresses. The name would not resolve usefully for anyone outside the network, and it tells the world the shape of one that is meant to be private."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, r in var.records : contains(["A", "AAAA", "CNAME", "TXT", "MX", "CAA", "NS", "SRV"], r.type)
+    ])
+    error_message = "Unrecognised record type."
+  }
+}

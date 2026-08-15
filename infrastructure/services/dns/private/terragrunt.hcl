@@ -44,14 +44,31 @@ dependency "network_vpc" {
   # Lets `plan` work before the dependency has ever been applied. Every
   # value is a placeholder — the real ones come from the outputs once the
   # modules declare them.
-  mock_outputs                            = {}
+  mock_outputs = {
+    id        = "vpc-mock"
+    name      = "mock"
+    self_link = "projects/mock/global/networks/mock"
+  }
   mock_outputs_allowed_terraform_commands = ["validate", "plan", "init"]
 }
 
-inputs = {
-  name        = "shomer-${local.env}-dns-private"
-  environment = local.env
-  region      = local.config.region
-  project     = try(local.config.project, null)
-  tags        = merge(local.config.tags, { config-version = local.config.version })
-}
+inputs = merge(
+  {
+    name        = "shomer-${local.env}-internal"
+    environment = local.env
+    region      = local.config.region
+    project     = try(local.config.project, null)
+    tags        = merge(local.config.tags, { config-version = local.config.version })
+    domain      = local.cfg.domain
+  },
+
+  # The association is the mechanism on both clouds: a private zone with
+  # nothing attached resolves for nobody and creates cleanly while doing so.
+  merge([for _ in(local.config.provider == "gcp" ? [1] : []) : {
+    networks = [dependency.network_vpc.outputs.self_link]
+  }]...),
+
+  merge([for _ in(local.config.provider == "aws" ? [1] : []) : {
+    vpc_ids = [dependency.network_vpc.outputs.id]
+  }]...),
+)

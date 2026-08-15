@@ -33,3 +33,38 @@ variable "project" {
   default     = null
   description = "GCP project. Null on AWS, where the account is implicit in the credentials."
 }
+
+variable "domain" {
+  type        = string
+  description = "The zone's domain, without a trailing dot."
+
+  validation {
+    condition     = !endswith(var.domain, ".")
+    error_message = "Give the domain without a trailing dot."
+  }
+}
+
+variable "vpc_ids" {
+  type        = list(string)
+  description = <<-EOT
+    VPCs this zone resolves in.
+
+    THE mechanism, not a convenience: a private zone with no VPC resolves
+    for nobody and creates cleanly while doing so.
+  EOT
+
+  validation {
+    condition     = length(var.vpc_ids) > 0
+    error_message = "At least one VPC is required, or the zone resolves for nobody."
+  }
+}
+
+variable "records" {
+  type = map(object({
+    type   = string
+    ttl    = optional(number, 300)
+    values = list(string)
+  }))
+  default     = {}
+  description = "Records in the zone, keyed by name relative to the domain."
+}
