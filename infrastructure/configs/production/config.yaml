@@ -165,9 +165,35 @@ services:
         - .ghcr.io              # published container images
   k8s:
     # THE one place this environment is deliberately reachable from
-    # outside. It drives who may reach the load balancer in
-    # services/network/firewall; everything else here stays private.
-    cluster: { enabled: false, ha: true, public_endpoint: true }
+    # outside: the api and the ssr, through the load balancer.
+    #
+    # NOT the Kubernetes API endpoint, which stays private here as it is in
+    # staging. Two different front doors — conflating them is how one gets
+    # opened while somebody is thinking about the other.
+    cluster:
+      enabled: false
+      ha: true
+      public_load_balancer: true
+
+      # Pinned rather than defaulted: an unpinned cluster upgrades on the
+      # provider's schedule instead of on a reviewed change.
+      version: "1.31"
+
+      # ClusterIP range. Virtual, inside the cluster — but it must not
+      # overlap the VPC, or some VPC address becomes permanently
+      # unreachable from a pod and one service fails for no visible reason.
+      service_cidr: 172.20.0.0/16
+
+      # AWS only. The control plane's IAM role, created outside terraform
+      # because the apply identity excludes IAM on purpose — granting it
+      # role creation would hand the apply path a route to privilege
+      # escalation that no plan reviewer would see.
+      cluster_role_arn: ""   # TODO: arn:aws:iam::<account>:role/<name>
+
+      # GCP only. The control plane's own endpoints, peered into the VPC.
+      # Must be a /28, must not overlap anything above, and cannot be
+      # changed after creation.
+      master_cidr: 172.16.0.0/28
     nodes:   { enabled: false, ha: true }
   dns:
     private: { enabled: false }

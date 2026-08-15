@@ -36,7 +36,7 @@ locals {
   # and the one the brief states outright: only production is public.
   # Staging gets its own ranges through the same module rather than a
   # second code path that has to be kept in step.
-  lb_ingress = try(local.config.services.k8s.cluster.public_endpoint, false) ? ["0.0.0.0/0"] : [local.config.network.cidr]
+  lb_ingress = try(local.config.services.k8s.cluster.public_load_balancer, false) ? ["0.0.0.0/0"] : [local.config.network.cidr]
 }
 
 terraform {
