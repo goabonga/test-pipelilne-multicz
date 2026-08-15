@@ -7,6 +7,21 @@ Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
 ### Releases
 
+- **docs** patch — 1.0.22 → 1.0.23  _(cascade from infra 0.8.0)_
+- **infra** minor — 0.7.0 → 0.8.0  _(cascade from infra-modules-network-addresses-public-gcp 0.2.0)_
+- **infra-modules-network-addresses-public-aws** minor — 0.1.0 → 0.2.0
+- **infra-modules-network-addresses-public-gcp** minor — 0.1.0 → 0.2.0
+
+### Features
+
+- **infra**: reserve the egress addresses, and let each cloud say how it grows (`79d1244`)
+- **infra-modules-network-addresses-public-aws**: reserve the egress addresses, and let each cloud say how it grows (`79d1244`)
+- **infra-modules-network-addresses-public-gcp**: reserve the egress addresses, and let each cloud say how it grows (`79d1244`)
+
+## 2026-08-15
+
+### Releases
+
 - **docs** patch — 1.0.21 → 1.0.22  _(cascade from infra 0.7.0)_
 - **infra** minor — 0.6.0 → 0.7.0  _(cascade from infra-modules-network-firewall-gcp 0.2.0)_
 - **infra-modules-network-firewall-aws** minor — 0.1.0 → 0.2.0

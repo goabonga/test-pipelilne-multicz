@@ -6,6 +6,17 @@ template, `terragrunt.sh`) are documented here. Versions follow
 [Conventional Commits](https://www.conventionalcommits.org) scoped to this
 directory, tagged `infra-v<version>`.
 
+## [0.8.0] - 2026-08-15
+
+### Features
+
+- **infra**: reserve the egress addresses, and let each cloud say how it grows (`79d1244`)
+
+### Dependencies
+
+- Track `infra-modules-network-addresses-public-gcp` `0.2.0`
+- Track `infra-modules-network-addresses-public-aws` `0.2.0`
+
 ## [0.7.0] - 2026-08-15
 
 ### Features
