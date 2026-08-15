@@ -140,7 +140,10 @@ services:
       # network/routes; nothing else may talk to it.
       port: 3128
   k8s:
-    cluster: { enabled: false, ha: true }
+    # THE one place this environment is deliberately reachable from
+    # outside. It drives who may reach the load balancer in
+    # services/network/firewall; everything else here stays private.
+    cluster: { enabled: false, ha: true, public_endpoint: true }
     nodes:   { enabled: false, ha: true }
   dns:
     private: { enabled: false }

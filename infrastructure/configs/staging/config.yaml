@@ -139,7 +139,12 @@ services:
       # network/routes; nothing else may talk to it.
       port: 3128
   k8s:
-    cluster: { enabled: false, ha: false }
+    # public_endpoint is THE difference between the environments, and the
+    # one the brief states outright: only production is reachable from the
+    # internet. It drives who may reach the load balancer in
+    # services/network/firewall, so staging's front end is internal and
+    # production's is public — same modules, one key.
+    cluster: { enabled: false, ha: false, public_endpoint: false }
     nodes:   { enabled: false, ha: false }
   dns:
     private: { enabled: false }
