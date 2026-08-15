@@ -6,6 +6,17 @@ template, `terragrunt.sh`) are documented here. Versions follow
 [Conventional Commits](https://www.conventionalcommits.org) scoped to this
 directory, tagged `infra-v<version>`.
 
+## [0.7.0] - 2026-08-15
+
+### Features
+
+- **infra**: implement the firewall, and turn off what each cloud permits by default (`034bc57`)
+
+### Dependencies
+
+- Track `infra-modules-network-firewall-gcp` `0.2.0`
+- Track `infra-modules-network-firewall-aws` `0.2.0`
+
 ## [0.6.0] - 2026-08-15
 
 ### Features

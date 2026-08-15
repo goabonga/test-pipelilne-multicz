@@ -7,6 +7,21 @@ Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
 ### Releases
 
+- **docs** patch — 1.0.21 → 1.0.22  _(cascade from infra 0.7.0)_
+- **infra** minor — 0.6.0 → 0.7.0  _(cascade from infra-modules-network-firewall-gcp 0.2.0)_
+- **infra-modules-network-firewall-aws** minor — 0.1.0 → 0.2.0
+- **infra-modules-network-firewall-gcp** minor — 0.1.0 → 0.2.0
+
+### Features
+
+- **infra**: implement the firewall, and turn off what each cloud permits by default (`034bc57`)
+- **infra-modules-network-firewall-aws**: implement the firewall, and turn off what each cloud permits by default (`034bc57`)
+- **infra-modules-network-firewall-gcp**: implement the firewall, and turn off what each cloud permits by default (`034bc57`)
+
+## 2026-08-15
+
+### Releases
+
 - **docs** patch — 1.0.20 → 1.0.21  _(cascade from infra 0.6.0)_
 - **infra** minor — 0.5.0 → 0.6.0  _(cascade from infra-modules-network-vpc-aws 0.3.0)_
 - **infra-modules-network-routes-aws** minor — 0.1.0 → 0.2.0
