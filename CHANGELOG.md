@@ -7,6 +7,12 @@ Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
 ### Releases
 
+- **docs** patch — 1.0.30 → 1.0.31  _(cascade from configs-staging)_
+
+## 2026-08-15
+
+### Releases
+
 - **docs** patch — 1.0.28 → 1.0.29  _(cascade from infra 0.14.0)_
 - **infra** minor — 0.13.0 → 0.14.0  _(cascade from infra-modules-network-addresses-private-gcp 0.2.0)_
 - **infra-modules-network-addresses-private-aws** minor — 0.1.0 → 0.2.0
