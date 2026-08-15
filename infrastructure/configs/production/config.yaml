@@ -194,7 +194,13 @@ services:
       # Must be a /28, must not overlap anything above, and cannot be
       # changed after creation.
       master_cidr: 172.16.0.0/28
-    nodes:   { enabled: false, ha: true }
+    nodes:
+      enabled: false
+      ha: true
+
+      # AWS only. The nodes' IAM role, created outside terraform because the
+      # apply identity excludes IAM on purpose.
+      node_role_arn: ""   # TODO: arn:aws:iam::<account>:role/<name>
   dns:
     private: { enabled: false }
     # Only the k8s load balancer belongs here. Everything else in this
