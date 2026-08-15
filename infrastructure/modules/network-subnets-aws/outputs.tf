@@ -27,3 +27,19 @@ output "workload_subnet" {
   value       = one([for k, v in var.subnets : k if v.purpose == "workload"])
   description = "Short name of the subnet pods run in."
 }
+
+output "for_routes" {
+  value = {
+    for k, v in local.subnets : k => {
+      id      = aws_subnet.this[k].id
+      purpose = v.purpose
+      zone    = v.zone
+    }
+  }
+  description = <<-EOT
+    Exactly what services/network/routes takes: id, purpose and zone per
+    subnet. Shaped here rather than reassembled in the unit, so that adding
+    a field to the routes module is one change and not a change plus a
+    reminder to update a terragrunt file nobody is looking at.
+  EOT
+}

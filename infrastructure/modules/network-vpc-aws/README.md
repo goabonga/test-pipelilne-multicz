@@ -80,6 +80,7 @@ No modules.
 | ---- | ----------- |
 | <a name="output_arn"></a> [arn](#output\_arn) | VPC ARN, for policies that scope to this network. |
 | <a name="output_cidr"></a> [cidr](#output\_cidr) | The range that was actually created, not the one that was asked for. |
+| <a name="output_default_route_table_id"></a> [default\_route\_table\_id](#output\_default\_route\_table\_id) | The VPC's main route table. Consumed by services/network/routes, which<br/>empties it — nothing should use it, and that is precisely why it must<br/>be managed: a subnet added later without an explicit association<br/>inherits it silently. |
 | <a name="output_default_security_group_id"></a> [default\_security\_group\_id](#output\_default\_security\_group\_id) | The emptied default group. Exported so a reader can confirm what it is<br/>attached to, NOT so anything can be attached to it — it permits nothing<br/>in either direction by design. |
 | <a name="output_id"></a> [id](#output\_id) | VPC id, consumed by every unit that puts something in it. |
 <!-- END_TF_DOCS -->

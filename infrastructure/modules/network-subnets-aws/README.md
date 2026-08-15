@@ -70,6 +70,7 @@ No modules.
 | Name | Description |
 | ---- | ----------- |
 | <a name="output_cidrs"></a> [cidrs](#output\_cidrs) | The ranges that were actually created, not the ones that were asked for. Security groups are written against these so a rule cannot outlive the subnet it names. |
+| <a name="output_for_routes"></a> [for\_routes](#output\_for\_routes) | Exactly what services/network/routes takes: id, purpose and zone per<br/>subnet. Shaped here rather than reassembled in the unit, so that adding<br/>a field to the routes module is one change and not a change plus a<br/>reminder to update a terragrunt file nobody is looking at. |
 | <a name="output_ids"></a> [ids](#output\_ids) | Subnet ids keyed by <short name>-<zone>. |
 | <a name="output_ids_by_purpose"></a> [ids\_by\_purpose](#output\_ids\_by\_purpose) | Subnet ids grouped by purpose. What the cluster, NAT and load balancer<br/>units consume — they care that a subnet is a workload subnet, never<br/>which zone it happens to be in. |
 | <a name="output_workload_subnet"></a> [workload\_subnet](#output\_workload\_subnet) | Short name of the subnet pods run in. |

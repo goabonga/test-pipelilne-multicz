@@ -24,3 +24,13 @@ output "default_security_group_id" {
     in either direction by design.
   EOT
 }
+
+output "default_route_table_id" {
+  value       = aws_vpc.this.default_route_table_id
+  description = <<-EOT
+    The VPC's main route table. Consumed by services/network/routes, which
+    empties it — nothing should use it, and that is precisely why it must
+    be managed: a subnet added later without an explicit association
+    inherits it silently.
+  EOT
+}
