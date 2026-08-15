@@ -48,10 +48,22 @@ dependency "network_vpc" {
   mock_outputs_allowed_terraform_commands = ["validate", "plan", "init"]
 }
 
-inputs = {
-  name        = "shomer-${local.env}-network-addresses-public"
-  environment = local.env
-  region      = local.config.region
-  project     = try(local.config.project, null)
-  tags        = merge(local.config.tags, { config-version = local.config.version })
-}
+inputs = merge(
+  {
+    name        = "shomer-${local.env}-nat-address"
+    environment = local.env
+    region      = local.config.region
+    project     = try(local.config.project, null)
+    tags        = merge(local.config.tags, { config-version = local.config.version })
+    ip_count    = local.config.network.nat.ip_count
+  },
+
+  # AWS allocates one address per ZONE, because a NAT gateway accepts
+  # exactly one and the pool therefore grows by adding zones rather than by
+  # raising ip_count. The module checks the two against each other so a
+  # config asking for four in a one-zone environment fails rather than
+  # quietly receiving one.
+  merge([for _ in(local.config.provider == "aws" ? [1] : []) : {
+    zones = local.config.zones
+  }]...),
+)

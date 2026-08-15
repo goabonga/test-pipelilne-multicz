@@ -33,3 +33,42 @@ variable "project" {
   default     = null
   description = "GCP project. Null on AWS, where the account is implicit in the credentials."
 }
+
+variable "zones" {
+  type        = list(string)
+  description = <<-EOT
+    Zones to place an egress address in, one each.
+
+    This is the pool size on AWS. A NAT gateway accepts exactly one
+    address, so the number of zones IS the number of addresses, and adding
+    a zone is how the pool grows.
+  EOT
+
+  validation {
+    condition     = length(var.zones) > 0
+    error_message = "At least one zone is required, or there is no egress address at all."
+  }
+
+  validation {
+    condition     = length(var.zones) == length(distinct(var.zones))
+    error_message = "Duplicate zones would allocate two addresses for one NAT gateway, one of which is billed and attached to nothing."
+  }
+}
+
+variable "ip_count" {
+  type        = number
+  default     = 1
+  description = <<-EOT
+    The number of egress addresses the environment config asks for.
+
+    Not used to allocate — the zone list decides that — but checked against
+    it, so a config asking for four addresses in a single-zone environment
+    fails here rather than quietly receiving one. That mismatch is the kind
+    of thing discovered under load, months later.
+  EOT
+
+  validation {
+    condition     = var.ip_count >= 1
+    error_message = "At least one egress address is required."
+  }
+}
