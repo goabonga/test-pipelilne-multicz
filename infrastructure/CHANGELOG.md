@@ -6,6 +6,17 @@ template, `terragrunt.sh`) are documented here. Versions follow
 [Conventional Commits](https://www.conventionalcommits.org) scoped to this
 directory, tagged `infra-v<version>`.
 
+## [0.14.0] - 2026-08-15
+
+### Features
+
+- **infra**: decide the proxy's private address, and untie the ordering knot (`5258c73`)
+
+### Dependencies
+
+- Track `infra-modules-network-addresses-private-gcp` `0.2.0`
+- Track `infra-modules-network-addresses-private-aws` `0.2.0`
+
 ## [0.13.0] - 2026-08-15
 
 ### Features

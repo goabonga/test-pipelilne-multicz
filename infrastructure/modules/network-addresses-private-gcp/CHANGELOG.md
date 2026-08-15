@@ -5,6 +5,12 @@ All notable changes to this module are documented here. Versions follow
 [Conventional Commits](https://www.conventionalcommits.org) scoped to this
 directory, tagged `infra-modules-network-addresses-private-gcp-v<version>`.
 
+## [0.2.0] - 2026-08-15
+
+### Features
+
+- **infra**: decide the proxy's private address, and untie the ordering knot (`5258c73`)
+
 ## [0.1.0] - 2026-08-11
 
 ### Features
