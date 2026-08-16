@@ -3,6 +3,17 @@
 All notable changes across components, aggregated per release.
 Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
+## 2026-08-16
+
+### Releases
+
+- **docs** patch — 1.0.32 → 1.0.33  _(cascade from infra 0.15.0)_
+- **infra** minor — 0.14.0 → 0.15.0
+
+### Features
+
+- **infra**: enable the network units (`78a9e5a`)
+
 ## 2026-08-15
 
 ### Releases

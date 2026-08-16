@@ -6,6 +6,12 @@ template, `terragrunt.sh`) are documented here. Versions follow
 [Conventional Commits](https://www.conventionalcommits.org) scoped to this
 directory, tagged `infra-v<version>`.
 
+## [0.15.0] - 2026-08-16
+
+### Features
+
+- **infra**: enable the network units (`78a9e5a`)
+
 ## [0.14.0] - 2026-08-15
 
 ### Features
