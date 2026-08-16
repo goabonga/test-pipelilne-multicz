@@ -1,0 +1,243 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Chris <goabonga@pm.me>
+
+# Destroy the units that cost money while idle, without dismantling the
+# environment.
+#
+# WHY A TRIGGER AND A GATE RATHER THAN JUST A TRIGGER
+#
+# A commit message is a convenient trigger and a poor authorisation.
+#
+# The trailer form helps with one failure and not the other. It is not
+# matched by a message that merely mentions it — a revert, a summary, a line
+# of documentation — because the pattern is anchored to the start of a line.
+# It IS carried verbatim by a cherry-pick or a rebase, so replaying an old
+# teardown commit onto main re-triggers this. That is not fixable in the
+# trigger, and pretending otherwise would be the dangerous half of a
+# half-measure.
+#
+# So the marker only STARTS this. What it destroys is decided by the
+# `teardown` list in the environment config, the plan is published as an
+# artifact first, and the destroy waits on the environment's required
+# reviewers. The marker chooses; a human confirms — and that approval is
+# what a replayed commit still has to get past.
+#
+# WHAT IT DOES NOT TOUCH
+#
+# The network skeleton — vpc, subnets, routes, firewall, addresses. Those
+# are nearly free to keep and expensive to rebuild by hand, and destroying
+# `addresses` would release the egress addresses external services have
+# allow-listed. The list is in the config precisely so that this decision is
+# reviewed with the environment rather than written into a workflow.
+#
+# HOW TO USE IT
+#
+#   git commit -m "chore: park staging overnight" -m "Teardown: staging"
+#
+# The trailer form is deliberate: a subject line is quoted and summarised,
+# a trailer is not.
+
+name: infra-teardown
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to tear down
+        required: true
+        type: choice
+        options: [staging, production]
+
+permissions:
+  contents: read
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.marker.outputs.environment }}
+      units: ${{ steps.marker.outputs.units }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Read the marker
+        id: marker
+        env:
+          MESSAGE: ${{ github.event.head_commit.message }}
+          DISPATCH_ENV: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+
+          # A trailer, not a phrase anywhere in the message. `^Teardown:` on
+          # its own line at the end is what a tool writes and what a human
+          # summarising a branch does not accidentally reproduce.
+          if [ -n "${DISPATCH_ENV:-}" ]; then
+            ENV_NAME="$DISPATCH_ENV"
+            echo "requested by dispatch: ${ENV_NAME}"
+          else
+            ENV_NAME=$(printf '%s' "$MESSAGE" | grep -oP '^Teardown:\s*\K[a-z0-9-]+$' || true)
+            if [ -z "$ENV_NAME" ]; then
+              echo "no Teardown: trailer — nothing to do"
+              exit 0
+            fi
+            echo "requested by trailer: ${ENV_NAME}"
+          fi
+
+          CONFIG="infrastructure/configs/${ENV_NAME}/config.yaml"
+          if [ ! -f "$CONFIG" ]; then
+            # Named rather than ignored: a typo here would otherwise look
+            # exactly like a run that decided there was nothing to do.
+            echo "::error::no such environment '${ENV_NAME}' — ${CONFIG} does not exist"
+            exit 1
+          fi
+
+          # The units come from the config, never from the commit. A message
+          # that could name them would be a message that could name the VPC.
+          UNITS=$(python3 -c "
+          import sys, yaml
+          c = yaml.safe_load(open('${CONFIG}'))
+          units = c.get('teardown') or []
+          print(' '.join(units))
+          ")
+
+          if [ -z "$UNITS" ]; then
+            echo "::error::${ENV_NAME} declares no 'teardown:' list, so there is nothing this workflow is permitted to destroy"
+            exit 1
+          fi
+
+          echo "environment=${ENV_NAME}" >> "$GITHUB_OUTPUT"
+          echo "units=${UNITS}" >> "$GITHUB_OUTPUT"
+          echo "will tear down: ${UNITS}"
+
+  plan:
+    needs: detect
+    if: needs.detect.outputs.environment != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    environment: ${{ needs.detect.outputs.environment }}-plan
+    env:
+      ENV: ${{ needs.detect.outputs.environment }}
+      ENV_NAME: ${{ needs.detect.outputs.environment }}
+      UNITS: ${{ needs.detect.outputs.units }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-terragrunt
+
+      - name: Which cloud
+        id: cloud
+        run: |
+          set -euo pipefail
+          P=$(grep -oP '^provider:\s*\K\S+' "infrastructure/configs/${ENV_NAME}/config.yaml")
+          echo "provider=$P" >> "$GITHUB_OUTPUT"
+
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093  # v3.0.0
+        if: steps.cloud.outputs.provider == 'gcp' && vars.GCP_WORKLOAD_IDENTITY_PROVIDER != ''
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+
+      - uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c  # v6.2.3
+        if: steps.cloud.outputs.provider == 'aws' && vars.AWS_ROLE_ARN != ''
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Plan the destroy
+        run: |
+          set -euo pipefail
+          # Per unit rather than `run --all`, so that the order in the config
+          # is the order in the output and a reviewer reads them in the order
+          # they will actually be destroyed.
+          for unit in $UNITS; do
+            echo "═══ ${unit}" >> "destroy-${ENV_NAME}.txt"
+            terragrunt --non-interactive --no-color \
+              --working-dir "infrastructure/services/${unit}" \
+              plan -destroy -no-color -input=false >> "destroy-${ENV_NAME}.txt" 2>&1
+          done
+
+      - name: Summarise what would go
+        run: |
+          set -euo pipefail
+          {
+            echo "## Teardown plan — ${ENV_NAME}"
+            echo
+            echo "Units, in destroy order: \`${UNITS}\`"
+            echo
+            grep -E '^═══|Plan:|No changes' "destroy-${ENV_NAME}.txt" | sed 's/^/    /'
+            echo
+            echo "The network skeleton is untouched: vpc, subnets, routes, firewall and addresses stay, so the egress addresses external services allow-list are not released."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: teardown-plan-${{ needs.detect.outputs.environment }}
+          path: destroy-${{ needs.detect.outputs.environment }}.txt
+          retention-days: 14
+
+  destroy:
+    needs: [detect, plan]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    # THE GATE. This environment carries required reviewers, so the job
+    # waits here until a human approves it — after reading the plan the
+    # previous job published. The commit marker chose; this confirms.
+    environment: ${{ needs.detect.outputs.environment }}
+    env:
+      ENV: ${{ needs.detect.outputs.environment }}
+      ENV_NAME: ${{ needs.detect.outputs.environment }}
+      UNITS: ${{ needs.detect.outputs.units }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-terragrunt
+
+      - name: Which cloud
+        id: cloud
+        run: |
+          set -euo pipefail
+          P=$(grep -oP '^provider:\s*\K\S+' "infrastructure/configs/${ENV_NAME}/config.yaml")
+          echo "provider=$P" >> "$GITHUB_OUTPUT"
+
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093  # v3.0.0
+        if: steps.cloud.outputs.provider == 'gcp' && vars.GCP_WORKLOAD_IDENTITY_PROVIDER != ''
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+
+      - uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c  # v6.2.3
+        if: steps.cloud.outputs.provider == 'aws' && vars.AWS_ROLE_ARN != ''
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Destroy, in the declared order
+        run: |
+          set -euo pipefail
+          # The order matters and is the config's, not terragrunt's. A
+          # cluster holds load balancers that hold addresses; destroying the
+          # address first leaves the load balancer stuck and the run half
+          # finished.
+          for unit in $UNITS; do
+            echo "═══ destroying ${unit}"
+            terragrunt --non-interactive --no-color \
+              --working-dir "infrastructure/services/${unit}" \
+              destroy -auto-approve -input=false
+          done
+
+      - name: Say what is left
+        if: always()
+        run: |
+          {
+            echo "## Torn down — ${ENV_NAME}"
+            echo
+            echo "Destroyed: \`${UNITS}\`"
+            echo
+            echo "Still standing: the network skeleton, and with it the reserved egress addresses."
+            echo
+            echo "**The configs still say these units are enabled.** The next \`infra-plan\` will therefore open a deploy PR to rebuild them, which is how they come back — no second workflow, and no state where the repository and the cloud disagree silently."
+          } >> "$GITHUB_STEP_SUMMARY"
