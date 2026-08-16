@@ -13,8 +13,21 @@ Shomer &middot; Copyright &copy; 2026 Chris &middot;
 <a href="https://github.com/goabonga/shomer/blob/main/LICENSE">MIT License</a>
 """
 
+# Organised by who is reading rather than by what the repository contains.
+# The four audiences ask different questions of the same system, and a
+# single page answering all of them answers none of them first.
 nav = [
   { "Home" = "index.md" },
+  { "Users" = "users/index.md" },
+  { "Developers" = "developers/index.md" },
+  { "DevOps" = [
+    { "Overview" = "devops/index.md" },
+    { "Teardown" = "devops/teardown.md" },
+  ] },
+  { "DevSecOps" = [
+    { "Overview" = "devsecops/index.md" },
+    { "Creating an exception" = "devsecops/exceptions.md" },
+  ] },
   { "Changelog" = "changelog.md" },
   { "Versions" = "versions.md" },
 ]
