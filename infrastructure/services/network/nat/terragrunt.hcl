@@ -79,13 +79,19 @@ dependency "network_addresses_public" {
   # Lets `plan` work before the dependency has ever been applied. Every
   # value is a placeholder — the real ones come from the outputs once the
   # modules declare them.
-  # Shaped as the two implementations emit them: GCP hands back a list of
-  # self links, AWS a map of allocation ids keyed by zone.
+  # Shaped as the two implementations emit them AND NON-EMPTY. An empty list
+  # here is not a neutral placeholder: this module refuses to configure a
+  # NAT with no addresses, so an empty mock fails the first plan of a fresh
+  # environment with a precondition about reserved addresses — which is
+  # correct about the rule and wrong about the situation, and sends the
+  # reader to the addresses unit rather than to this mock.
+  #
+  # A mock has to have the SHAPE of the real output, not merely its type.
   mock_outputs = {
-    self_links     = []
-    addresses      = []
-    allocation_ids = {}
-    ip_count       = 0
+    self_links     = ["mock-address"]
+    addresses      = ["203.0.113.1"]
+    allocation_ids = { for z in local.config.zones : z => "eipalloc-mock" }
+    ip_count       = 1
   }
   mock_outputs_allowed_terraform_commands = ["validate", "plan", "init"]
 }

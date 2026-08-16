@@ -121,23 +121,41 @@ access:
 # `ha` is the only difference between the environments that is not an
 # address: false is one zonal instance, true is a managed group spread
 # across `zones`.
+# ── teardown ────────────────────────────────────────────────────────────
+# Units infra-teardown may destroy, most expensive first.
+#
+# NOT a list of what is safe to lose — a list of what COSTS while idle.
+# The network skeleton below (vpc, subnets, routes, firewall, addresses)
+# is nearly free to keep and expensive to rebuild by hand, so it is not
+# here: tearing it down would also release the egress addresses that
+# external services allow-list.
+#
+# The order is the order they are destroyed in, and it matters: a cluster
+# holds load balancers that hold addresses, and destroying the address
+# first leaves the load balancer stuck.
+teardown:
+  - k8s/nodes
+  - k8s/cluster
+  - vms/proxy
+  - network/nat
+
 services:
   network:
-    vpc:      { enabled: false }
-    subnets:  { enabled: false }
-    firewall: { enabled: false }
-    routes:   { enabled: false }
-    nat:      { enabled: false }
+    vpc:      { enabled: true }
+    subnets:  { enabled: true }
+    firewall: { enabled: true }
+    routes:   { enabled: true }
+    nat:      { enabled: true }
     addresses:
       private:
-        enabled: false
+        enabled: true
         # Which address in the proxy subnet the load balancer takes.
         # THE one number that has to agree between this unit, the
         # workload's route and the proxy — and none of the three reads
         # it from the others, which is what lets the route exist before
         # the proxy does. Below 4 is reserved by both clouds.
         address_index: 10
-      public:  { enabled: false }
+      public:  { enabled: true }
   vms:
     proxy:
       enabled: false
