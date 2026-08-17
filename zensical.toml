@@ -32,7 +32,54 @@ nav = [
   { "Versions" = "versions.md" },
 ]
 
-[project.markdown_extensions.zensical.extensions.macros]
+# Zensical falls back to its default extension set only when this table is
+# absent — `config.get("markdown_extensions", DEFAULT_...)` is a fallback,
+# not a merge. Declaring one extension therefore silently dropped every
+# default, superfences among them, and fenced code blocks came out as
+# inline code. The defaults are restated here so `macros` can be added to
+# them; keep them in step with Zensical's own DEFAULT_MARKDOWN_EXTENSIONS.
+[project.markdown_extensions]
+abbr = {}
+admonition = {}
+attr_list = {}
+def_list = {}
+footnotes = {}
+md_in_html = {}
+"pymdownx.betterem" = {}
+"pymdownx.caret" = {}
+"pymdownx.details" = {}
+"pymdownx.inlinehilite" = {}
+"pymdownx.keys" = {}
+"pymdownx.magiclink" = {}
+"pymdownx.mark" = {}
+"pymdownx.smartsymbols" = {}
+"pymdownx.tilde" = {}
+"zensical.extensions.macros" = {}
+
+[project.markdown_extensions.toc]
+permalink = true
+
+[project.markdown_extensions."pymdownx.arithmatex"]
+generic = true
+
+[project.markdown_extensions."pymdownx.emoji"]
+emoji_generator = "zensical.extensions.emoji.to_svg"
+emoji_index = "zensical.extensions.emoji.twemoji"
+
+[project.markdown_extensions."pymdownx.highlight"]
+anchor_linenums = true
+line_spans = "__span"
+pygments_lang_class = true
+
+[project.markdown_extensions."pymdownx.superfences"]
+custom_fences = [{ name = "mermaid", class = "mermaid" }]
+
+[project.markdown_extensions."pymdownx.tabbed"]
+alternate_style = true
+combine_header_slug = true
+
+[project.markdown_extensions."pymdownx.tasklist"]
+custom_checkbox = true
 
 # Per-component versions surfaced on docs/versions.md through the
 # `macros` extension ({{ config.extra.versions.* }}). multicz rewrites
