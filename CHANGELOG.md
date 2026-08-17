@@ -3,6 +3,16 @@
 All notable changes across components, aggregated per release.
 Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
+## 2026-08-17
+
+### Releases
+
+- **docs** patch — 1.0.34 → 1.0.35  _(cascade from configs-staging)_
+
+### Fixes
+
+- **docs**: restore the default markdown extensions (`ff607bb`)
+
 ## 2026-08-16
 
 ### Releases
