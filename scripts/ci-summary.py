@@ -356,6 +356,115 @@ def fmt_pytest(path: Path) -> str:
     return "\n".join(lines)
 
 
+def fmt_sweep(path: Path) -> str:
+    """What the allowlist sweep is watching, not only what fell due.
+
+    Two empty lists mean "nothing expired this week" and also mean "the
+    glob matched no files". Both produce a green run and an identical
+    summary, and only one of them is fine — so this reports what was
+    actually inspected first, and treats finding nothing as a problem
+    rather than as good news.
+    """
+    data = _read_json(path)
+
+    files = data.get("files_scanned", 0)
+    total = data.get("entries_total", 0)
+    to_remove = data.get("to_remove") or []
+    to_review = data.get("to_review") or []
+
+    if files == 0:
+        return (
+            "**No allowlist files found at all.** That is not a clean "
+            "sweep — it is the sweep failing to find what it exists to "
+            "watch, and it reports as green. Check the glob and the "
+            "checkout."
+        )
+
+    lines = [
+        (
+            f"**{total} suppressions across {files} components** — "
+            f"{len(to_remove)} provably stale, {len(to_review)} need a decision."
+        )
+    ]
+
+    nxt = data.get("next_expiry")
+    if nxt:
+        lines += [
+            "",
+            (
+                f"Next expiry: `{nxt['cve']}` in **{nxt['component']}**, "
+                f"{nxt['date']} ({nxt['days']} days)."
+            ),
+        ]
+
+    if to_remove:
+        lines += [
+            "",
+            "### Provably stale",
+            "",
+            (
+                "Grype confirms these no longer match the published image, so "
+                "the suppression is protecting nothing."
+            ),
+            "",
+            _table(
+                ["cve", "component"],
+                [
+                    [e.get("vulnerability", "?"), e.get("component", "?")]
+                    for e in to_remove
+                ],
+            ),
+        ]
+
+    if to_review:
+        lines += [
+            "",
+            "### Expired, still matching",
+            "",
+            (
+                "The date passed and the CVE is still present — these need a "
+                "fresh justification or a real fix, not a new date."
+            ),
+            "",
+            _table(
+                ["cve", "component", "expired"],
+                [
+                    [
+                        e.get("vulnerability", "?"),
+                        e.get("component", "?"),
+                        str(e.get("expires", "?")),
+                    ]
+                    for e in to_review
+                ],
+            ),
+        ]
+
+    if not to_remove and not to_review:
+        lines += [
+            "",
+            (
+                "Nothing has expired. The sweep runs weekly and does "
+                "nothing until a date falls due."
+            ),
+        ]
+
+    comps = data.get("components") or {}
+    if comps:
+        lines += [
+            "",
+            "<details><summary>Per component</summary>",
+            "",
+            _table(
+                ["component", "suppressions"],
+                sorted(([k, v] for k, v in comps.items())),
+            ),
+            "",
+            "</details>",
+        ]
+
+    return "\n".join(lines)
+
+
 FORMATTERS = {
     "grype": fmt_grype,
     "checkov": fmt_checkov,
@@ -363,6 +472,7 @@ FORMATTERS = {
     "sbom": fmt_sbom,
     "plan": fmt_plan,
     "pytest": fmt_pytest,
+    "sweep": fmt_sweep,
 }
 
 

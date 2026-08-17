@@ -168,13 +168,25 @@ def _grype_finds(image: str, cve: str) -> bool | None:
 
 
 def cmd_check(args: argparse.Namespace) -> int:
+    today = datetime.now(UTC).date()
     report = {
-        "generated": datetime.now(UTC).date().isoformat(),
+        "generated": today.isoformat(),
         "to_remove": [],
         "to_review": [],
+        # WHAT IS BEING WATCHED, not only what fell due.
+        #
+        # Without these, a week where nothing expired and a week where the
+        # glob matched no files produce an identical report — two empty
+        # lists — and therefore an identical green run. The second is a
+        # silent failure of the only thing keeping suppressions honest.
+        "files_scanned": 0,
+        "entries_total": 0,
+        "next_expiry": None,
+        "components": {},
     }
     for path in sorted(args.root.glob(ALLOWLIST_GLOB)):
         component = path.parent.name
+        report["files_scanned"] += 1
         image = None
         if args.scan:
             version = _read_version(args.root, component)
@@ -182,6 +194,20 @@ def cmd_check(args: argparse.Namespace) -> int:
                 image = GHCR_IMAGE_FMT.format(component=component, version=version)
 
         for entry in parse(path):
+            report["entries_total"] += 1
+            report["components"][component] = report["components"].get(component, 0) + 1
+            # `expires` is already an ISO string by the time it reaches
+            # here — parse() serialises it so the report is JSON-ready.
+            iso = str(entry["expires"])
+            if not entry["expired"] and (
+                report["next_expiry"] is None or iso < report["next_expiry"]["date"]
+            ):
+                report["next_expiry"] = {
+                    "date": iso,
+                    "days": (date.fromisoformat(iso) - today).days,
+                    "cve": entry["vulnerability"],
+                    "component": component,
+                }
             if not entry["expired"]:
                 continue
             entry["file"] = str(path.relative_to(args.root))

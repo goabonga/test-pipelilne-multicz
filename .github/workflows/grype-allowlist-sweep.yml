@@ -235,22 +235,16 @@ jobs:
             python scripts/grype-refresh.py --all
           fi
 
+      # The old summary printed two counts. Most weeks both are zero, which
+      # reads the same whether nothing expired — the normal case — or the
+      # glob matched no files, which is this workflow silently failing at
+      # the one job it has. The formatter reports what was inspected first,
+      # so the difference is visible.
       - name: Job summary
         if: always()
-        run: |
-          {
-            echo '## grype-allowlist-sweep'
-            echo ''
-            echo "- to_remove (auto-PR): \`${{ steps.sweep.outputs.to_remove }}\`"
-            echo "- to_review (issue):   \`${{ steps.sweep.outputs.to_review }}\`"
-            echo ''
-            if [ -f sweep-report.json ]; then
-              echo '<details><summary>Full report</summary>'
-              echo ''
-              echo '```json'
-              cat sweep-report.json
-              echo '```'
-              echo ''
-              echo '</details>'
-            fi
-          } >> "$GITHUB_STEP_SUMMARY"
+        uses: ./.github/actions/summary
+        with:
+          title: grype-allowlist-sweep
+          body: 'Weekly. Reads the `# expires:` markers and acts only when a date falls due.'
+          format: sweep
+          path: sweep-report.json
