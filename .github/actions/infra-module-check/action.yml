@@ -74,11 +74,27 @@ runs:
         directory: infrastructure/${{ contains(inputs.module, '/') && inputs.module || format('modules/{0}', inputs.module) }}
         framework: terraform
         quiet: true
-        output_format: cli
+        # Both formats: cli drives the problem matcher and the log, json
+        # feeds the summary. Asking for json alone would trade a readable
+        # failure for a readable summary, which is the wrong swap.
+        output_format: cli,json
+        output_file_path: console,/tmp/checkov.json
         soft_fail: false
 
+    # Two summary steps rather than one with a conditional format: `format`
+    # is a plain string input and cannot be conditionally unset, so a single
+    # step would print the "no path" note on every fmt, test and docs job.
     - name: Summary
-      if: always()
+      if: always() && inputs.check == 'checkov'
+      uses: ./.github/actions/summary
+      with:
+        title: infra-module ${{ inputs.module }} — checkov
+        body: '`checkov` on `infrastructure/${{ inputs.module }}`.'
+        format: checkov
+        path: /tmp/checkov.json
+
+    - name: Summary
+      if: always() && inputs.check != 'checkov'
       uses: ./.github/actions/summary
       with:
         title: infra-module ${{ inputs.module }} — ${{ inputs.check }}

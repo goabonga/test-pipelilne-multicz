@@ -526,13 +526,22 @@ jobs:
         run: curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
       - name: Scan SBOM (--fail-on high)
         working-directory: packages/api
-        run: grype sbom:/tmp/api.sbom.spdx.json --fail-on high
+        run: |
+          set -euo pipefail
+          # The json is written first, from the same scan the gate
+          # then runs, so the summary cannot disagree with the
+          # verdict. This order matters: the gate is allowed to fail
+          # the step, and the summary still needs its input.
+          grype sbom:/tmp/api.sbom.spdx.json -o json > /tmp/api.grype.json
+          grype sbom:/tmp/api.sbom.spdx.json --fail-on high
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
           title: api-grype
           body: '`grype --fail-on high` on the api SBOM.'
+          format: grype
+          path: /tmp/api.grype.json
 
   api-deb:
     # Smoke-build the .deb on every api change so packaging
@@ -848,13 +857,22 @@ jobs:
         run: curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
       - name: Scan SBOM (--fail-on high)
         working-directory: packages/job
-        run: grype sbom:/tmp/job.sbom.spdx.json --fail-on high
+        run: |
+          set -euo pipefail
+          # The json is written first, from the same scan the gate
+          # then runs, so the summary cannot disagree with the
+          # verdict. This order matters: the gate is allowed to fail
+          # the step, and the summary still needs its input.
+          grype sbom:/tmp/job.sbom.spdx.json -o json > /tmp/job.grype.json
+          grype sbom:/tmp/job.sbom.spdx.json --fail-on high
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
           title: job-grype
           body: '`grype --fail-on high` on the job SBOM.'
+          format: grype
+          path: /tmp/job.grype.json
 
   job-deb:
     # See api-deb — same explicit gate.
@@ -1110,13 +1128,22 @@ jobs:
         run: curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
       - name: Scan SBOM (--fail-on high)
         working-directory: packages/ssr
-        run: grype sbom:/tmp/ssr.sbom.spdx.json --fail-on high
+        run: |
+          set -euo pipefail
+          # The json is written first, from the same scan the gate
+          # then runs, so the summary cannot disagree with the
+          # verdict. This order matters: the gate is allowed to fail
+          # the step, and the summary still needs its input.
+          grype sbom:/tmp/ssr.sbom.spdx.json -o json > /tmp/ssr.grype.json
+          grype sbom:/tmp/ssr.sbom.spdx.json --fail-on high
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
           title: ssr-grype
           body: '`grype --fail-on high` on the ssr SBOM.'
+          format: grype
+          path: /tmp/ssr.grype.json
 
   ssr-deb:
     needs: [ssr-bandit, audit, web-build]
@@ -1539,13 +1566,22 @@ jobs:
         run: curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
       - name: Scan SBOM (--fail-on high)
         working-directory: packages/bdd/migrations
-        run: grype sbom:/tmp/migrations.sbom.spdx.json --fail-on high
+        run: |
+          set -euo pipefail
+          # The json is written first, from the same scan the gate
+          # then runs, so the summary cannot disagree with the
+          # verdict. This order matters: the gate is allowed to fail
+          # the step, and the summary still needs its input.
+          grype sbom:/tmp/migrations.sbom.spdx.json -o json > /tmp/migrations.grype.json
+          grype sbom:/tmp/migrations.sbom.spdx.json --fail-on high
       - name: Summary
         if: always()
         uses: ./.github/actions/summary
         with:
           title: migrations-grype
           body: '`grype --fail-on high` on the migrations SBOM.'
+          format: grype
+          path: /tmp/migrations.grype.json
 
   # ─────────────────────── audit (workspace-wide) ───────────────────────
 

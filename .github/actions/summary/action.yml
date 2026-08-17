@@ -3,13 +3,29 @@
 
 name: step summary
 description: |
-  Append a markdown block (`## title` + optional body) to
-  `$GITHUB_STEP_SUMMARY`, the per-run markdown panel rendered on the
-  workflow run page. Multiple calls in the same job concatenate.
+  Append a markdown block to `$GITHUB_STEP_SUMMARY`, the per-run panel
+  rendered on the workflow run page. Multiple calls in the same job
+  concatenate.
 
-  Wire as the final step of every job, with `if: always()`, so the
-  summary surfaces whether the job passed or failed (verdict comes
-  from GitHub's job badge — body stays neutral).
+  Wire as the final step of every job, with `if: always()`, so the summary
+  surfaces whether the job passed or failed — the verdict comes from
+  GitHub's own badge, so the body stays neutral about it.
+
+  TWO MODES.
+
+  With `title` and `body` only, it prints what it is given. That is the
+  original behaviour and every existing caller keeps working.
+
+  With `format` and `path`, it runs scripts/ci-summary.py over a tool's
+  actual output. That is the mode worth using: a body reading "`grype
+  --fail-on high` on the api SBOM" is visible in the job name already and
+  says the same thing whether the scan found nothing or forty things. The
+  formatter reads the artefact and reports what changes a decision — what
+  grype suppressed, which checkov skips have no written reason, how many
+  terraform assertions actually ran, what a plan would destroy.
+
+  `body` and `format` compose: the body is printed first as a lead, the
+  formatted output follows.
 
 inputs:
   title:
@@ -19,8 +35,22 @@ inputs:
     required: false
     default: ""
     description: |
-      Optional markdown body. Supports multiple lines via the `|`
-      block scalar. Inline backticks render as code.
+      Optional markdown. Supports multiple lines via the `|` block scalar,
+      and inline backticks render as code. With `format` set, this reads as
+      a lead paragraph above the generated table.
+  format:
+    required: false
+    default: ""
+    description: |
+      One of grype, checkov, terraform-test, sbom, plan, pytest. Requires
+      `path`.
+  path:
+    required: false
+    default: ""
+    description: |
+      The tool output to summarise. A missing file degrades to a one-line
+      note rather than failing the job — a summary that turns a green build
+      red for a reporting problem is a summary people delete.
 
 runs:
   using: composite
@@ -29,11 +59,34 @@ runs:
       env:
         TITLE: ${{ inputs.title }}
         BODY: ${{ inputs.body }}
+        FORMAT: ${{ inputs.format }}
+        SUMMARY_PATH: ${{ inputs.path }}
       run: |
         {
           printf '## %s\n' "$TITLE"
           if [[ -n "$BODY" ]]; then
             printf '\n%s\n' "$BODY"
           fi
-          printf '\n'
         } >> "$GITHUB_STEP_SUMMARY"
+
+        if [[ -n "$FORMAT" ]]; then
+          if [[ -z "$SUMMARY_PATH" ]]; then
+            # Named rather than ignored: a format with no path produces a
+            # summary that silently loses the half somebody asked for.
+            printf '\n_`format: %s` was given with no `path`._\n' "$FORMAT" \
+              >> "$GITHUB_STEP_SUMMARY"
+          else
+            printf '\n' >> "$GITHUB_STEP_SUMMARY"
+            # No `set -e` around this on purpose. The script degrades on its
+            # own and returns zero; this belt-and-braces `|| true` covers the
+            # case where python itself is missing.
+            # GITHUB_WORKSPACE rather than counting levels up from
+            # GITHUB_ACTION_PATH: the relative form works today and breaks
+            # silently if this action ever moves, producing an empty summary
+            # rather than an error.
+            python3 "${GITHUB_WORKSPACE}/scripts/ci-summary.py" \
+              "$FORMAT" "$SUMMARY_PATH" >> "$GITHUB_STEP_SUMMARY" || true
+          fi
+        fi
+
+        printf '\n' >> "$GITHUB_STEP_SUMMARY"

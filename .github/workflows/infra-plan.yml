@@ -368,16 +368,36 @@ jobs:
       - name: Upload full plan
         if: steps.tg.outputs.exit_code == '2'
         # WARNING: on a public repo, workflow artifacts are downloadable by
-        # anyone who can read the repo. This is tolerable only while no
-        # unit declares real resources.
-        # TODO(provider): move this to a private object-storage container
-        # and post no bearer link — reviewers fetch it with their own
-        # credentials.
+        # anyone who can read the repo — and this one now describes real
+        # resources. A terraform plan carries resource names, CIDRs and
+        # every attribute of what is being created.
+        #
+        # The condition this was tolerable under — "no unit declares real
+        # resources" — stopped holding the day the network units were
+        # enabled, which is how a caveat outlives its premise unnoticed.
+        #
+        # TODO(security): move this to private object storage and post no
+        # bearer link, so reviewers fetch it with their own credentials.
+        # Until then the summary below carries the counts, which is what a
+        # reviewer needs most and leaks least.
         uses: actions/upload-artifact@v7
         with:
           name: plan-${{ matrix.env }}-v${{ steps.bump.outputs.version }}
           path: plan-${{ matrix.env }}.txt
           retention-days: 7
+
+      # The per-unit shape of the plan, on the run page itself. The
+      # artifact is the reviewed artefact; this is what makes a destroy
+      # visible without downloading anything — a plan nobody expands is a
+      # plan nobody reads.
+      - name: Summary
+        if: always()
+        uses: ./.github/actions/summary
+        with:
+          title: infra-plan — ${{ matrix.env }}
+          body: 'Full plan in the run artifact.'
+          format: plan
+          path: plan-${{ matrix.env }}.txt
 
       - name: Open or update the deploy PR
         if: steps.tg.outputs.exit_code == '2'
