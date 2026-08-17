@@ -221,15 +221,31 @@ def process(component: str, *, bump_base: bool) -> dict | None:
             print(
                 f"[{component}] THE WORKING TREE WAS ALREADY MODIFIED before "
                 f"the build ran — {dockerfile.relative_to(REPO)} carries a new "
-                f"base digest. Keep it if the failure was transient, or "
-                f"`git checkout -- {dockerfile.relative_to(REPO)}` to drop it."
+                f"base digest. It is the correct digest and worth keeping if "
+                f"you intend to retry; otherwise "
+                f"`git checkout -- {dockerfile.relative_to(REPO)}` drops it."
             )
         print(
-            f"[{component}] The build log is above. A pip step failing to "
-            f"resolve pypi.org is a DNS problem in the build container "
-            f"rather than anything in this repository — buildkit does not "
-            f"share the host resolver, and it is usually transient. Retry "
-            f"before investigating the Dockerfile."
+            f"[{component}] The build log is above. If a pip step could not "
+            f"resolve pypi.org, that is DNS in the build container and not "
+            f"anything in this repository."
+        )
+        print(
+            f"[{component}] It is usually NOT transient, and retrying will "
+            f"not help. glibc reads at most THREE nameservers (MAXNS); a "
+            f"host that publishes more — several VPN or virtual interfaces "
+            f"registered with systemd-resolved is the common cause — can "
+            f"have its only reachable resolver in fourth place, where glibc "
+            f"never gets to it. Alpine-based images resolve fine on the same "
+            f"host because musl queries all of them in parallel, which is "
+            f"why this looks image-specific."
+        )
+        print(f"[{component}] Check with:  docker run --rm alpine cat /etc/resolv.conf")
+        print(
+            f"[{component}] Two fixes, first preferred: pin the working "
+            f"resolver in /etc/docker/daemon.json as "
+            f'{{"dns": ["<addr>"]}} and restart docker, or rebuild with '
+            f"--network=host, which uses the host's own resolver."
         )
         raise SystemExit(1) from None
 
