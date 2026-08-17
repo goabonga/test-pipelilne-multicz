@@ -205,10 +205,33 @@ def process(component: str, *, bump_base: bool) -> dict | None:
             print(f"[{component}] base image already at latest digest")
 
     image_tag = f"grype-refresh-{component}:check"
-    run(
-        ["docker", "build", "-t", image_tag, "-f", str(dockerfile), str(context)],
-        stdout=subprocess.DEVNULL,
-    )
+    try:
+        run(
+            ["docker", "build", "-t", image_tag, "-f", str(dockerfile), str(context)],
+            stdout=subprocess.DEVNULL,
+        )
+    except subprocess.CalledProcessError as exc:
+        # THE DIGEST BUMP IS ALREADY IN THE WORKING TREE by this point, and
+        # a raw traceback here leaves the reader with a modified Dockerfile
+        # they did not knowingly accept and no idea it happened. That is not
+        # hypothetical: an earlier crashed run left exactly that behind, and
+        # it was found days later by `git status` during unrelated work.
+        print(f"\n[{component}] docker build failed (exit {exc.returncode}).")
+        if base_moves:
+            print(
+                f"[{component}] THE WORKING TREE WAS ALREADY MODIFIED before "
+                f"the build ran — {dockerfile.relative_to(REPO)} carries a new "
+                f"base digest. Keep it if the failure was transient, or "
+                f"`git checkout -- {dockerfile.relative_to(REPO)}` to drop it."
+            )
+        print(
+            f"[{component}] The build log is above. A pip step failing to "
+            f"resolve pypi.org is a DNS problem in the build container "
+            f"rather than anything in this repository — buildkit does not "
+            f"share the host resolver, and it is usually transient. Retry "
+            f"before investigating the Dockerfile."
+        )
+        raise SystemExit(1) from None
 
     summary, grype_changed = reconcile(component, image_tag)
     print(summary)
