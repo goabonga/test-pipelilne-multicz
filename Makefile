@@ -7,7 +7,7 @@
         infra-bootstrap infra-oidc infra-clean clean \
         up down destroy ps logs sh cli migrate rebuild env \
         android android-emulator android-headless android-wait android-install \
-        android-metro android-logs android-stop
+        android-metro android-logs android-stop android-reset
 
 VENV     := .venv
 UV       := uv
@@ -66,7 +66,8 @@ help:
 	@echo "  make android-install   Install the APK already built, without rebuilding"
 	@echo "  make android-metro     Start the Metro bundler (needed for live reload)"
 	@echo "  make android-logs      Tail the app's logcat output"
-	@echo "  make android-stop      Shut the emulator down"
+	@echo "  make android-stop      Shut it down cleanly, saving the snapshot"
+	@echo "  make android-reset     Drop the snapshots when one goes stale"
 	@echo ""
 	@echo "Local cluster (kind):"
 	@echo "  make kind-up         Build the images and deploy the full stack on kind"
@@ -259,17 +260,28 @@ APP_ID   := $(shell sed -n 's/.*applicationId "\([^"]*\)".*/\1/p' $(APP_DIR)/and
 # `-no-boot-anim` is kept in both: the animation is pure cost during the
 # part you are waiting through.
 #
-# `-no-snapshot-save` leaves the saved state untouched, so every boot
-# starts from the same known image and a wedged session cannot poison the
-# next one. Drop it if you would rather trade that for a faster second
-# boot.
+# ONE SNAPSHOT PER MODE, and that is a fix rather than tidiness. A
+# snapshot records the emulator's feature set, and the two modes differ in
+# GPU backend, so loading one taken by the other fails with:
+#
+#   ERROR   | The emulator has the feature: 99, which is missing in the
+#             snapshot
+#   WARNING | Failed to load snapshot 'default_boot'
+#
+# Sharing the default name meant every switch between windowed and
+# headless invalidated the other's state, leaving both permanently cold.
+#
+# Snapshots ARE saved on exit: the first boot of each mode is slow and
+# every one after resumes in seconds, which is the largest speedup
+# available here. Use `make android-stop` rather than killing the process
+# — a killed emulator saves nothing.
 # `=` and not `:=`. A simply-expanded variable is evaluated once when the
 # Makefile is read, before any target-specific HEADLESS exists — so
 # android-headless would have silently rendered the windowed flags. Caught
 # by printing what each target actually passes rather than trusting that
 # it worked.
-EMULATOR_FLAGS = -no-audio -no-boot-anim -no-snapshot-save \
-	$(if $(HEADLESS),-no-window -gpu swiftshader_indirect,-gpu host)
+EMULATOR_FLAGS = -no-audio -no-boot-anim \
+	$(if $(HEADLESS),-no-window -gpu swiftshader_indirect -snapshot headless,-gpu host -snapshot windowed)
 
 # Target-specific, and it reaches the prerequisite: GNU make applies these
 # down the dependency chain, so android-emulator renders with the headless
@@ -333,8 +345,18 @@ android-logs:
 	adb logcat --pid=$$(adb shell pidof -s $(APP_ID) 2>/dev/null) 2>/dev/null \
 		|| adb logcat -s ReactNative:V ReactNativeJS:V
 
+# `adb emu kill` asks the emulator to shut down, which is what lets it
+# write its snapshot. Killing the process abandons that state, and the
+# next boot is cold again.
 android-stop:
-	@adb emu kill 2>/dev/null && echo "emulator stopped" || echo "no emulator running"
+	@adb emu kill 2>/dev/null && echo "emulator stopped — snapshot saved" || echo "no emulator running"
+
+# For when a snapshot is the problem rather than the help: stale after a
+# system image update, or saved from a session that was already wedged.
+# Drops both modes, so the next boot of either is a clean cold one.
+android-reset:
+	@rm -rf $(HOME)/.android/avd/$(AVD).avd/snapshots
+	@echo "dropped every snapshot for $(AVD) — the next boot is cold"
 
 KIND_DEV := scripts/kind-dev.sh
 
