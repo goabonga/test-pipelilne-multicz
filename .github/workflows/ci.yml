@@ -284,6 +284,14 @@ jobs:
       - name: Network policy agrees with the environment configs
         run: python3 scripts/check-network-invariants.py
 
+      # The vendored Swagger UI is executable code committed to this
+      # repository. Verifying the hashes is what separates "vendored" from
+      # "a copy of whatever the CDN served the day somebody ran the
+      # script" — including a change made by hand to a file nobody expects
+      # to read.
+      - name: Vendored Swagger assets match their lock
+        run: python3 scripts/vendor-swagger.py --check
+
       - name: Summary
         if: always()
         uses: ./.github/actions/summary

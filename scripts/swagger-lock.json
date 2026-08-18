@@ -1,0 +1,9 @@
+{
+  "_comment": "Pins the vendored Swagger UI. Regenerate with scripts/vendor-swagger.py --update <version>; verify with --check, which CI runs.",
+  "version": "5.32.13",
+  "source": "https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.32.13/<file>",
+  "files": {
+    "swagger-ui.css": "9e617d9ac0afb0e430c11a17366de8624db7ce34c99ebd297443f0048ce30899",
+    "swagger-ui-bundle.js": "5f3be5d9cf40cdd60dca0dafeaf8743fd858d1b3bb717bbdaebf7201303f63d7"
+  }
+}
