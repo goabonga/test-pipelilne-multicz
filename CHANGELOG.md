@@ -3,6 +3,12 @@
 All notable changes across components, aggregated per release.
 Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
+## 2026-08-18
+
+### Releases
+
+- **docs** patch — 1.0.39 → 1.0.40  _(cascade from configs-staging)_
+
 ## 2026-08-17
 
 ### Releases
