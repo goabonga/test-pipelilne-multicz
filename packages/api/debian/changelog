@@ -1,3 +1,9 @@
+shomer-api (0.2.0-1) unstable; urgency=medium
+
+  * feat(api,ssr): Serve the shomer favicon, including on the docs pages
+
+ -- Chris <goabonga@pm.me>  Tue, 18 Aug 2026 08:47:22 +0000
+
 shomer-api (0.1.1-1) unstable; urgency=medium
 
   * No notable changes.

@@ -2,6 +2,12 @@
 
 All notable changes to this component are documented here.
 
+## [1.1.0] - 2026-08-18
+
+### Features
+
+- **api,ssr**: serve the shomer favicon, including on the docs pages (`3bb91c2`)
+
 ## [1.0.1] - 2026-08-11
 
 ### Dependencies

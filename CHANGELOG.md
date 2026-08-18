@@ -7,6 +7,21 @@ Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
 ### Releases
 
+- **api** minor — 0.1.1 → 0.2.0
+- **chart-api** patch — 1.1.0 → 1.1.1  _(cascade from api 0.2.0)_
+- **chart-ssr** patch — 1.0.1 → 1.0.2  _(cascade from ssr 1.1.0)_
+- **docs** patch — 1.0.40 → 1.0.41  _(cascade from api 0.2.0)_
+- **ssr** minor — 1.0.1 → 1.1.0
+
+### Features
+
+- **api**: serve the shomer favicon, including on the docs pages (`3bb91c2`)
+- **ssr**: serve the shomer favicon, including on the docs pages (`3bb91c2`)
+
+## 2026-08-18
+
+### Releases
+
 - **docs** patch — 1.0.39 → 1.0.40  _(cascade from configs-staging)_
 
 ## 2026-08-17
