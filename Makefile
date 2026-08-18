@@ -5,7 +5,9 @@
         infra-new-module infra-docs infra-docs-check infra-checkov \
         infra-fmt-check-root infra-lint \
         infra-bootstrap infra-oidc infra-clean clean \
-        up down destroy ps logs sh cli migrate rebuild env
+        up down destroy ps logs sh cli migrate rebuild env \
+        android android-emulator android-headless android-wait android-install \
+        android-metro android-logs android-stop
 
 VENV     := .venv
 UV       := uv
@@ -56,6 +58,15 @@ help:
 	@echo "  make migrate         Re-run the alembic migrations"
 	@echo "  make rebuild         Rebuild images from scratch, no cache"
 	@echo "  make env             Create .env from the example, with your UID/GID"
+	@echo ""
+	@echo "Mobile (android):"
+	@echo "  make android-emulator  Boot the emulator, windowed, and wait until it is ready"
+	@echo "  make android-headless  Same without a window — e2e, or no display"
+	@echo "  make android           Build, install and launch on the running device"
+	@echo "  make android-install   Install the APK already built, without rebuilding"
+	@echo "  make android-metro     Start the Metro bundler (needed for live reload)"
+	@echo "  make android-logs      Tail the app's logcat output"
+	@echo "  make android-stop      Shut the emulator down"
 	@echo ""
 	@echo "Local cluster (kind):"
 	@echo "  make kind-up         Build the images and deploy the full stack on kind"
@@ -221,6 +232,109 @@ env:
 		printf 'USER_UID=%s\nUSER_GID=%s\n' "$$(id -u)" "$$(id -g)" >> .env; \
 		echo "wrote .env with USER_UID=$$(id -u) USER_GID=$$(id -g)"; \
 	fi
+
+# ── android ─────────────────────────────────────────────────────────────
+#
+# The app is NOT in the root npm workspace — it carries its own
+# package-lock.json — so everything here runs inside packages/app.
+APP_DIR  := packages/app
+AVD      ?= Pixel_6
+APK      := $(APP_DIR)/android/app/build/outputs/apk/debug/app-debug.apk
+
+# Read out of build.gradle rather than written twice. An application id
+# that drifts from the one Gradle installs produces a launch command that
+# silently does nothing — monkey exits 0 having matched no package.
+APP_ID   := $(shell sed -n 's/.*applicationId "\([^"]*\)".*/\1/p' $(APP_DIR)/android/app/build.gradle)
+
+# TWO TARGETS RATHER THAN A FLAG, because they are two different jobs.
+# `android-emulator` is for looking at the app; `android-headless` is for
+# when something else is looking — an e2e run, or a machine with no
+# display. A flag would put the second one behind knowing it exists.
+#
+# The GPU setting follows from that choice and matters more than the
+# window does. `host` hands rendering to the real GPU and is what makes a
+# windowed emulator usable; `swiftshader_indirect` renders in software,
+# which is portable, headless-safe and much slower.
+#
+# `-no-boot-anim` is kept in both: the animation is pure cost during the
+# part you are waiting through.
+#
+# `-no-snapshot-save` leaves the saved state untouched, so every boot
+# starts from the same known image and a wedged session cannot poison the
+# next one. Drop it if you would rather trade that for a faster second
+# boot.
+# `=` and not `:=`. A simply-expanded variable is evaluated once when the
+# Makefile is read, before any target-specific HEADLESS exists — so
+# android-headless would have silently rendered the windowed flags. Caught
+# by printing what each target actually passes rather than trusting that
+# it worked.
+EMULATOR_FLAGS = -no-audio -no-boot-anim -no-snapshot-save \
+	$(if $(HEADLESS),-no-window -gpu swiftshader_indirect,-gpu host)
+
+# Target-specific, and it reaches the prerequisite: GNU make applies these
+# down the dependency chain, so android-emulator renders with the headless
+# flags when it is reached this way.
+android-headless: HEADLESS := 1
+android-headless: android-emulator
+
+android-emulator:
+	@command -v emulator >/dev/null || { echo "emulator not on PATH — set ANDROID_HOME and add \$$ANDROID_HOME/emulator"; exit 1; }
+	@emulator -list-avds | grep -qx "$(AVD)" || { \
+		echo "no AVD named '$(AVD)'. Available:"; emulator -list-avds | sed 's/^/  /'; \
+		echo "Create one with: sdkmanager 'system-images;android-35;google_apis;x86_64' && avdmanager create avd -n $(AVD) -k 'system-images;android-35;google_apis;x86_64'"; \
+		exit 1; }
+	@echo "booting $(AVD)$(if $(HEADLESS), headless,) …"
+	@emulator -avd $(AVD) $(EMULATOR_FLAGS) >/tmp/emulator-$(AVD).log 2>&1 &
+	@$(MAKE) --no-print-directory android-wait
+
+# WAITING ON `adb devices` IS THE TRAP THIS TARGET EXISTS FOR.
+#
+# adb reports a device as soon as its daemon answers, which happens long
+# before Android is usable. Installing at that point fails with
+# "Can't find service: package" — an error about the package manager, from
+# a command that looks like it should have worked, on a device adb just
+# said was ready.
+#
+# sys.boot_completed is the property that actually means it.
+android-wait:
+	@adb wait-for-device
+	@printf 'waiting for Android to finish booting'
+	@for i in $$(seq 1 120); do \
+		if [ "$$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; then \
+			echo " — ready"; exit 0; \
+		fi; \
+		printf '.'; sleep 2; \
+	done; \
+	echo ""; \
+	echo "gave up after 4 minutes. The emulator log is /tmp/emulator-$(AVD).log"; \
+	echo "A boot that never completes is usually CPU starvation — check nothing"; \
+	echo "else heavy is running, gradle especially."; \
+	exit 1
+
+android: android-wait
+	cd $(APP_DIR) && npx react-native run-android
+
+# The build is the slow half. When only the emulator was the problem —
+# which is most of the time — reinstalling the APK that already exists
+# takes seconds instead of minutes.
+android-install:
+	@test -f $(APK) || { echo "no APK at $(APK) — run 'make android' first"; exit 1; }
+	@$(MAKE) --no-print-directory android-wait
+	adb install -r $(APK)
+	adb shell monkey -p $(APP_ID) -c android.intent.category.LAUNCHER 1 >/dev/null
+
+# Metro serves the JS bundle over HTTP and is what makes an edit appear
+# without rebuilding. `make android` starts one on its own; this is for
+# running it in its own terminal, which is where you can actually read it.
+android-metro:
+	cd $(APP_DIR) && npx react-native start
+
+android-logs:
+	adb logcat --pid=$$(adb shell pidof -s $(APP_ID) 2>/dev/null) 2>/dev/null \
+		|| adb logcat -s ReactNative:V ReactNativeJS:V
+
+android-stop:
+	@adb emu kill 2>/dev/null && echo "emulator stopped" || echo "no emulator running"
 
 KIND_DEV := scripts/kind-dev.sh
 
