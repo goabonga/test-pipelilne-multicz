@@ -7,6 +7,33 @@ Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
 ### Releases
 
+- **configs-production** minor — 0.0.0 → 0.1.0
+
+### Features
+
+- **configs-production**: terragrunt landing zone with per-environment deploy gating (`9d50feb`)
+- **configs-production**: bootstrap the state backend for AWS and GCP (`fc631c5`)
+- **configs-production**: config schema for the private k8s stack, and a module matrix (`1a2db60`)
+- **configs-production**: pick the provider and the cloud login from the environment config (`2cc9311`)
+- **configs-production**: select the state backend from the environment config (`6c32553`)
+- **configs-production**: put both environments on their remote state backend (`7477792`)
+- **configs-production**: name the example unit for what it is (`c8f4c84`)
+- **configs-production**: implement the firewall, and turn off what each cloud permits by default (`034bc57`)
+- **configs-production**: implement the egress proxy, where the policy stops being about routes (`00ddf6e`)
+- **configs-production**: implement the clusters, and settle Cilium in opposite directions (`3381a38`)
+- **configs-production**: implement the node pools, and the setting each cloud hangs egress on (`b9e6a57`)
+- **configs-production**: implement the DNS zones, private everywhere and public only where intended (`bd81a0c`)
+- **configs-production**: decide the proxy's private address, and untie the ordering knot (`5258c73`)
+- **configs-production**: enable the network units (`78a9e5a`)
+
+### Fixes
+
+- **configs-production**: turn off the units whose provider is not wired yet (`c23da8f`)
+
+## 2026-08-18
+
+### Releases
+
 - **docs** patch — 1.0.42 → 1.0.43  _(cascade from configs-staging)_
 
 ## 2026-08-18
