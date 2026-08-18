@@ -7,6 +7,16 @@ Per-component details live under `packages/<comp>/CHANGELOG.md`.
 
 ### Releases
 
+- **gitops-staging** minor — 0.1.4 → 0.2.0
+
+### Features
+
+- **gitops-staging**: add the pod-level policy, and the floor that makes it mean something (`64a70dc`)
+
+## 2026-08-18
+
+### Releases
+
 - **api** minor — 0.1.1 → 0.2.0
 - **chart-api** patch — 1.1.0 → 1.1.1  _(cascade from api 0.2.0)_
 - **chart-ssr** patch — 1.0.1 → 1.0.2  _(cascade from ssr 1.1.0)_

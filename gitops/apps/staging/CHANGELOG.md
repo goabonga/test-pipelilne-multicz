@@ -9,6 +9,16 @@ multicz's `upstream-notes` plugin from this component's `depends_on`.
 The version records that the pins were **promoted**, not that the cluster
 converged — Flux applies asynchronously and nothing here waits on it.
 
+## [0.2.0] - 2026-08-18
+
+### Features
+
+- **gitops**: add the pod-level policy, and the floor that makes it mean something (`64a70dc`)
+
+### Upstream: gitops (v0.1.0 → v0.2.0)
+
+- - feat(gitops): add the pod-level policy, and the floor that makes it mean something (64a70dc)
+
 ## [0.1.4] - 2026-08-11
 
 ### Upstream: chart-api (v1.0.1 → v1.1.0)
