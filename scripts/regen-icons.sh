@@ -45,4 +45,21 @@ uv run --with cairosvg --with Pillow python "$ROOT/scripts/generate_favicon.py" 
   -i "$ROOT/docs/shomer.svg" \
   -o "$ROOT/docs/favicon.ico"
 
-echo "regen-icons: 5 SVG copies + docs/favicon.ico from $SRC"
+# The favicons served at /favicon.ico by the api and the ssr, and used by
+# both Swagger UI pages.
+#
+# It lives in static/ with the esbuild output rather than in a directory of
+# its own: that path is already on the /static mount, already inside
+# `packages = ["src/shomer_ssr"]` so the wheel picks it up, and already
+# tracked. The web build writes main.js/main.css there and removes only
+# .html files from templates/, so it will not be swept away.
+for pkg in ssr:shomer_ssr api:shomer_api; do
+  dir="${pkg%%:*}"
+  mod="${pkg##*:}"
+  mkdir -p "$ROOT/packages/$dir/src/$mod/static"
+  uv run --with cairosvg --with Pillow python "$ROOT/scripts/generate_favicon.py" \
+    -i "$SRC" \
+    -o "$ROOT/packages/$dir/src/$mod/static/favicon.ico"
+done
+
+echo "regen-icons: 5 SVG copies + docs/favicon.ico + api & ssr favicon.ico from $SRC"

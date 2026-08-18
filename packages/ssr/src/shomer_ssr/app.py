@@ -17,7 +17,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from fastapi import FastAPI, Form, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.responses import Response
@@ -30,6 +31,12 @@ from . import __version__
 # `npm --prefix packages/web run build`.
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 STATIC_DIR = Path(__file__).parent / "static"
+
+# Generated from assets/shomer.svg by scripts/regen-icons.sh, and committed
+# like the rest of static/ — the wheel ships whatever is on disk at build
+# time, so a favicon that only exists after someone runs a script is a
+# favicon missing from the release.
+FAVICON = STATIC_DIR / "favicon.ico"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 
@@ -84,7 +91,10 @@ class DevAwareStaticFiles(StaticFiles):
         return response
 
 
-app = FastAPI(title="Shomer SSR", version=__version__)
+# docs_url=None disables FastAPI's built-in /docs so the route below can
+# replace it. There is no way to pass a favicon to the built-in one — the
+# only lever is swagger_favicon_url, which means owning the route.
+app = FastAPI(title="Shomer SSR", version=__version__, docs_url=None)
 app.mount("/static", DevAwareStaticFiles(directory=str(STATIC_DIR)), name="static")
 
 
@@ -103,6 +113,49 @@ def login_submit(
     # session flow against shomer-api.
     _ = (username, password)
     return JSONResponse({"status": "ok"})
+
+
+# BEFORE THE CATCH-ALL, and that ordering is the whole reason this route
+# exists as code rather than as a file in static/.
+#
+# Browsers request /favicon.ico at the root on their own, without being
+# told to. Without this, that request falls through to the SPA handler
+# below and receives an HTML document with a 200 — so the browser gets a
+# successful response that is not an image, shows no icon, and gives
+# nothing to diagnose. A 404 would at least be legible; a 200 of the wrong
+# type is not.
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon() -> FileResponse:
+    # Long max-age: the icon changes when the brand does, which is roughly
+    # never, and a browser re-requesting it on every navigation is the
+    # single most pointless request a site makes.
+    return FileResponse(
+        FAVICON,
+        media_type="image/x-icon",
+        headers={"Cache-Control": "public, max-age=604800, immutable"},
+    )
+
+
+@app.get("/docs", include_in_schema=False)
+def swagger_ui() -> HTMLResponse:
+    # Registered before the catch-all for the same reason as the favicon:
+    # otherwise /docs is a client route as far as the SPA handler is
+    # concerned, and returns the app shell instead of the documentation.
+    return get_swagger_ui_html(
+        openapi_url=app.openapi_url or "/openapi.json",
+        title=f"{app.title} — API docs",
+        swagger_favicon_url="/favicon.ico",
+        # Vendored, not from jsdelivr. The default URLs make every reader
+        # of this page fetch 1.5 MB of executable code from a third party,
+        # which is a dependency nothing else here accepts silently — and
+        # it renders as an unstyled page with no error in exactly the
+        # private network this is deployed into.
+        #
+        # scripts/vendor-swagger.py fetches and pins them; CI verifies the
+        # hashes.
+        swagger_js_url="/static/swagger/swagger-ui-bundle.js",
+        swagger_css_url="/static/swagger/swagger-ui.css",
+    )
 
 
 @app.get("/{full_path:path}", response_class=HTMLResponse)
