@@ -4,7 +4,8 @@
         kind-forward infra-fmt infra-fmt-check infra-test infra-plan \
         infra-new-module infra-docs infra-docs-check infra-checkov \
         infra-fmt-check-root infra-lint \
-        infra-bootstrap infra-oidc infra-clean clean
+        infra-bootstrap infra-oidc infra-clean clean \
+        up down destroy ps logs sh cli migrate rebuild env
 
 VENV     := .venv
 UV       := uv
@@ -43,6 +44,18 @@ help:
 	@echo "  make release-graph    Render the cascade DAG (api/job -> charts)"
 	@echo "  make release-dry-run  Compute the bump but write nothing"
 	@echo "  make release          Apply versions, commit and tag (no push)"
+	@echo ""
+	@echo "Local stack (docker compose):"
+	@echo "  make up              Build and start everything, with live reload"
+	@echo "  make down            Stop the stack, keep the database"
+	@echo "  make destroy         Stop the stack and DELETE the database volume"
+	@echo "  make ps              What is running, and whether it is healthy"
+	@echo "  make logs            Tail everything (C=api for one service)"
+	@echo "  make sh C=api        Shell into a running service"
+	@echo "  make cli ARGS='...'  Run the operator CLI in the container"
+	@echo "  make migrate         Re-run the alembic migrations"
+	@echo "  make rebuild         Rebuild images from scratch, no cache"
+	@echo "  make env             Create .env from the example, with your UID/GID"
 	@echo ""
 	@echo "Local cluster (kind):"
 	@echo "  make kind-up         Build the images and deploy the full stack on kind"
@@ -136,6 +149,79 @@ release:
 # kind, kubectl and helm on PATH — `kind-up` checks and says which are
 # missing. Override the cluster name with KIND_CLUSTER=... if `shomer-dev`
 # collides with something you already have.
+# ── docker compose ──────────────────────────────────────────────────────
+#
+# The whole stack on a laptop: web, ssr, api, job and cli against postgres
+# and redis, with sources bind-mounted so an edit reloads rather than
+# rebuilds. compose.yaml is the contract; these are the verbs.
+#
+# `up` is a foreground command on purpose. It uses `--watch`, which is what
+# rebuilds an image when a dependency manifest changes rather than only
+# when a source file does — and that only works while it holds the
+# terminal. Backgrounding it would silently drop the half of live reload
+# that catches a lockfile edit.
+COMPOSE := docker compose
+
+up: env
+	$(COMPOSE) up --build --watch
+
+# Stops containers, KEEPS the postgres volume. This is the one you want
+# nine times in ten: the database survives, so the next `up` does not
+# replay every migration against an empty schema.
+down:
+	$(COMPOSE) down
+
+# The destructive one, named so it cannot be typed by accident while
+# reaching for `down`. `-v` removes the named volume, which is the
+# database — everything in it goes.
+destroy:
+	@printf 'This deletes the postgres volume and everything in it. Type "yes" to continue: ' && \
+	read -r reply && [ "$$reply" = "yes" ] || { echo "aborted"; exit 1; }
+	$(COMPOSE) down -v --remove-orphans
+
+ps:
+	$(COMPOSE) ps
+
+# C=api narrows to one service. Without it you get everything interleaved,
+# which is usually what you want when something failed to start and you do
+# not yet know which thing.
+logs:
+	$(COMPOSE) logs -f --tail=100 $(C)
+
+sh:
+	@test -n "$(C)" || { echo "usage: make sh C=api|ssr|job|web|cli|postgres|redis"; exit 1; }
+	$(COMPOSE) exec $(C) sh
+
+# `run --rm` rather than `exec`: the cli container is a warm `sleep
+# infinity`, but a one-off gets a clean process and cannot leave state
+# behind in the long-lived one.
+cli:
+	@test -n "$(ARGS)" || { echo "usage: make cli ARGS='health http://api:8000'"; exit 1; }
+	$(COMPOSE) run --rm cli shomer $(ARGS)
+
+# The migrate service is one-shot and already runs before api starts. This
+# is for re-running it after adding a revision, without bouncing the stack.
+migrate:
+	$(COMPOSE) run --rm migrate
+
+# When a rebuild is the answer and `--watch` did not notice: a base image
+# digest moved, a system package changed, or the cache is simply wrong.
+rebuild:
+	$(COMPOSE) build --no-cache --pull
+
+# WITHOUT THIS, BIND MOUNTS END UP ROOT-OWNED ON LINUX, and the symptom is
+# not a permission error — it is files appearing in your working tree that
+# you cannot edit. compose.yaml defaults to 1000:1000, which is right for
+# most single-user Linux installs and wrong for everyone else.
+env:
+	@if [ -f .env ]; then \
+		echo ".env already exists — left alone"; \
+	else \
+		cp .env.example .env; \
+		printf 'USER_UID=%s\nUSER_GID=%s\n' "$$(id -u)" "$$(id -g)" >> .env; \
+		echo "wrote .env with USER_UID=$$(id -u) USER_GID=$$(id -g)"; \
+	fi
+
 KIND_DEV := scripts/kind-dev.sh
 
 kind-up:
