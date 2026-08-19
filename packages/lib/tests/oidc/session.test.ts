@@ -85,6 +85,23 @@ describe("transition", () => {
     );
   });
 
+  it("expires when the refresh itself fails", () => {
+    // The path that actually happens in production: a rotating refresh
+    // token that the IdP has revoked. Without this transition the session
+    // would sit in `refreshing` forever, showing a spinner for a session
+    // that is already gone.
+    const failed = transition(refreshing, {
+      type: "expire",
+      reason: "refresh token revoked",
+    });
+
+    expect(failed).toEqual({
+      status: "expired",
+      reason: "refresh token revoked",
+    });
+    expect(tokensOf(failed)).toBeUndefined();
+  });
+
   it("refuses to refresh an expired session", () => {
     // The refresh token is what expired. Retrying with it is the loop that
     // hammers an IdP until it rate limits the client.
@@ -109,6 +126,24 @@ describe("transition", () => {
   it("allows signing out of a session that does not exist", () => {
     // Refusing it would make the safest action the one that throws.
     expect(transition(idle, { type: "signOut" }).status).toBe("idle");
+  });
+
+  it("refuses a second callback for a session already established", () => {
+    // A deep link can be delivered twice — a double tap on the redirect, a
+    // replayed universal link, an OS that re-opens the last intent. The
+    // second delivery carries a code that was already exchanged, and
+    // accepting it would replace a live session with the result of
+    // redeeming a spent code.
+    expect(() => transition(authenticated, { type: "authorized", tokens })).toThrow(
+      InvalidTransitionError,
+    );
+  });
+
+  it("refuses to start a login while a refresh is in flight", () => {
+    // Both would race to write the session, and whichever lost would
+    // leave its state and nonce stranded — so the callback it eventually
+    // receives fails a check it should have passed.
+    expect(() => transition(refreshing, authorize)).toThrow(InvalidTransitionError);
   });
 
   it("names both sides of a refused transition", () => {

@@ -109,6 +109,33 @@ describe("createAuthorizationRequest", () => {
     expect(query).not.toHaveProperty("max_age");
   });
 
+  it("carries prompt when a step-up is being forced", () => {
+    // `login` forces re-authentication even when the IdP has a live
+    // session — which is the whole mechanism behind a step-up, and is
+    // silently a no-op if the parameter is dropped.
+    const request = createAuthorizationRequest(params({ prompt: "login" }), countingCrypto());
+
+    expect(queryOf(request.url).prompt).toBe("login");
+  });
+
+  it("carries max_age as seconds", () => {
+    // The IdP re-authenticates if its session is older than this. Sent as
+    // anything but a plain integer, it is rejected or ignored depending on
+    // the IdP — and ignored is the dangerous half.
+    const request = createAuthorizationRequest(params({ maxAge: 300 }), countingCrypto());
+
+    expect(queryOf(request.url).max_age).toBe("300");
+  });
+
+  it("sends max_age of zero rather than treating it as unset", () => {
+    // Zero means "re-authenticate now" and is a legitimate request. A
+    // falsy check here would drop it, turning a forced re-authentication
+    // into an ordinary one that silently reuses the existing session.
+    const request = createAuthorizationRequest(params({ maxAge: 0 }), countingCrypto());
+
+    expect(queryOf(request.url).max_age).toBe("0");
+  });
+
   it("refuses an extra parameter that would overwrite a protocol one", () => {
     // THE assertion here. An IdP-specific extra that replaced
     // code_challenge would disable PKCE, or one that replaced redirect_uri
