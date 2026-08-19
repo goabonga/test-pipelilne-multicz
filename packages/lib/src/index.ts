@@ -42,3 +42,10 @@ export { IdTokenValidationError, validateIdToken } from "./oidc/id-token";
 export type { PkcePair } from "./oidc/pkce";
 export { base64UrlEncode, createPkcePair } from "./oidc/pkce";
 export type { Clock, Crypto } from "./oidc/ports";
+export type {
+  SessionEvent,
+  SessionState,
+  SessionStatus,
+  Tokens,
+} from "./oidc/session";
+export { InvalidTransitionError, tokensOf, transition } from "./oidc/session";
