@@ -28,6 +28,11 @@ export {
 // two clients that disagree about how a token is validated are two
 // clients with two different security postures.
 
+export type {
+  AuthorizationRequest,
+  AuthorizationRequestParams,
+} from "./oidc/authorization-request";
+export { createAuthorizationRequest } from "./oidc/authorization-request";
 export type { PkcePair } from "./oidc/pkce";
 export { base64UrlEncode, createPkcePair } from "./oidc/pkce";
 export type { Clock, Crypto } from "./oidc/ports";
