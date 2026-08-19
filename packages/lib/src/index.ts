@@ -47,7 +47,7 @@ export type {
 export { IdTokenValidationError, validateIdToken } from "./oidc/id-token";
 export type { PkcePair } from "./oidc/pkce";
 export { base64UrlEncode, createPkcePair } from "./oidc/pkce";
-export type { Clock, Crypto } from "./oidc/ports";
+export type { Browser, Clock, Crypto, TokenStorage } from "./oidc/ports";
 export type {
   RefreshManagerOptions,
   RefreshTokenExchange,

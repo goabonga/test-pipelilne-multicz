@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Chris <goabonga@pm.me>
 
 import { describe, expect, it } from "vitest";
-
+import type { Browser, Clock, Crypto, TokenStorage } from "../../src/index";
 import * as lib from "../../src/index";
 
 /**
@@ -47,6 +47,24 @@ const PUBLIC_SURFACE = [
 describe("the package entrypoint", () => {
   it.each(PUBLIC_SURFACE)("exports %s", (name) => {
     expect(lib).toHaveProperty(name);
+  });
+
+  it("exports the ports as types", () => {
+    // Types vanish at runtime, so `toHaveProperty` cannot see them.
+    // Naming them in a type position is the assertion: if any is not
+    // exported from the entrypoint, this file fails to compile — which is
+    // stricter than a runtime check and runs in the same typecheck gate.
+    //
+    // Without it, an adapter in another package discovers the missing
+    // export as an import error in its own build, far from the cause.
+    const ports: {
+      browser?: Browser;
+      clock?: Clock;
+      crypto?: Crypto;
+      storage?: TokenStorage;
+    } = {};
+
+    expect(ports).toEqual({});
   });
 
   it("still exports what it did before OIDC arrived", () => {

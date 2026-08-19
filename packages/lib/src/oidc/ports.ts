@@ -44,3 +44,58 @@ export interface Clock {
   /** Milliseconds since the Unix epoch. */
   now(): number;
 }
+
+/**
+ * Where tokens live between launches.
+ *
+ * The platforms disagree about what "securely" means and the difference is
+ * not hideable: React Native has the Keychain and the Keystore, a browser
+ * has nothing comparable, which is why the SPA half of this design keeps
+ * no tokens in JS at all and puts them behind a BFF cookie instead.
+ *
+ * So this interface is deliberately small — get, set, clear — and says
+ * nothing about encryption, biometrics or accessibility classes. Those are
+ * decisions the implementation makes with knowledge the core does not
+ * have, and a core that pretended to make them would be describing
+ * guarantees it cannot keep.
+ */
+export interface TokenStorage {
+  /** Undefined when nothing is stored, not an error. */
+  load(): Promise<string | undefined>;
+  save(value: string): Promise<void>;
+  /** Must succeed when there is nothing to clear — sign-out is idempotent. */
+  clear(): Promise<void>;
+}
+
+/**
+ * Opening the authorization URL and getting the callback back.
+ *
+ * RFC 8252 REQUIRES THE SYSTEM BROWSER AND FORBIDS AN EMBEDDED WEBVIEW,
+ * and the reason is worth stating because a WebView is easier and looks
+ * identical to a user:
+ *
+ *   - the app can read every keystroke and the DOM, so the user has no way
+ *     to tell a real IdP page from one the app is watching — which is the
+ *     property the whole federation model depends on
+ *   - it has no access to the system browser's session, so single sign-on
+ *     does not work and the user re-authenticates on every app
+ *   - it does not show the address bar, so the user cannot check who they
+ *     are giving their credentials to
+ *
+ * Pro Santé Connect refuses embedded WebViews outright, so this is a
+ * conformance requirement here and not only a good practice.
+ *
+ * The implementation is expected to use ASWebAuthenticationSession on iOS
+ * and Custom Tabs on Android — both of which share the browser's cookie
+ * jar and hand control back automatically.
+ */
+export interface Browser {
+  /**
+   * Open `url` and resolve with the callback URL the IdP redirected to.
+   *
+   * Resolves with undefined when the user dismissed it. That is not an
+   * error: cancelling a login is a thing users do deliberately, and
+   * treating it as a failure produces an error dialog for a decision.
+   */
+  open(url: string, redirectUri: string): Promise<string | undefined>;
+}
