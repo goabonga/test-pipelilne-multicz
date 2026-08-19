@@ -33,6 +33,12 @@ export type {
   AuthorizationRequestParams,
 } from "./oidc/authorization-request";
 export { createAuthorizationRequest } from "./oidc/authorization-request";
+export type {
+  IdTokenClaims,
+  IdTokenValidationParams,
+  JwtVerifier,
+} from "./oidc/id-token";
+export { IdTokenValidationError, validateIdToken } from "./oidc/id-token";
 export type { PkcePair } from "./oidc/pkce";
 export { base64UrlEncode, createPkcePair } from "./oidc/pkce";
 export type { Clock, Crypto } from "./oidc/ports";
