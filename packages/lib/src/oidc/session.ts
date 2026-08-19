@@ -53,6 +53,19 @@ export type SessionEvent =
   | { readonly type: "refresh" }
   | { readonly type: "refreshed"; readonly tokens: Tokens }
   | { readonly type: "expire"; readonly reason: string }
+  /**
+   * Adopt tokens read back from storage on launch.
+   *
+   * A separate event rather than a replayed authorization, because
+   * restoring is not authorizing: there is no state, no nonce and no
+   * verifier to check, and inventing empty ones would put values into a
+   * session that anything comparing against them would silently accept.
+   *
+   * The tokens are trusted only as far as storage is: they were validated
+   * when they were written, and a caller that wants more should refresh
+   * rather than re-run the whole flow.
+   */
+  | { readonly type: "restore"; readonly tokens: Tokens }
   | { readonly type: "signOut" };
 
 export class InvalidTransitionError extends Error {
@@ -87,6 +100,11 @@ export function transition(state: SessionState, event: SessionEvent): SessionSta
 
   switch (state.status) {
     case "idle":
+      // Only from idle. A restore arriving mid-flow would replace a live
+      // authorization with whatever was on disk before it started.
+      if (event.type === "restore") {
+        return { status: "authenticated", tokens: event.tokens };
+      }
       if (event.type === "authorize") {
         return {
           status: "authorizing",

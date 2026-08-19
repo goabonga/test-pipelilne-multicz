@@ -65,6 +65,27 @@ describe("transition", () => {
     expect(tokensOf(expired)).toBeUndefined();
   });
 
+  it("restores a session read back from storage", () => {
+    // Launching with tokens on disk is not authorizing: there is no
+    // state, nonce or verifier to check. Faking them to reuse the
+    // authorize path would put empty strings into a session, and anything
+    // that later compared against them would accept an empty match.
+    const restored = transition(idle, { type: "restore", tokens });
+
+    expect(restored).toEqual({ status: "authenticated", tokens });
+  });
+
+  it("refuses a restore once a flow has started", () => {
+    // Otherwise whatever was on disk before the user tapped sign-in
+    // replaces the authorization now in flight.
+    expect(() => transition(authorizing, { type: "restore", tokens })).toThrow(
+      InvalidTransitionError,
+    );
+    expect(() => transition(authenticated, { type: "restore", tokens })).toThrow(
+      InvalidTransitionError,
+    );
+  });
+
   it("refuses a second authorize while one is in flight", () => {
     // Two concurrent authorizations mean two state values, and the
     // callback can only match one — so the other silently fails a check
