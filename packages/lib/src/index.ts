@@ -43,6 +43,15 @@ export type { PkcePair } from "./oidc/pkce";
 export { base64UrlEncode, createPkcePair } from "./oidc/pkce";
 export type { Clock, Crypto } from "./oidc/ports";
 export type {
+  RefreshManagerOptions,
+  RefreshTokenExchange,
+} from "./oidc/refresh";
+export {
+  NoRefreshTokenError,
+  needsRefresh,
+  RefreshManager,
+} from "./oidc/refresh";
+export type {
   SessionEvent,
   SessionState,
   SessionStatus,
