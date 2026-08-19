@@ -28,7 +28,7 @@
     "@shomer/lib": "file:../lib",
     "react": "19.2.8",
     "react-native": "0.86.2",
-    "react-native-safe-area-context": "^5.5.2"
+    "react-native-safe-area-context": "^5.9.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
