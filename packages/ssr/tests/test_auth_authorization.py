@@ -4,7 +4,6 @@
 from urllib.parse import parse_qs, urlsplit
 
 import pytest
-
 from shomer_ssr.auth.authorization import (
     build_authorization_url,
     create_authorization_request,
