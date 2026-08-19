@@ -34,6 +34,12 @@ export type {
 } from "./oidc/authorization-request";
 export { createAuthorizationRequest } from "./oidc/authorization-request";
 export type {
+  DiscoveryOptions,
+  Fetch,
+  OidcConfiguration,
+} from "./oidc/discovery";
+export { DiscoveryError, OidcDiscovery, wellKnownUrl } from "./oidc/discovery";
+export type {
   IdTokenClaims,
   IdTokenValidationParams,
   JwtVerifier,
