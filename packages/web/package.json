@@ -27,7 +27,7 @@
   "dependencies": {
     "@shomer/lib": "*",
     "react": "^19.2.0",
-    "react-dom": "^19.2.8",
+    "react-dom": "^19.3.0",
     "react-router-dom": "^7.18.2"
   },
   "devDependencies": {
@@ -36,7 +36,7 @@
     "@testing-library/react": "^16.1.0",
     "@types/node": "^26.1.2",
     "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.2.4",
+    "@types/react-dom": "^19.3.0",
     "esbuild": "^0.28.1",
     "jsdom": "^30.0.1",
     "typescript": "^7.0.2",
