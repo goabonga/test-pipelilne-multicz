@@ -172,7 +172,7 @@ jobs:
             echo "The network skeleton is untouched: vpc, subnets, routes, firewall and addresses stay, so the egress addresses external services allow-list are not released."
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: teardown-plan-${{ needs.detect.outputs.environment }}
           path: destroy-${{ needs.detect.outputs.environment }}.txt
